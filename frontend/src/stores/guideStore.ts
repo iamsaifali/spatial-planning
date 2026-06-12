@@ -46,6 +46,7 @@ interface GuideState {
   fetchStep: (key?: StepKey, force?: boolean) => Promise<StepResponse | null>;
   fetchAnalysis: () => Promise<void>;
   invalidateAll: () => void;
+  reset: () => void;
   toggleOverlays: () => void;
   setGuideFinished: (v: boolean) => void;
 }
@@ -155,6 +156,17 @@ export const useGuideStore = create<GuideState>((set, get) => ({
   },
 
   invalidateAll: () => set({ stepCache: {}, analysis: null }),
+
+  reset: () =>
+    set({
+      currentStepKey: "sofa",
+      skipped: new Set(),
+      stepCache: {},
+      stepError: null,
+      analysis: null,
+      analysisError: null,
+      guideFinished: false,
+    }),
 
   toggleOverlays: () => set((s) => ({ overlaysVisible: !s.overlaysVisible })),
 

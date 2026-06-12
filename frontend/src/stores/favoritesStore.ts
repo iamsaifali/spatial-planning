@@ -21,6 +21,7 @@ export const useFavoritesStore = create<FavoritesState>()(
         })),
       has: (productId) => get().ids.includes(productId),
     }),
-    { name: "zory-favorites-v1" },
+    // rehydrated after mount (PlannerShell) so SSR and first client paint match
+    { name: "zory-favorites-v1", skipHydration: true },
   ),
 );

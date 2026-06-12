@@ -16,15 +16,20 @@ import { Toasts } from "@/components/ui/Toasts";
 import { CartDrawer } from "@/components/overlays/CartDrawer";
 import { CheckoutDialog } from "@/components/overlays/CheckoutDialog";
 import { RenderDialog } from "@/components/overlays/RenderDialog";
+import { ResumeDraftDialog, type PendingDraft } from "@/components/overlays/ResumeDraftDialog";
 import { RoomSummarySheet } from "@/components/overlays/RoomSummarySheet";
 import { SaveShareDialog } from "@/components/overlays/SaveShareDialog";
 import { WarningPopover } from "@/components/overlays/WarningPopover";
 import { View3DDialog } from "@/components/view3d/View3DDialog";
 import { api, debounced } from "@/lib/api";
+import { sampleRoom } from "@/lib/constants";
 import { revalidateAll } from "@/lib/placement";
+import { useCartStore } from "@/stores/cartStore";
 import { useCurrencyStore } from "@/stores/currencyStore";
+import { useFavoritesStore } from "@/stores/favoritesStore";
 import { useGuideStore } from "@/stores/guideStore";
 import { useSceneStore } from "@/stores/sceneStore";
+import type { PlacedItem, Room } from "@/types/api";
 import { usePlannerStore } from "@/stores/plannerStore";
 import { usePrefsStore } from "@/stores/prefsStore";
 import { useProductStore } from "@/stores/productStore";
@@ -38,6 +43,7 @@ const DRAFT_KEY = "zory-draft-v1";
 export function PlannerShell({ skipDraftRestore = false }: { skipDraftRestore?: boolean }) {
   const [renderEnabled, setRenderEnabled] = useState(false);
   const [backendDown, setBackendDown] = useState(false);
+  const [pendingDraft, setPendingDraft] = useState<PendingDraft | null>(null);
   const bootstrapped = useRef(false);
 
   const roomVersion = usePlannerStore((s) => s.roomVersion);
@@ -46,10 +52,18 @@ export function PlannerShell({ skipDraftRestore = false }: { skipDraftRestore?: 
   const leftPanelOpen = useUiStore((s) => s.leftPanelOpen);
   const setSheet = useUiStore((s) => s.setSheet);
 
-  // bootstrap: products, health, draft restore, first analysis + step
+  // bootstrap: rehydrate persisted stores, products, health, draft choice,
+  // first analysis + step
   useEffect(() => {
     if (bootstrapped.current) return;
     bootstrapped.current = true;
+
+    // persisted stores use skipHydration so SSR matches the first client
+    // paint; bring the saved values in now that we're safely mounted
+    void useCartStore.persist.rehydrate();
+    void usePrefsStore.persist.rehydrate();
+    void useFavoritesStore.persist.rehydrate();
+    void useCurrencyStore.persist.rehydrate();
 
     void useProductStore.getState().loadAll();
 
@@ -76,15 +90,23 @@ export function PlannerShell({ skipDraftRestore = false }: { skipDraftRestore?: 
       try {
         const raw = localStorage.getItem(DRAFT_KEY);
         if (raw) {
-          const draft = JSON.parse(raw) as { version: number; room: unknown; items: unknown };
-          if (draft.version === 1 && draft.room && Array.isArray(draft.items)) {
-            usePlannerStore.getState().loadDesign(
-              null,
-              "My Living Room",
-              draft.room as never,
-              draft.items as never,
-            );
-            useUiStore.getState().toast("info", "Restored your last draft.");
+          const draft = JSON.parse(raw) as {
+            version: number;
+            room: Room;
+            items: PlacedItem[];
+            savedAt?: number;
+          };
+          const pristine = JSON.stringify(draft.room) === JSON.stringify(sampleRoom());
+          if (
+            draft.version === 1 &&
+            draft.room &&
+            Array.isArray(draft.items) &&
+            (draft.items.length > 0 || !pristine)
+          ) {
+            // a meaningful draft exists - let the user choose continue vs fresh
+            // (deferred: avoids a synchronous setState inside the effect body)
+            const found = { room: draft.room, items: draft.items, savedAt: draft.savedAt };
+            setTimeout(() => setPendingDraft(found), 0);
           }
         }
       } catch {
@@ -99,6 +121,27 @@ export function PlannerShell({ skipDraftRestore = false }: { skipDraftRestore?: 
       setTimeout(() => useUiStore.getState().setSheet("prefsOpen", true), 600);
     }
   }, [skipDraftRestore]);
+
+  const continueDraft = () => {
+    if (!pendingDraft) return;
+    usePlannerStore
+      .getState()
+      .loadDesign(null, "My Living Room", pendingDraft.room, pendingDraft.items);
+    setPendingDraft(null);
+    useUiStore.getState().toast("info", "Restored your last draft.");
+  };
+
+  const startFresh = () => {
+    localStorage.removeItem(DRAFT_KEY);
+    usePlannerStore.getState().loadDesign(null, "My Living Room", sampleRoom(), []);
+    useGuideStore.getState().reset();
+    useUiStore.getState().select(null);
+    useUiStore.getState().requestFit();
+    setPendingDraft(null);
+    void useGuideStore.getState().fetchAnalysis();
+    void useGuideStore.getState().fetchStep(undefined, true);
+    useUiStore.getState().toast("success", "Fresh start - the sample room is ready.");
+  };
 
   // autosave draft (light throttle via debounce)
   useEffect(() => {
@@ -253,6 +296,7 @@ export function PlannerShell({ skipDraftRestore = false }: { skipDraftRestore?: 
       <RenderDialog renderEnabled={renderEnabled} />
       <View3DDialog />
       <PreferencesDialog />
+      <ResumeDraftDialog draft={pendingDraft} onContinue={continueDraft} onStartFresh={startFresh} />
       <Toasts />
     </div>
   );

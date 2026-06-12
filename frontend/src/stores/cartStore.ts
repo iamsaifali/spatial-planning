@@ -61,7 +61,8 @@ export const useCartStore = create<CartState>()(
       clear: () => set({ lines: [] }),
     }),
     // v2: product snapshots use currency-neutral price/mrp fields
-    { name: "zory-cart-v2" },
+    // rehydrated after mount (PlannerShell) so SSR and first client paint match
+    { name: "zory-cart-v2", skipHydration: true },
   ),
 );
 

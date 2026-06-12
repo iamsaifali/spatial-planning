@@ -20,6 +20,7 @@ export const usePrefsStore = create<PrefsState>()(
       markQuizSeen: () => set({ quizSeen: true }),
     }),
     // v2: preference fields are currency-neutral (total_budget in base currency)
-    { name: "zory-prefs-v2" },
+    // rehydrated after mount (PlannerShell) so SSR and first client paint match
+    { name: "zory-prefs-v2", skipHydration: true },
   ),
 );

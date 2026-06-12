@@ -39,7 +39,12 @@ export const useCurrencyStore = create<CurrencyState>()(
           currency: config.supported.includes(s.currency) ? s.currency : config.default,
         })),
     }),
-    { name: "zory-currency-v1", partialize: (s) => ({ currency: s.currency }) },
+    {
+      name: "zory-currency-v1",
+      partialize: (s) => ({ currency: s.currency }),
+      // rehydrated after mount (PlannerShell) so SSR and first client paint match
+      skipHydration: true,
+    },
   ),
 );
 
