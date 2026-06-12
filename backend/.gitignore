@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+var/
+.pytest_cache/
+.ruff_cache/
+
+# regenerable seed assets (scripts/download_images.py)
+static/products/
