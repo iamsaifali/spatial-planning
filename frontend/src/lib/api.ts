@@ -11,6 +11,7 @@ import type {
   HealthResponse,
   OrderResponse,
   PlacedItem,
+  PlanResponse,
   Preferences,
   ProductListResponse,
   RenderResponse,
@@ -110,6 +111,9 @@ export const api = {
     latest(`guide/${stepKey}`, (s) =>
       post<StepResponse>(`/guide/step/${stepKey}`, { room, preferences, placed_items }, s),
     ),
+
+  plan: (room: Room, preferences: Preferences, placed_items: PlacedItem[]) =>
+    latest("guide/plan", (s) => post<PlanResponse>("/guide/plan", { room, preferences, placed_items }, s)),
 
   suggestPlacement: (room: Room, placed_items: PlacedItem[], product_id: string, zone_id?: string | null) =>
     post<SuggestResponse>("/placement/suggest", { room, placed_items, product_id, zone_id }),

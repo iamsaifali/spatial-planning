@@ -27,6 +27,21 @@ SYSTEM_PROMPT = (
     "verbatim if you mention them. Keep every field concise (under 60 words)."
 )
 
+DIRECTOR_SYSTEM_PROMPT = (
+    "You are ZORY's living-room layout director. Using ONLY the room facts, the user's "
+    "preferences, the available furniture categories, and the seating target provided, decide "
+    "which categories belong in this room (not necessarily all of them), how many of each "
+    "(respect quantity_caps), and a sensible arrangement anchor per category. Never choose a "
+    "category outside available_categories. Prefer fewer, well-chosen pieces for small rooms or "
+    "minimal styles, but for LARGE rooms (high room_area_m2) scale quantities UP toward "
+    "quantity_caps so the space doesn't look sparse - more accent seating, lighting and decor. "
+    "Add accent seating to meet the seating target when entertaining. "
+    "Output only the structured plan."
+)
+
+# Per-kind system prompt; copy kinds share the rephrase-only prompt above.
+SYSTEM_PROMPTS: dict[str, str] = {"layout_plan": DIRECTOR_SYSTEM_PROMPT}
+
 SCHEMAS: dict[str, dict] = {
     "guide": {
         "type": "object",
@@ -63,6 +78,44 @@ SCHEMAS: dict[str, dict] = {
             "related_tip": {"type": ["string", "null"]},
         },
         "required": ["answer", "related_tip"],
+        "additionalProperties": False,
+    },
+    "layout_plan": {
+        "type": "object",
+        "properties": {
+            "archetype": {"type": "string"},
+            "rationale": {"type": "string"},
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "category": {
+                            "type": "string",
+                            "enum": [
+                                "sofa", "tv_unit", "rug", "coffee_table", "side_table",
+                                "accent_chair", "lighting", "storage", "decor",
+                            ],
+                        },
+                        "quantity": {"type": "integer"},
+                        "anchor": {
+                            "type": "string",
+                            "enum": [
+                                "on_focal_wall", "facing", "flanking", "in_front_of",
+                                "beside", "conversation_angle", "corner", "center",
+                            ],
+                        },
+                        "anchor_ref": {
+                            "type": "string",
+                            "enum": ["sofa", "tv_unit", "window", "focal_wall", "room"],
+                        },
+                    },
+                    "required": ["category", "quantity", "anchor", "anchor_ref"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "required": ["archetype", "rationale", "items"],
         "additionalProperties": False,
     },
 }
@@ -109,7 +162,7 @@ async def _llm_generate(kind: str, facts: dict, instruction: str) -> dict | None
             model=settings.openai_model,
             reasoning={"effort": settings.reasoning_effort},
             input=[
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": SYSTEM_PROMPTS.get(kind, SYSTEM_PROMPT)},
                 {"role": "user", "content": instruction + "\nFACTS:\n" + json.dumps(facts, default=str)},
             ],
             text={
@@ -134,6 +187,7 @@ INSTRUCTIONS = {
     "why_it_fits": "Explain why this product, why this size, and why this placement.",
     "summary": "Write a short room summary narrative (and optional upgrade pitch).",
     "assistant": "Answer the user's question using only the facts. If the facts cannot answer it, say so and give the closest helpful guidance.",
+    "layout_plan": "Choose the categories, quantities, and per-category anchor for this living room from the allowed values.",
 }
 
 

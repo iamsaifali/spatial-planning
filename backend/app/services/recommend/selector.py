@@ -64,8 +64,12 @@ def select_slots(
     prefs: Preferences,
     placed: list[PlacedProduct],
     repo: CatalogRepository,
+    products: list[Product] | None = None,
+    exclude_ids: set[str] | None = None,
 ) -> SlotResult:
-    products = repo.in_category(category)
+    products = products if products is not None else repo.in_category(category)
+    if exclude_ids:
+        products = [p for p in products if p.id not in exclude_ids]
     hints: dict[str, float | str] = {}
 
     if not products:

@@ -13,6 +13,7 @@ from app.routers._common import resolve_currency, resolve_placed, to_display_amo
 from app.services.ai import copy_service
 from app.services.catalog import get_repository
 from app.services.guide.flow import completeness_pct, missing_essentials
+from app.services.plan import director
 from app.services.spatial.analyze import analyze_room
 from app.services.spatial.validate import validate_item
 
@@ -24,6 +25,7 @@ async def summary(req: SummaryRequest) -> SummaryResponse:
     placed = resolve_placed(req.placed_items)
     analysis = analyze_room(req.room)
     repo = get_repository()
+    layout, _plan_source = await director.get_plan(req.room, req.preferences, placed)
 
     lines = [
         SummaryLine(product=product, pose=item, instance_id=item.instance_id, line_price=product.price)
@@ -40,7 +42,7 @@ async def summary(req: SummaryRequest) -> SummaryResponse:
 
     missing = [
         MissingEssential(category=cat, label=CATEGORY_LABELS[cat], reason=reason)
-        for cat, reason in missing_essentials(placed)
+        for cat, reason in missing_essentials(placed, layout)
     ]
 
     upgrades: list[SuggestedUpgrade] = []
@@ -67,7 +69,7 @@ async def summary(req: SummaryRequest) -> SummaryResponse:
             )
     upgrades = sorted(upgrades, key=lambda u: -u.to_product.rating)[:2]
 
-    pct = completeness_pct(placed)
+    pct = completeness_pct(placed, layout)
     display_currency = resolve_currency(req.currency)
     narrative_facts = {
         "currency": display_currency,

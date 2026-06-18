@@ -91,6 +91,25 @@ def _window_overlap_ratio(wall: WallData, lo: float, hi: float) -> float:
     return total / (hi - lo)
 
 
+SOFA_BACK_CM = 85.0  # a sofa back is roughly this tall; a higher window sill clears it
+
+
+def _low_window_ratio(analysis: RoomAnalysis, wall: WallData, lo: float, hi: float) -> float:
+    """Fraction of [lo,hi] covered by LOW windows (sill below the sofa back). A sofa
+    shouldn't block these; a high window above the back is fine to sit beneath."""
+    if hi <= lo:
+        return 0.0
+    total = 0.0
+    for op in wall.openings:
+        if op.kind != "window":
+            continue
+        strip = analysis.window_strips.get(op.id)
+        sill = strip[1] if strip else 0.0
+        if sill < SOFA_BACK_CM:
+            total += max(0.0, min(hi, op.b) - max(lo, op.a))
+    return total / (hi - lo)
+
+
 def _entry_distance_norm(analysis: RoomAnalysis, poly: Polygon) -> float:
     if not analysis.entries:
         return 0.7
@@ -149,6 +168,7 @@ def _band_zone(
     score: float,
     reasons: list[str],
     depth: float,
+    float_cm: float = 0.0,
 ) -> ZoneData:
     return ZoneData(
         id=f"z-{category}-{idx}",
@@ -162,6 +182,7 @@ def _band_zone(
         wall_index=cand.wall.index,
         seg=(cand.lo, cand.hi),
         band_depth=depth,
+        float_cm=float_cm,
     )
 
 
@@ -173,6 +194,8 @@ def _rank(zones: list[ZoneData], limit: int = 3) -> list[ZoneData]:
 
 
 # --- per-category generators -------------------------------------------------
+
+VIEWING_DEPTH_CM = 400.0  # past this room depth, float the sofa in to keep a sane TV distance
 
 
 def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
@@ -193,6 +216,7 @@ def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cate
     zones: list[ZoneData] = []
     for i, cand in enumerate(cands):
         win_ratio = _window_overlap_ratio(cand.wall, cand.lo, cand.hi)
+        low_win = _low_window_ratio(analysis, cand.wall, cand.lo, cand.hi)
         entry_norm = _entry_distance_norm(analysis, cand.piece)
         corridor_ratio = _corridor_overlap_ratio(analysis, cand.piece)
         focal = 0.0
@@ -200,9 +224,21 @@ def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cate
             focal_wall = analysis.walls[analysis.focal_wall_index]
             if dot(cand.wall.normal, focal_wall.normal) < -0.5:
                 focal = 1.0
+        # high windows above the sofa back are fine to sit under; low/floor windows push
+        # the sofa to another wall. window_term in [0,1] (1 = no window behind the sofa).
+        window_term = max(0.0, 1.0 - 0.4 * win_ratio - 0.9 * low_win)
+        # big rooms: float the sofa inward so the seating forms a media group at a sane
+        # viewing distance from the facing wall, instead of stranding it on a far wall.
+        mid = (cand.lo + cand.hi) / 2.0
+        # room depth perpendicular to this wall - start just inside so the ray doesn't
+        # immediately hit the wall it starts on (which would read depth ~0).
+        start_in = add(cand.wall.point_at(mid), cand.wall.normal, 10.0)
+        depth_to_far = 10.0 + first_boundary_hit(analysis.polygon, start_in, cand.wall.normal)
+        float_cm = max(0.0, depth_to_far - VIEWING_DEPTH_CM)
+        float_cm = min(float_cm, max(0.0, depth_to_far * 0.45 - depth / 2.0))
         score = (
-            0.40 * (cand.extent / max_extent)
-            + 0.20 * (1.0 - 0.5 * win_ratio)
+            0.35 * (cand.extent / max_extent)
+            + 0.25 * window_term
             + 0.20 * entry_norm
             + 0.20 * focal
             - 0.15 * corridor_ratio
@@ -218,7 +254,7 @@ def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cate
             reasons.append(R_NEAR_WINDOW)
         if tight:
             reasons.append(R_TIGHT_SPACE)
-        zones.append(_band_zone(analysis, cand, "sofa", i, score, reasons, depth))
+        zones.append(_band_zone(analysis, cand, "sofa", i, score, reasons, depth, float_cm=float_cm))
     return _rank(zones)
 
 
@@ -500,22 +536,58 @@ def _corner_spots(
     return _rank(zones, limit=max_zones)
 
 
+BIG_ROOM_CM2 = 400_000.0  # ~40 m2: spread scatter items beyond the corners
+
+
+def _long_wall_spots(
+    analysis: RoomAnalysis,
+    placed: list[PlacedProduct],
+    category: str,
+    size: float,
+    reasons: list[str],
+    min_seg: float = 220.0,
+) -> list[ZoneData]:
+    """Scatter spots at the midpoints of long clear walls - spreads decor/lighting
+    across a large room instead of bunching everything into the corners."""
+    blockers = _placed_blockers(placed, buffer_cm=8.0)
+    zones: list[ZoneData] = []
+    for idx, wall in enumerate(analysis.walls):
+        for seg_i, (a, b) in enumerate(wall.clear_floor):
+            if b - a < min_seg:
+                continue
+            mid = (a + b) / 2.0
+            pt = add(wall.point_at(mid), wall.normal, size / 2.0 + 8.0)
+            rect = item_polygon(pt[0], pt[1], size, size, 0)
+            clipped = rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers)
+            piece = largest_piece(clipped)
+            if piece is None or piece.area < size * size * 0.35:
+                continue
+            zones.append(
+                _frame_zone(
+                    category, 100 + idx * 4 + seg_i, piece, 0.5, 0.0, pt, (0.0, 1.0), (1.0, 0.0),
+                    size, size, reasons, f"wall_{wall.index}_mid", kind="free",
+                )
+            )
+    return zones
+
+
 def _lighting_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
     sofa = _find_placed(placed, "sofa")
     near = None
-    radius = 0.0
     if sofa is not None:
         item, product = sofa
         f = front_vector(item.rotation_deg)
         near = add((item.x, item.y), f, product.depth_cm / 2.0)
-        radius = 320.0
+    # all corners, ranked by proximity to the seating (no hard radius cut-off)
     zones = _corner_spots(
-        analysis, placed, "lighting", 55.0, max_zones=3,
-        near=near, near_radius=radius, reasons=[R_CORNER_LIGHT],
+        analysis, placed, "lighting", 55.0, max_zones=8,
+        near=near, near_radius=analysis.diag_cm if near else 0.0, reasons=[R_CORNER_LIGHT],
     )
+    if analysis.area_cm2 >= BIG_ROOM_CM2:
+        zones += _long_wall_spots(analysis, placed, "lighting", 55.0, [R_CORNER_LIGHT])
     if not zones:
-        zones = _corner_spots(analysis, placed, "lighting", 55.0, max_zones=3, reasons=[R_CORNER_LIGHT])
-    return zones
+        zones = _corner_spots(analysis, placed, "lighting", 55.0, max_zones=4, reasons=[R_CORNER_LIGHT])
+    return _rank(zones, limit=4)
 
 
 def _storage_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
@@ -541,10 +613,15 @@ def _storage_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: C
 def _decor_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
     sofa = _find_placed(placed, "sofa")
     near = (sofa[0].x, sofa[0].y) if sofa is not None else None
-    return _corner_spots(
-        analysis, placed, "decor", 60.0, max_zones=4,
-        near=near, near_radius=500.0 if near else 0.0, reasons=[R_FLEXIBLE_SPOT],
+    # use every corner (ranked by proximity to the seating), not just ones within
+    # a fixed radius - a large room's far corners are valid decor spots too.
+    zones = _corner_spots(
+        analysis, placed, "decor", 60.0, max_zones=8,
+        near=near, near_radius=analysis.diag_cm if near else 0.0, reasons=[R_FLEXIBLE_SPOT],
     )
+    if analysis.area_cm2 >= BIG_ROOM_CM2:
+        zones += _long_wall_spots(analysis, placed, "decor", 60.0, [R_FLEXIBLE_SPOT])
+    return _rank(zones, limit=6)
 
 
 _GENERATORS = {
@@ -584,7 +661,7 @@ def anchor_pose(zone: ZoneData, product: Product, analysis: RoomAnalysis) -> Pos
         mid = (a + b) / 2.0
         if b - a > product.width_cm + 4.0:
             mid = min(max(mid, a + half + 2.0), b - half - 2.0)
-        center = add(wall.point_at(mid), wall.normal, product.depth_cm / 2.0 + 4.0)
+        center = add(wall.point_at(mid), wall.normal, product.depth_cm / 2.0 + 4.0 + zone.float_cm)
         return Pose(x=round(center[0], 1), y=round(center[1], 1), rotation_deg=zone.rotation_deg)
 
     if zone.kind == "frame" and zone.origin is not None and zone.fwd is not None:
@@ -623,10 +700,17 @@ def fits_zone(zone: ZoneData, product: Product, margin: float = 1.0) -> bool:
     return pw <= lo * margin + 2.0 and pd <= hi * margin + 2.0
 
 
+# A single piece needn't fill a very long wall: cap the utilization reference so
+# spatial scoring still prefers an appropriately large piece in a big room instead
+# of scoring every sofa ~0 (which let a tiny budget sofa win). fits_zone still
+# guards the real physical fit against the full segment.
+WALL_BAND_REF_CM = 380.0
+
+
 def zone_utilization(zone: ZoneData, product: Product) -> float:
     if zone.kind == "wall_band" and zone.seg is not None:
         a, b = zone.seg
-        return product.width_cm / max(b - a, 1.0)
+        return product.width_cm / max(min(b - a, WALL_BAND_REF_CM), 1.0)
     if zone.kind in ("frame", "side"):
         return product.width_cm / max(zone.lat_len, 1.0)
     return min(1.5, (product.width_cm * product.depth_cm) / max(zone.polygon.area, 1.0))

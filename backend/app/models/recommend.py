@@ -17,6 +17,7 @@ NOTICE_PREORDER = "PREORDER"
 NOTICE_TIGHT_FIT = "TIGHT_FIT"
 NOTICE_NO_FIT = "NO_FIT"
 NOTICE_ROOM_CHANGED = "ROOM_CHANGED"
+NOTICE_QUANTITY_RELAXED = "QUANTITY_RELAXED"
 
 
 class WhyItFits(StrictModel):
@@ -55,6 +56,8 @@ class StepInfo(StrictModel):
     title: str
     order: int
     status: Literal["done", "current", "pending"] = "pending"
+    quantity: int = 1
+    placed_count: int = 0
 
 
 class StepsResponse(StrictModel):
@@ -68,3 +71,5 @@ class StepResponse(StrictModel):
     zones: list[Zone]
     recommendations: list[Recommendation] = Field(default_factory=list)
     empty_slots: list[EmptySlot] = Field(default_factory=list)
+    quantity: int = 1
+    anchor: str | None = None

@@ -183,6 +183,9 @@ export function polygonArea(vertices: Point[]): number {
 }
 
 export function roomBBox(room: Room): { minX: number; minY: number; w: number; h: number } {
+  // an un-drawn (blank) room has no vertices: give the canvas a sensible
+  // default extent so fit/grid stay finite while the user draws.
+  if (room.vertices.length === 0) return { minX: 0, minY: 0, w: 480, h: 360 };
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const [x, y] of room.vertices) {
     minX = Math.min(minX, x); maxX = Math.max(maxX, x);

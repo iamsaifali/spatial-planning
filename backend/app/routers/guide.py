@@ -2,7 +2,7 @@ import asyncio
 
 from fastapi import APIRouter
 
-from app.models.api import StepRequest
+from app.models.api import PlanRequest, PlanResponse, StepRequest
 from app.models.geometry import Pose
 from app.models.recommend import (
     NOTICE_NO_FIT,
@@ -16,7 +16,8 @@ from app.models.recommend import (
 from app.routers._common import resolve_placed, wall_label, zone_guidance_facts
 from app.services.ai import copy_service
 from app.services.catalog import get_repository
-from app.services.guide.flow import require_step, steps_with_status
+from app.services.guide.flow import require_step, steps_from_plan, steps_with_status
+from app.services.plan import director
 from app.services.recommend.selector import Candidate, select_slots
 from app.services.spatial.analyze import analyze_room
 from app.services.spatial.autofix import settle_pose
@@ -58,8 +59,16 @@ async def step(step_key: str, req: StepRequest) -> StepResponse:
     repo = get_repository()
     stats = repo.category_stats()
 
+    # The cached plan (keyed by room+prefs hash) tells us how many of this category
+    # to place and the arrangement intent; no extra LLM call on a warm cache.
+    layout, _plan_source = await director.get_plan(req.room, req.preferences, placed)
+    plan_item = next((it for it in layout.items if it.category == step_def.category), None)
+    step_quantity = plan_item.quantity if plan_item else 1
+    step_anchor = plan_item.anchor if plan_item else None
+
     zones = zones_for_category(step_def.category, analysis, placed, stats)
-    result = select_slots(step_def.category, zones, req.preferences, placed, repo)
+    pool = repo.pool_for(step_def.category, req.preferences)
+    result = select_slots(step_def.category, zones, req.preferences, placed, repo, products=pool)
 
     guidance_facts = zone_guidance_facts(step_def.category, analysis, zones, placed)
 
@@ -106,4 +115,14 @@ async def step(step_key: str, req: StepRequest) -> StepResponse:
         zones=[z.to_model() for z in zones],
         recommendations=list(recommendations),
         empty_slots=empty_slots,
+        quantity=step_quantity,
+        anchor=step_anchor,
     )
+
+
+@router.post("/plan", response_model=PlanResponse)
+async def plan(req: PlanRequest) -> PlanResponse:
+    placed = resolve_placed(req.placed_items)
+    layout, source = await director.get_plan(req.room, req.preferences, placed)
+    steps = steps_from_plan(layout, placed)
+    return PlanResponse(plan=layout, steps=steps, plan_source=source)  # type: ignore[arg-type]

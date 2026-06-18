@@ -60,6 +60,11 @@ export function ProductPanelContent() {
                 : `${recs.length} option${recs.length > 1 ? "s" : ""} fit this spot:`}
             </p>
           )}
+          {step && step.quantity > 1 && (
+            <p className="rounded-md bg-amber-faint p-2 text-[11px] leading-4 text-amber-deep">
+              ZORY suggests {step.quantity} of these for this room — add them one at a time and they&apos;ll be spaced out.
+            </p>
+          )}
           {stepLoading && !step && (
             <>
               <RecommendationSkeleton />

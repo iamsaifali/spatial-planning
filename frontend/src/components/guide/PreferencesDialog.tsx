@@ -45,15 +45,21 @@ export function PreferencesDialog() {
 
   const close = () => {
     markQuizSeen();
+    // skipping the quiz still starts planning (with whatever prefs exist) so the
+    // user isn't stranded; if planning is already running this is a no-op.
+    if (!useGuideStore.getState().planningStarted) {
+      useGuideStore.getState().startPlanning();
+    }
     setSheet("prefsOpen", false);
   };
 
   const save = () => {
     setPreferences(draft);
     useGuideStore.getState().invalidateAll();
-    void useGuideStore.getState().fetchAnalysis();
-    void useGuideStore.getState().fetchStep(undefined, true);
-    close();
+    // generate (or re-generate) the plan from the just-saved preferences
+    useGuideStore.getState().startPlanning();
+    markQuizSeen();
+    setSheet("prefsOpen", false);
   };
 
   return (
@@ -145,6 +151,24 @@ export function PreferencesDialog() {
               </ToggleChip>
             ))}
           </div>
+        </section>
+
+        <section>
+          <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-ink-soft">Seats needed</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+              <ToggleChip
+                key={n}
+                active={draft.seating_capacity === n}
+                onClick={() => setDraft((d) => ({ ...d, seating_capacity: d.seating_capacity === n ? null : n }))}
+              >
+                {n === 8 ? "8+" : n}
+              </ToggleChip>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[11px] leading-4 text-ink-faint">
+            ZORY plans enough seating to fit this many people.
+          </p>
         </section>
       </div>
     </Dialog>

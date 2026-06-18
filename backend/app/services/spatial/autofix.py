@@ -178,10 +178,20 @@ def suggest_pose(
     chosen: ZoneData | None = None
     if zone_id is not None:
         chosen = next((z for z in zones if z.id == zone_id), None)
-    if chosen is None:
-        chosen = next((z for z in zones if fits_zone(z, product, margin=1.05)), None)
     if chosen is None and zones:
-        chosen = zones[0]
+        fitting = [z for z in zones if fits_zone(z, product, margin=1.05)] or zones
+        # spread multiples of a category: prefer the spot farthest from same-category
+        # items already placed (2nd side table flanks the other side of the sofa, extra
+        # decor lands in a different corner). With none placed this is just the top zone.
+        same_cat = [(i.x, i.y) for i, p in placed if p.category == product.category]
+        if same_cat:
+            def _clearance(z: ZoneData) -> tuple[float, float]:
+                ap = anchor_pose(z, product, analysis)
+                return (min(dist((ap.x, ap.y), c) for c in same_cat), -float(z.rank))
+
+            chosen = max(fitting, key=_clearance)
+        else:
+            chosen = fitting[0]
     if chosen is None:
         c = analysis.usable_area.centroid if not analysis.usable_area.is_empty else analysis.polygon.centroid
         fallback = settle_pose(analysis, placed, product, Pose(x=round(c.x, 1), y=round(c.y, 1), rotation_deg=0))

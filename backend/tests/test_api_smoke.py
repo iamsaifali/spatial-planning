@@ -73,7 +73,8 @@ def test_full_happy_path(client):
     assert r.status_code == 200
     summary = r.json()
     assert summary["total_price"] == best["product"]["price"]
-    assert summary["completeness_pct"] == 25
+    # completeness is now plan-relative: one sofa of a multi-item plan -> partial
+    assert 0 < summary["completeness_pct"] < 100
     assert summary["narrative"]["text"]
     assert any(m["category"] == "rug" for m in summary["missing_essentials"])
 

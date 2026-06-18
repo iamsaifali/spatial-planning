@@ -1,10 +1,10 @@
 "use client";
 
-import { CircleAlert, ClipboardList, HelpCircle, Lightbulb, RotateCcw, SkipForward, SlidersHorizontal } from "lucide-react";
+import { CircleAlert, ClipboardList, HelpCircle, Lightbulb, PencilRuler, RotateCcw, SkipForward, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { CATEGORY_LABELS, REASON_PHRASES } from "@/lib/constants";
-import { STEP_ORDER, useGuideStore } from "@/stores/guideStore";
+import { useGuideStore } from "@/stores/guideStore";
 import { useUiStore } from "@/stores/uiStore";
 import { usePrefsStore } from "@/stores/prefsStore";
 import { STYLE_LABELS } from "@/lib/constants";
@@ -21,8 +21,10 @@ export function GuidePanelContent({ showSteps = true }: { showSteps?: boolean })
   const setSheet = useUiStore((s) => s.setSheet);
   const preferences = usePrefsStore((s) => s.preferences);
 
+  const planSteps = useGuideStore((s) => s.planSteps);
+  const planningStarted = useGuideStore((s) => s.planningStarted);
   const step = stepCache[currentStepKey]?.data;
-  const stepNumber = STEP_ORDER.indexOf(currentStepKey) + 1;
+  const stepNumber = planSteps.findIndex((s) => s.key === currentStepKey) + 1;
   const whyHere = (step?.guidance.reason_codes ?? [])
     .map((code) => REASON_PHRASES[code])
     .filter(Boolean)
@@ -32,12 +34,26 @@ export function GuidePanelContent({ showSteps = true }: { showSteps?: boolean })
     preferences.budget_tier ? `${preferences.budget_tier} budget` : null,
   ].filter(Boolean) as string[];
 
+  if (!planningStarted) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+        <PencilRuler className="h-8 w-8 text-ink-faint" aria-hidden />
+        <h2 className="text-base font-bold tracking-tight">Draw your room to begin</h2>
+        <p className="max-w-xs text-sm leading-6 text-ink-soft">
+          Use the wall tool on the canvas to outline your space, then press
+          <span className="font-semibold"> Start planning</span>. ZORY recommends nothing until
+          your room is ready.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="panel-scroll flex-1 space-y-5 overflow-y-auto p-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
-            Room guide · Step {stepNumber} of {STEP_ORDER.length}
+            Room guide · Step {stepNumber} of {planSteps.length}
           </p>
           <h2 className="mt-1 text-base font-bold tracking-tight">{CATEGORY_LABELS[currentStepKey]}</h2>
         </div>

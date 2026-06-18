@@ -124,6 +124,11 @@ export function emptyRectRoom(widthCm: number, depthCm: number): Room {
   };
 }
 
+/** A blank canvas with no walls yet - the user draws the outline from scratch. */
+export function blankRoom(): Room {
+  return { vertices: [], doors: [], windows: [], wall_height_cm: 270 };
+}
+
 export function lShapeRoom(): Room {
   return {
     vertices: [

@@ -1,6 +1,6 @@
 "use client";
 
-import { PackageOpen, WifiOff } from "lucide-react";
+import { ArrowRight, PackageOpen, WifiOff } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { CanvasRoot } from "@/components/canvas/CanvasRoot";
 import { CanvasToolbar } from "@/components/canvas/CanvasToolbar";
@@ -17,12 +17,13 @@ import { CartDrawer } from "@/components/overlays/CartDrawer";
 import { CheckoutDialog } from "@/components/overlays/CheckoutDialog";
 import { RenderDialog } from "@/components/overlays/RenderDialog";
 import { ResumeDraftDialog, type PendingDraft } from "@/components/overlays/ResumeDraftDialog";
+import { RoomSetupDialog } from "@/components/overlays/RoomSetupDialog";
 import { RoomSummarySheet } from "@/components/overlays/RoomSummarySheet";
 import { SaveShareDialog } from "@/components/overlays/SaveShareDialog";
 import { WarningPopover } from "@/components/overlays/WarningPopover";
 import { View3DDialog } from "@/components/view3d/View3DDialog";
 import { api, debounced } from "@/lib/api";
-import { sampleRoom } from "@/lib/constants";
+import { blankRoom, sampleRoom } from "@/lib/constants";
 import { revalidateAll } from "@/lib/placement";
 import { useCartStore } from "@/stores/cartStore";
 import { useCurrencyStore } from "@/stores/currencyStore";
@@ -44,9 +45,12 @@ export function PlannerShell({ skipDraftRestore = false }: { skipDraftRestore?: 
   const [renderEnabled, setRenderEnabled] = useState(false);
   const [backendDown, setBackendDown] = useState(false);
   const [pendingDraft, setPendingDraft] = useState<PendingDraft | null>(null);
+  const [setupOpen, setSetupOpen] = useState(false);
   const bootstrapped = useRef(false);
 
   const roomVersion = usePlannerStore((s) => s.roomVersion);
+  const planningStarted = useGuideStore((s) => s.planningStarted);
+  const roomReady = usePlannerStore((s) => s.room.vertices.length >= 3);
   const guideSheetOpen = useUiStore((s) => s.guideSheetOpen);
   const productsSheetOpen = useUiStore((s) => s.productsSheetOpen);
   const leftPanelOpen = useUiStore((s) => s.leftPanelOpen);
@@ -86,6 +90,7 @@ export function PlannerShell({ skipDraftRestore = false }: { skipDraftRestore?: 
         // fallback defaults in the stores keep everything working
       });
 
+    let hasDraft = false;
     if (!skipDraftRestore && !usePlannerStore.getState().designId) {
       try {
         const raw = localStorage.getItem(DRAFT_KEY);
@@ -106,6 +111,7 @@ export function PlannerShell({ skipDraftRestore = false }: { skipDraftRestore?: 
             // a meaningful draft exists - let the user choose continue vs fresh
             // (deferred: avoids a synchronous setState inside the effect body)
             const found = { room: draft.room, items: draft.items, savedAt: draft.savedAt };
+            hasDraft = true;
             setTimeout(() => setPendingDraft(found), 0);
           }
         }
@@ -114,12 +120,15 @@ export function PlannerShell({ skipDraftRestore = false }: { skipDraftRestore?: 
       }
     }
 
-    void useGuideStore.getState().fetchAnalysis();
-    void useGuideStore.getState().fetchStep();
-
-    if (!usePrefsStore.getState().quizSeen) {
-      setTimeout(() => useUiStore.getState().setSheet("prefsOpen", true), 600);
+    // Pipeline is gated: it only runs once the user commits to a room.
+    if (usePlannerStore.getState().designId) {
+      // a shared/saved design was loaded by /planner/[id] - plan it immediately
+      useGuideStore.getState().startPlanning();
+    } else if (!hasDraft) {
+      // fresh session, nothing saved - ask how to begin (draw vs sample)
+      setTimeout(() => setSetupOpen(true), 0);
     }
+    // if a draft exists, ResumeDraftDialog decides (continue -> plan, fresh -> setup)
   }, [skipDraftRestore]);
 
   const continueDraft = () => {
@@ -128,19 +137,38 @@ export function PlannerShell({ skipDraftRestore = false }: { skipDraftRestore?: 
       .getState()
       .loadDesign(null, "My Living Room", pendingDraft.room, pendingDraft.items);
     setPendingDraft(null);
+    useGuideStore.getState().startPlanning();
     useUiStore.getState().toast("info", "Restored your last draft.");
   };
 
   const startFresh = () => {
     localStorage.removeItem(DRAFT_KEY);
-    usePlannerStore.getState().loadDesign(null, "My Living Room", sampleRoom(), []);
+    usePlannerStore.getState().loadDesign(null, "My Living Room", blankRoom(), []);
     useGuideStore.getState().reset();
     useUiStore.getState().select(null);
     useUiStore.getState().requestFit();
     setPendingDraft(null);
-    void useGuideStore.getState().fetchAnalysis();
-    void useGuideStore.getState().fetchStep(undefined, true);
-    useUiStore.getState().toast("success", "Fresh start - the sample room is ready.");
+    setSetupOpen(true);
+  };
+
+  // --- room setup choices ----------------------------------------------------
+  const drawOwnRoom = () => {
+    usePlannerStore.getState().loadDesign(null, "My Living Room", blankRoom(), []);
+    useGuideStore.getState().reset();
+    useUiStore.getState().select(null);
+    useUiStore.getState().setTool("wall");
+    useUiStore.getState().requestFit();
+    setSetupOpen(false);
+  };
+
+  const useSampleRoom = () => {
+    usePlannerStore.getState().loadDesign(null, "My Living Room", sampleRoom(), []);
+    useGuideStore.getState().reset();
+    useUiStore.getState().select(null);
+    useUiStore.getState().requestFit();
+    setSetupOpen(false);
+    // ask preferences first - the plan is generated from the answers (or skip)
+    useUiStore.getState().setSheet("prefsOpen", true);
   };
 
   // autosave draft (light throttle via debounce)
@@ -165,6 +193,7 @@ export function PlannerShell({ skipDraftRestore = false }: { skipDraftRestore?: 
   useEffect(() => {
     if (roomVersion === lastVersion.current) return;
     lastVersion.current = roomVersion;
+    if (!useGuideStore.getState().planningStarted) return; // still drawing in setup
     const run = debounced(() => {
       const guide = useGuideStore.getState();
       void guide.fetchAnalysis();
@@ -192,8 +221,11 @@ export function PlannerShell({ skipDraftRestore = false }: { skipDraftRestore?: 
       .health()
       .then((h) => {
         setRenderEnabled(h.render_enabled);
-        void useGuideStore.getState().fetchAnalysis();
-        void useGuideStore.getState().fetchStep(undefined, true);
+        if (useGuideStore.getState().planningStarted) {
+          void useGuideStore.getState().fetchAnalysis();
+          void useGuideStore.getState().fetchPlan();
+          void useGuideStore.getState().fetchStep(undefined, true);
+        }
         void useProductStore.getState().loadAll();
       })
       .catch(() => setBackendDown(true));
@@ -228,6 +260,27 @@ export function PlannerShell({ skipDraftRestore = false }: { skipDraftRestore?: 
 
             {/* floating chrome */}
             <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex flex-col items-center gap-2 px-3">
+              {!planningStarted && !setupOpen && (
+                <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-line bg-surface px-3 py-1.5 shadow-soft">
+                  <span className="text-xs font-medium text-ink-soft">
+                    {roomReady ? "Your room is ready." : "Draw your walls, then start."}
+                  </span>
+                  <Button
+                    size="sm"
+                    disabled={!roomReady}
+                    onClick={() => useUiStore.getState().setSheet("prefsOpen", true)}
+                  >
+                    Start planning
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                  <button
+                    onClick={() => setSetupOpen(true)}
+                    className="text-[11px] font-medium text-ink-faint hover:text-ink"
+                  >
+                    Start over
+                  </button>
+                </div>
+              )}
               <OpeningEditor />
               <ItemActionsBar />
               <WarningPopover />
@@ -297,6 +350,7 @@ export function PlannerShell({ skipDraftRestore = false }: { skipDraftRestore?: 
       <View3DDialog />
       <PreferencesDialog />
       <ResumeDraftDialog draft={pendingDraft} onContinue={continueDraft} onStartFresh={startFresh} />
+      <RoomSetupDialog open={setupOpen} onDrawOwn={drawOwnRoom} onUseSample={useSampleRoom} />
       <Toasts />
     </div>
   );

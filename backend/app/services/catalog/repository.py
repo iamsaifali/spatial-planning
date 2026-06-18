@@ -5,6 +5,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from app.errors import PRODUCT_NOT_FOUND, UNKNOWN_PRODUCT, AppError
+from app.models.preferences import Preferences
 from app.models.products import Product
 
 SORTS = {
@@ -80,6 +81,50 @@ class CatalogRepository:
 
     def terciles(self, category: str) -> tuple[int, int]:
         return self._terciles.get(category, (0, 0))
+
+    @staticmethod
+    def _match_flags(product: Product, prefs: Preferences) -> tuple[bool, bool]:
+        """(style_match, colour_match) against the user's preferences."""
+        style_match = bool(prefs.styles) and any(s in prefs.styles for s in product.style_tags)
+        wanted_colors = {c.lower() for c in prefs.colors}
+        colour_match = bool(wanted_colors) and any(c.lower() in wanted_colors for c in product.colors)
+        return style_match, colour_match
+
+    def pool_for(self, category: str, prefs: Preferences) -> list[Product]:
+        """Best-match-first candidate pool for a category - NEVER culled to empty.
+
+        Style + colour are ranking signals, not hard gates: products matching both
+        sort first, then one, then the rest. select_slots/scoring still re-rank by
+        spatial fit + budget, but this guarantees a non-empty, preference-leaning pool.
+        """
+        items = self._by_category.get(category, [])
+
+        def sort_key(p: Product):
+            style_match, colour_match = self._match_flags(p, prefs)
+            match_rank = 2 * int(style_match) + int(colour_match)  # 0..3
+            return (not p.in_stock, -match_rank, -p.rating, p.price, p.id)
+
+        return sorted(items, key=sort_key)
+
+    def category_summary(self, prefs: Preferences) -> dict[str, dict]:
+        """Per-category facts for the LLM Director - counts/price-bands/match-flags.
+
+        This is the ONLY catalog information the LLM ever sees; never the products.
+        """
+        out: dict[str, dict] = {}
+        for cat, items in self._by_category.items():
+            if cat == "custom" or not items:
+                continue
+            prices = [p.price for p in items]
+            flags = [self._match_flags(p, prefs) for p in items]
+            out[cat] = {
+                "count": len(items),
+                "price_min": min(prices),
+                "price_max": max(prices),
+                "has_style_match": any(sm for sm, _ in flags),
+                "has_colour_match": any(cm for _, cm in flags),
+            }
+        return out
 
     def search(
         self,

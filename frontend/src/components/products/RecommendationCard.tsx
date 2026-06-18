@@ -9,6 +9,7 @@ import { STYLE_LABELS } from "@/lib/constants";
 import { formatDimsLabelled, useMoney } from "@/lib/format";
 import { addProductToRoom, swapProduct } from "@/lib/placement";
 import { useFavoritesStore } from "@/stores/favoritesStore";
+import { useGuideStore } from "@/stores/guideStore";
 import { usePlannerStore } from "@/stores/plannerStore";
 import { useProductStore } from "@/stores/productStore";
 import { useUiStore } from "@/stores/uiStore";
@@ -44,19 +45,31 @@ export function RecommendationCard({
   const byId = useProductStore((s) => s.byId);
   const isFavorite = useFavoritesStore((s) => s.ids.includes(product.id));
   const toggleFavorite = useFavoritesStore((s) => s.toggle);
+  const planSteps = useGuideStore((s) => s.planSteps);
   const placedSameCategory = items.find((i) => byId[i.product_id]?.category === product.category);
+  const placedInCategory = items.filter((i) => byId[i.product_id]?.category === product.category).length;
   const alreadyPlaced = items.some((i) => i.product_id === product.id);
+  // how many of this category the plan wants (defaults to 1 for un-planned categories)
+  const plannedQty = planSteps.find((s) => s.category === product.category)?.quantity ?? 1;
+  const atCapacity = placedInCategory >= plannedQty;
   const hasMrp = product.mrp != null && product.mrp > product.price;
 
   const onAdd = async () => {
     if (busy) return;
     setBusy(true);
     try {
-      if (placedSameCategory && !alreadyPlaced) {
-        await swapProduct(placedSameCategory.instance_id, product);
-      } else {
-        await addProductToRoom(product, { pose: rec.suggested_pose, zoneId: rec.zone_id });
+      if (!atCapacity) {
+        // category under its planned quantity -> add another. The first uses the
+        // recommended spot; extra instances re-suggest (no pose) so the backend
+        // spreads them (e.g. the 2nd side table flanks the other side of the sofa).
+        await addProductToRoom(
+          product,
+          placedInCategory === 0 ? { pose: rec.suggested_pose, zoneId: rec.zone_id } : {},
+        );
         useUiStore.getState().toast("success", `${product.name} placed on your canvas.`);
+      } else if (placedSameCategory && !alreadyPlaced) {
+        // category is full -> swap replaces an existing piece rather than exceeding the plan
+        await swapProduct(placedSameCategory.instance_id, product);
       }
     } finally {
       setBusy(false);
@@ -157,13 +170,13 @@ export function RecommendationCard({
         <Button
           onClick={() => void onAdd()}
           loading={busy}
-          disabled={alreadyPlaced}
+          disabled={atCapacity && alreadyPlaced}
           size={hero ? "md" : "sm"}
           className="w-full"
           variant={hero ? "primary" : "secondary"}
         >
           {!busy && <Plus className="h-3.5 w-3.5" />}
-          {alreadyPlaced ? "In your room" : placedSameCategory ? "Swap into room" : "Add to room"}
+          {!atCapacity ? "Add to room" : alreadyPlaced ? "In your room" : "Swap into room"}
         </Button>
       </div>
     </article>

@@ -88,12 +88,15 @@ export interface Product {
   description: string;
 }
 
+export type RoomPurpose = "family" | "entertaining" | "compact_living" | "work_lounge";
+
 export interface Preferences {
   styles: StyleTag[];
   budget_tier: "budget" | "mid" | "premium" | null;
   total_budget: number | null;
   colors: string[];
-  room_purpose: "family" | "entertaining" | "compact_living" | "work_lounge" | null;
+  room_purpose: RoomPurpose | null;
+  seating_capacity: number | null;
 }
 
 export const EMPTY_PREFERENCES: Preferences = {
@@ -102,6 +105,7 @@ export const EMPTY_PREFERENCES: Preferences = {
   total_budget: null,
   colors: [],
   room_purpose: null,
+  seating_capacity: null,
 };
 
 // --- analysis ---
@@ -260,6 +264,8 @@ export interface StepInfo {
   title: string;
   order: number;
   status: "done" | "current" | "pending";
+  quantity: number;
+  placed_count: number;
 }
 
 export interface StepsResponse {
@@ -273,6 +279,31 @@ export interface StepResponse {
   zones: Zone[];
   recommendations: Recommendation[];
   empty_slots: EmptySlot[];
+  quantity: number;
+  anchor: string | null;
+}
+
+// --- layout plan ---
+
+export interface PlanItem {
+  category: Category;
+  quantity: number;
+  anchor: string;
+  anchor_ref: string;
+  priority: number;
+  params: Record<string, number>;
+}
+
+export interface LayoutPlan {
+  archetype: string;
+  items: PlanItem[];
+  rationale: string;
+}
+
+export interface PlanResponse {
+  plan: LayoutPlan;
+  steps: StepInfo[];
+  plan_source: CopySource;
 }
 
 // --- summary / commerce ---

@@ -1,9 +1,10 @@
 from pydantic import Field
 
 from app.models.geometry import PlacedItem, Pose, Room, StrictModel
+from app.models.plan import LayoutPlan
 from app.models.preferences import Preferences
 from app.models.products import Product
-from app.models.recommend import CopySource
+from app.models.recommend import CopySource, StepInfo
 from app.models.validation import Finding
 
 MAX_PLACED_ITEMS = 60
@@ -17,6 +18,18 @@ class StepRequest(StrictModel):
     room: Room
     preferences: Preferences = Field(default_factory=Preferences)
     placed_items: list[PlacedItem] = Field(default_factory=list, max_length=MAX_PLACED_ITEMS)
+
+
+class PlanRequest(StrictModel):
+    room: Room
+    preferences: Preferences = Field(default_factory=Preferences)
+    placed_items: list[PlacedItem] = Field(default_factory=list, max_length=MAX_PLACED_ITEMS)
+
+
+class PlanResponse(StrictModel):
+    plan: LayoutPlan
+    steps: list[StepInfo] = Field(default_factory=list)
+    plan_source: CopySource = "template"  # "llm" or "template" (heuristic fallback)
 
 
 class SuggestRequest(StrictModel):

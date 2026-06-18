@@ -13,3 +13,5 @@ class Preferences(StrictModel):
     total_budget: int | None = Field(default=None, ge=100, le=200_000)
     colors: list[str] = Field(default_factory=list, max_length=8)
     room_purpose: Literal["family", "entertaining", "compact_living", "work_lounge"] | None = None
+    # how many people the seating should comfortably hold; drives the layout plan
+    seating_capacity: int | None = Field(default=None, ge=1, le=12)
