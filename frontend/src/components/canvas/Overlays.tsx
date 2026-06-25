@@ -4,6 +4,7 @@ import { Group, Label, Line, Rect, Tag, Text } from "react-konva";
 import { CATEGORY_LABELS, REASON_PHRASES } from "@/lib/constants";
 import { useProduct } from "@/stores/productStore";
 import type { AnalysisResponse, GhostPreviewPose, Point, Zone } from "@/types/overlays";
+import type { PlacedItem, Product } from "@/types/api";
 import { FurnitureGlyph } from "./FurnitureShape";
 import { productFill } from "@/lib/constants";
 
@@ -165,6 +166,58 @@ export function WarningGeometry({ polygon, scale }: { polygon: Point[]; scale: n
       dash={[8 / scale, 5 / scale]}
       listening={false}
     />
+  );
+}
+
+/** A single "Assist with AI" suggestion: semi-transparent furniture the user can
+ *  tap to commit. Not interactive-draggable - acceptance turns it into a real item. */
+export function ProposedItemNode({
+  item,
+  product,
+  scale,
+  onAccept,
+}: {
+  item: PlacedItem;
+  product: Product;
+  scale: number;
+  onAccept: () => void;
+}) {
+  const w = product.width_cm;
+  const d = product.depth_cm;
+  const setCursor = (cur: string) => (e: { target: { getStage: () => { container: () => HTMLElement } | null } }) => {
+    const stage = e.target.getStage();
+    if (stage) stage.container().style.cursor = cur;
+  };
+  return (
+    <Group
+      x={item.x}
+      y={item.y}
+      rotation={item.rotation_deg}
+      opacity={0.5}
+      onClick={(e) => {
+        e.cancelBubble = true;
+        onAccept();
+      }}
+      onTap={(e) => {
+        e.cancelBubble = true;
+        onAccept();
+      }}
+      onMouseEnter={setCursor("pointer")}
+      onMouseLeave={setCursor("default")}
+    >
+      <FurnitureGlyph product={product} fill={productFill(product.colors)} />
+      <Line
+        points={[-w / 2 - 6, -d / 2 - 6, w / 2 + 6, -d / 2 - 6, w / 2 + 6, d / 2 + 6, -w / 2 - 6, d / 2 + 6]}
+        closed
+        stroke="#B45309"
+        strokeWidth={2 / scale}
+        dash={[8 / scale, 5 / scale]}
+      />
+      <Label y={-d / 2 - 18 / scale}>
+        <Tag fill="#B45309" cornerRadius={5 / scale} pointerDirection="down" pointerWidth={7 / scale} pointerHeight={4 / scale} />
+        <Text text="Tap to add" fontSize={11 / scale} fontFamily="Inter, sans-serif" fill="#FFFFFF" padding={5 / scale} />
+      </Label>
+    </Group>
   );
 }
 

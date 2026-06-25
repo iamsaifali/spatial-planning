@@ -6,9 +6,10 @@
 import { api, ApiError, NetworkError, debounced } from "@/lib/api";
 import { useGuideStore } from "@/stores/guideStore";
 import { newInstanceId, usePlannerStore } from "@/stores/plannerStore";
+import { usePrefsStore } from "@/stores/prefsStore";
 import { useProductStore } from "@/stores/productStore";
 import { useUiStore } from "@/stores/uiStore";
-import type { PlacedItem, Pose, Product } from "@/types/api";
+import type { AssistLayoutResponse, PlacedItem, Pose, Product } from "@/types/api";
 
 function othersOf(instanceId: string): PlacedItem[] {
   return usePlannerStore.getState().items.filter((i) => i.instance_id !== instanceId);
@@ -208,6 +209,70 @@ export function removeItem(instanceId: string): void {
   if (ui.selectedId === instanceId) ui.select(null);
   if (ui.warning?.instanceId === instanceId) ui.setWarning(null);
   ui.setGhost(null);
+}
+
+// --- Assist with AI: request -> preview ghosts -> accept ----------------------------
+
+/** Stage a backend proposal as ghost items (nothing committed until the user accepts). */
+export function previewLayout(proposal: AssistLayoutResponse): void {
+  // remember products so the ghost furniture (and later the cart/summary) can render
+  useProductStore.getState().remember(proposal.placements.map((p) => p.product));
+  const ghosts: PlacedItem[] = proposal.placements.map((p) => ({
+    instance_id: p.instance_id,
+    product_id: p.product_id,
+    x: p.pose.x,
+    y: p.pose.y,
+    rotation_deg: p.pose.rotation_deg,
+    zone_id: p.zone_id,
+  }));
+  usePlannerStore.getState().setProposedItems(ghosts);
+}
+
+/** Ask the backend for a whole-room layout and preview it. Backend is the source of
+ *  truth for geometry; this only renders the result. Returns the raw proposal (for the
+ *  QA panel) or null on error/abort. */
+export async function requestLayout(): Promise<AssistLayoutResponse | null> {
+  const planner = usePlannerStore.getState();
+  const ui = useUiStore.getState();
+  const { preferences } = usePrefsStore.getState();
+  try {
+    const proposal = await api.assistLayout(planner.room, planner.items, preferences, {
+      // preferences.room_type drives the sequence/zones/filtering; pass it explicitly too
+      room_type: preferences.room_type ?? "living_room",
+    });
+    if (proposal.placements.length === 0) {
+      ui.toast("info", "No fitting layout found - try enlarging the room or easing preferences.");
+      return proposal;
+    }
+    previewLayout(proposal);
+    const n = proposal.placements.length;
+    ui.toast("success", `Suggested ${n} item${n > 1 ? "s" : ""} - review, then accept.`);
+    return proposal;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") return null;
+    if (err instanceof ApiError || err instanceof NetworkError) ui.toast("error", err.message);
+    return null;
+  }
+}
+
+/** Commit every ghost as a real placed item (re-minted ids), then re-validate. */
+export function acceptLayout(): void {
+  const planner = usePlannerStore.getState();
+  if (planner.proposedItems.length === 0) return;
+  planner.acceptProposedItems();
+  useUiStore.getState().toast("success", "Layout added - drag to fine-tune or render an image.");
+  void revalidateAll();
+}
+
+/** Commit a single ghost (used when the user taps one suggested item on the canvas). */
+export function acceptOne(instanceId: string): void {
+  usePlannerStore.getState().acceptProposedItem(instanceId);
+  void revalidateAll();
+}
+
+/** Drop all pending ghosts without committing anything. */
+export function dismissLayout(): void {
+  usePlannerStore.getState().clearProposedItems();
 }
 
 /** After room edits: re-check every placed item and badge the troubled ones. */

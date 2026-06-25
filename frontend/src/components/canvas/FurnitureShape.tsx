@@ -66,6 +66,38 @@ export function FurnitureGlyph({ product, fill }: { product: Product; fill: stri
         </Group>
       );
     }
+    case "bed": {
+      const headboard = Math.min(d * 0.1, 16);
+      const pillowH = Math.min(d * 0.2, 38);
+      const pillows = w >= 150 ? 2 : 1;
+      const gap = 10;
+      const pillowW = (w - 24 - gap * (pillows - 1)) / pillows;
+      return (
+        <Group>
+          {/* mattress */}
+          <Rect x={-w / 2} y={-d / 2} width={w} height={d} cornerRadius={8} fill={fill} stroke={stroke} strokeWidth={1.5} />
+          {/* headboard along the back edge (-y, against the wall) */}
+          <Rect x={-w / 2} y={-d / 2} width={w} height={headboard} cornerRadius={6} fill={darken(fill, 0.16)} />
+          {/* duvet covering the lower ~55% */}
+          <Rect x={-w / 2 + 4} y={-d / 2 + d * 0.42} width={w - 8} height={d * 0.55} cornerRadius={6} fill={darken(fill, 0.06)} />
+          <Line points={[-w / 2 + 6, -d / 2 + d * 0.42, w / 2 - 6, -d / 2 + d * 0.42]} stroke={darken(fill, 0.12)} strokeWidth={1} />
+          {/* pillows near the headboard */}
+          {Array.from({ length: pillows }, (_, i) => (
+            <Rect
+              key={i}
+              x={-w / 2 + 12 + i * (pillowW + gap)}
+              y={-d / 2 + headboard + 6}
+              width={pillowW}
+              height={pillowH}
+              cornerRadius={7}
+              fill="#F4EEE2"
+              stroke={darken(fill, 0.1)}
+              strokeWidth={0.8}
+            />
+          ))}
+        </Group>
+      );
+    }
     case "tv_unit":
       return (
         <Group>

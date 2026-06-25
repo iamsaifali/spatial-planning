@@ -55,6 +55,14 @@ export function RoomTemplatesDialog({ open, onClose }: { open: boolean; onClose:
             <p className="text-sm font-semibold">L-shape</p>
             <p className="text-xs text-ink-soft">5.6 × 4.8 m overall</p>
           </button>
+          <button
+            onClick={() => apply(() => emptyRectRoom(800, 650), "Large room")}
+            className="group rounded-lg border border-line bg-surface p-4 text-left hover:border-amber"
+          >
+            <div className="mx-auto mb-3 h-16 w-24 rounded-sm border-2 border-ink/70 bg-room transition-colors group-hover:border-amber-deep" />
+            <p className="text-sm font-semibold">Large room</p>
+            <p className="text-xs text-ink-soft">8.0 × 6.5 m — shows a 2nd seating zone</p>
+          </button>
         </div>
 
         <div className="rounded-lg border border-line bg-surface-2/60 p-4">

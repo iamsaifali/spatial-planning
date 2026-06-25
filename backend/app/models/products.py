@@ -14,10 +14,40 @@ Category = Literal[
     "lighting",
     "storage",
     "decor",
+    "bed",  # bedroom primary sleeping (new category - own stats/terciles, no impact on others)
     "custom",  # user's own kept items - never recommended, price 0
 ]
 
-StyleTag = Literal["modern", "scandinavian", "industrial", "boho", "classic", "minimal"]
+StyleTag = Literal[
+    "modern",
+    "scandinavian",
+    "industrial",
+    "boho",
+    "classic",
+    "minimal",
+    # cultural vocabulary for Saudi / Majlis interiors (additive; existing products
+    # use the tags above and continue to validate unchanged)
+    "arabic",
+    "saudi_traditional",
+    "majlis",
+    "modern_arabic",
+    "luxury",
+]
+
+# --- foundational taxonomy for cultural / room-type aware recommendations ----------
+# These are additive and orthogonal to `category` and `style_tags`. They are NOT used
+# by the placement geometry yet (Majlis zones are still TODO); they exist so the
+# catalog and recommender can start carrying the intent. See the recommendation
+# architecture review for the rationale.
+#
+# TODO(majlis): when authoring Majlis SKUs, tag them with room_types=["majlis"],
+# placement_type="perimeter"/"floor", region="saudi_arabia"/"gcc", and the
+# arabic/majlis/luxury style tags (added separately to StyleTag).
+RoomType = Literal["living_room", "majlis", "family_lounge", "bedroom", "dining"]
+PlacementType = Literal["wall_hug", "perimeter", "floor", "center", "freestanding"]
+Formality = Literal["casual", "family", "formal"]
+LuxuryTier = Literal["value", "standard", "premium", "luxury"]
+Region = Literal["global", "gcc", "saudi_arabia", "levant", "south_asia", "east_asia", "europe"]
 
 CATEGORY_LABELS: dict[str, str] = {
     "sofa": "Sofa",
@@ -29,6 +59,7 @@ CATEGORY_LABELS: dict[str, str] = {
     "lighting": "Lighting",
     "storage": "Storage",
     "decor": "Decor",
+    "bed": "Bed",
     "custom": "Your Item",
 }
 
@@ -54,3 +85,15 @@ class Product(StrictModel):
     is_walkable: bool = False
     shape: Literal["rect", "round"] = "rect"
     description: str = ""
+
+    # --- foundational cultural / room-type taxonomy (additive, backward compatible) ---
+    # Defaults make every pre-existing catalog row valid as a generic living-room item.
+    # The catalog loader (services/catalog/backfill.py) infers seating_capacity from
+    # width for seating categories; non-seating items stay 0.
+    room_types: list[RoomType] = Field(default_factory=lambda: ["living_room"])
+    placement_type: PlacementType = "wall_hug"
+    seating_capacity: int = Field(default=0, ge=0, le=20)  # seats this single SKU provides
+    is_modular: bool = False  # can be chained along a wall (e.g. majlis benches)
+    formality: Formality = "family"
+    luxury_tier: LuxuryTier = "standard"
+    region: Region = "global"

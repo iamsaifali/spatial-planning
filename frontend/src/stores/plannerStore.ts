@@ -34,6 +34,9 @@ function sanitizeOpenings(room: Room): Room {
 interface PlannerState {
   room: Room;
   items: PlacedItem[];
+  // "Assist with AI" suggestions awaiting the user's accept/dismiss. Kept OUT of
+  // the temporal `partialize` below so undo/redo never commits or resurrects ghosts.
+  proposedItems: PlacedItem[];
   roomVersion: number; // bumps on every geometry edit (invalidates caches)
   designId: string | null;
   designName: string;
@@ -56,6 +59,13 @@ interface PlannerState {
   swapItem: (instanceId: string, newProductId: string, pose?: Pose) => void;
   clearItems: () => void;
 
+  // proposed/ghost layout (Assist with AI)
+  setProposedItems: (items: PlacedItem[]) => void;
+  clearProposedItems: () => void;
+  acceptProposedItems: () => void;
+  acceptProposedItem: (instanceId: string) => void;
+  dismissProposedItem: (instanceId: string) => void;
+
   loadDesign: (designId: string | null, name: string, room: Room, items: PlacedItem[]) => void;
   markSaved: (designId: string) => void;
 }
@@ -65,6 +75,7 @@ export const usePlannerStore = create<PlannerState>()(
     (set) => ({
       room: sampleRoom(),
       items: [],
+      proposedItems: [],
       roomVersion: 0,
       designId: null,
       designName: "My Living Room",
@@ -185,12 +196,47 @@ export const usePlannerStore = create<PlannerState>()(
 
       clearItems: () => set({ items: [], dirtySinceSave: true }),
 
+      // --- Assist with AI: ghost layout staging ---------------------------------
+      // Ghosts are never persisted nor tracked by undo/redo. Accepting re-mints a
+      // fresh instance_id so a committed item can never collide with an existing one
+      // and the proposed id can be re-proposed later without conflict.
+      setProposedItems: (proposedItems) => set({ proposedItems }),
+
+      clearProposedItems: () => set({ proposedItems: [] }),
+
+      acceptProposedItems: () =>
+        set((s) => ({
+          items: [
+            ...s.items,
+            ...s.proposedItems.map((g) => ({ ...g, instance_id: newInstanceId(g.product_id) })),
+          ],
+          proposedItems: [],
+          dirtySinceSave: true,
+        })),
+
+      acceptProposedItem: (instanceId) =>
+        set((s) => {
+          const ghost = s.proposedItems.find((i) => i.instance_id === instanceId);
+          if (!ghost) return {};
+          return {
+            items: [...s.items, { ...ghost, instance_id: newInstanceId(ghost.product_id) }],
+            proposedItems: s.proposedItems.filter((i) => i.instance_id !== instanceId),
+            dirtySinceSave: true,
+          };
+        }),
+
+      dismissProposedItem: (instanceId) =>
+        set((s) => ({
+          proposedItems: s.proposedItems.filter((i) => i.instance_id !== instanceId),
+        })),
+
       loadDesign: (designId, name, room, items) =>
         set((s) => ({
           designId,
           designName: name,
           room,
           items,
+          proposedItems: [],
           roomVersion: s.roomVersion + 1,
           dirtySinceSave: false,
         })),
@@ -206,6 +252,19 @@ export const usePlannerStore = create<PlannerState>()(
 );
 
 export const plannerTemporal = usePlannerStore.temporal;
+
+// Invariant: a room-geometry edit invalidates any pending Assist proposal.
+// roomVersion bumps on every geometry change (see PlannerState). Ghost placements were
+// validated by the backend against the room as it was at request time, so they must NOT
+// survive a room edit - otherwise the user could Accept ghosts that now sit outside the
+// room or block a newly added door. Keying off roomVersion catches every geometry
+// mutator (incl. undo/redo and any future one) in one place. proposedItems is outside
+// the temporal partialize, so clearing it never touches undo/redo history.
+usePlannerStore.subscribe((state, prev) => {
+  if (state.roomVersion !== prev.roomVersion && state.proposedItems.length > 0) {
+    usePlannerStore.setState({ proposedItems: [] });
+  }
+});
 
 export function undo() {
   plannerTemporal.getState().undo();

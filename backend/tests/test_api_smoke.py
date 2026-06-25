@@ -117,9 +117,9 @@ def test_full_happy_path(client):
     assert r.status_code == 200
     assert r.json()["copy_source"] == "offline" and r.json()["answer"]
 
-    # products
+    # products (16 living-room sofas + 6 Majlis seed sofas = 22)
     r = client.get(f"{API}/products", params={"category": "sofa"})
-    assert r.status_code == 200 and r.json()["total"] == 16
+    assert r.status_code == 200 and r.json()["total"] == 22
     r = client.get(f"{API}/products/sofa-001")
     assert r.status_code == 200 and r.json()["image_url"].startswith("/static/products/")
 

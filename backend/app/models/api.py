@@ -3,7 +3,7 @@ from pydantic import Field
 from app.models.geometry import PlacedItem, Pose, Room, StrictModel
 from app.models.preferences import Preferences
 from app.models.products import Product
-from app.models.recommend import CopySource
+from app.models.recommend import CopySource, Slot
 from app.models.validation import Finding
 
 MAX_PLACED_ITEMS = 60
@@ -102,6 +102,56 @@ class AssistantResponse(StrictModel):
     related_tip: str | None = None
     facts_used: list[str] = Field(default_factory=list)
     copy_source: CopySource = "offline"
+
+
+# --- "Assist with AI": whole-room deterministic auto-layout -----------------------
+# Geometry is decided entirely by the spatial + recommendation engine; no LLM or
+# image model is involved in choosing coordinates. See services/recommend/orchestrator.py.
+
+
+class AssistLayoutRequest(StrictModel):
+    room: Room
+    placed_items: list[PlacedItem] = Field(default_factory=list, max_length=MAX_PLACED_ITEMS)
+    preferences: Preferences = Field(default_factory=Preferences)
+    # Optional explicit category order. When None, the sequence is derived from
+    # room_type (see app/services/guide/flow.py::sequence_for_room_type).
+    categories: list[str] | None = None
+    # Extension point for future room types (e.g. "majlis"). Defaults to the
+    # living-room flow; unknown values fall back to living-room and never error.
+    room_type: str | None = "living_room"
+
+
+class AssistPlacement(StrictModel):
+    instance_id: str
+    product_id: str
+    product: Product  # full product so the canvas can render the ghost + price it
+    category: str
+    pose: Pose
+    zone_id: str | None = None
+    slot: Slot = "best_match"
+    fit_facts: dict[str, float | str | bool] = Field(default_factory=dict)
+    reason_codes: list[str] = Field(default_factory=list)
+    rationale: str = ""  # template copy built from machine-checked facts, never an LLM
+    notices: list[str] = Field(default_factory=list)
+
+
+class AssistSkip(StrictModel):
+    category: str
+    reason: str  # NO_FIT / ALREADY_PRESENT / a Finding code (e.g. BLOCKS_DOOR_SWING)
+
+
+class AssistTotals(StrictModel):
+    item_count: int
+    total_price: int  # BASE_CURRENCY
+    currency: str
+
+
+class AssistLayoutResponse(StrictModel):
+    proposal_id: str
+    placements: list[AssistPlacement] = Field(default_factory=list)
+    skipped: list[AssistSkip] = Field(default_factory=list)
+    findings: list[Finding] = Field(default_factory=list)  # advisory warnings on the proposed set
+    totals: AssistTotals
 
 
 class DesignCreateRequest(StrictModel):

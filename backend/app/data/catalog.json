@@ -207,7 +207,7 @@
  },
  {
   "id": "sofa-007",
-  "name": "Bront\u00eb Tufted Sofa",
+  "name": "Brontë Tufted Sofa",
   "brand": "Dhara Living",
   "category": "sofa",
   "price": 1539,
@@ -894,7 +894,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1600166898405-da9535204843?w=800&q=80&auto=format&fit=crop",
   "is_walkable": true,
   "shape": "rect",
-  "description": "Defines the seating zone and warms up the floor."
+  "description": "Defines the seating zone and warms up the floor.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "rug-002",
@@ -924,7 +928,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1531835551805-16d864c8d311?w=800&q=80&auto=format&fit=crop",
   "is_walkable": true,
   "shape": "rect",
-  "description": "Defines the seating zone and warms up the floor."
+  "description": "Defines the seating zone and warms up the floor.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "rug-003",
@@ -954,7 +962,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1575414003591-ece8d0416c7a?w=800&q=80&auto=format&fit=crop",
   "is_walkable": true,
   "shape": "rect",
-  "description": "Defines the seating zone and warms up the floor."
+  "description": "Defines the seating zone and warms up the floor.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "rug-004",
@@ -984,7 +996,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1600607686527-6fb886090705?w=800&q=80&auto=format&fit=crop",
   "is_walkable": true,
   "shape": "rect",
-  "description": "Defines the seating zone and warms up the floor."
+  "description": "Defines the seating zone and warms up the floor.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "rug-005",
@@ -1638,7 +1654,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1565191999001-551c187427bb?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Keeps essentials at arm's reach beside the seating."
+  "description": "Keeps essentials at arm's reach beside the seating.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "side-table-002",
@@ -1668,7 +1688,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1611117775350-ac3950990985?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Keeps essentials at arm's reach beside the seating."
+  "description": "Keeps essentials at arm's reach beside the seating.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "side-table-003",
@@ -1699,7 +1723,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1499933374294-4584851497cc?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Keeps essentials at arm's reach beside the seating."
+  "description": "Keeps essentials at arm's reach beside the seating.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "side-table-004",
@@ -1729,7 +1757,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1565191999001-551c187427bb?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Keeps essentials at arm's reach beside the seating."
+  "description": "Keeps essentials at arm's reach beside the seating.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "side-table-005",
@@ -1946,7 +1978,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "rect",
-  "description": "A conversation seat that completes the seating circle."
+  "description": "A conversation seat that completes the seating circle.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "accent-chair-002",
@@ -1980,7 +2016,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1567538096621-38d2284b23ff?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "rect",
-  "description": "A conversation seat that completes the seating circle."
+  "description": "A conversation seat that completes the seating circle.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "accent-chair-003",
@@ -2013,7 +2053,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1592078615290-033ee584e267?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "rect",
-  "description": "A conversation seat that completes the seating circle."
+  "description": "A conversation seat that completes the seating circle.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "accent-chair-004",
@@ -2047,7 +2091,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1519947486511-46149fa0a254?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "rect",
-  "description": "A conversation seat that completes the seating circle."
+  "description": "A conversation seat that completes the seating circle.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "accent-chair-005",
@@ -2280,7 +2328,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Layered light beside the seating, away from walk paths."
+  "description": "Layered light beside the seating, away from walk paths.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "lighting-002",
@@ -2311,7 +2363,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Layered light beside the seating, away from walk paths."
+  "description": "Layered light beside the seating, away from walk paths.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "lighting-003",
@@ -2343,7 +2399,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1543198126-a8ad8e47fb22?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Layered light beside the seating, away from walk paths."
+  "description": "Layered light beside the seating, away from walk paths.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "lighting-004",
@@ -2375,7 +2435,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1565636192335-0a4cbfa1aaf8?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Layered light beside the seating, away from walk paths."
+  "description": "Layered light beside the seating, away from walk paths.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "lighting-005",
@@ -2597,7 +2661,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1594620302200-9a762244a156?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Closed and open storage to keep the room tidy."
+  "description": "Closed and open storage to keep the room tidy.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "storage-002",
@@ -2628,7 +2696,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1588447749191-315ebee5c4a8?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Closed and open storage to keep the room tidy."
+  "description": "Closed and open storage to keep the room tidy.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "storage-003",
@@ -2660,7 +2732,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1595428774223-ef52624120d2?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Closed and open storage to keep the room tidy."
+  "description": "Closed and open storage to keep the room tidy.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "storage-004",
@@ -2847,7 +2923,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Finishing touches that make the room feel lived-in."
+  "description": "Finishing touches that make the room feel lived-in.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "decor-002",
@@ -2878,7 +2958,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1463320726281-696a485928c7?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Finishing touches that make the room feel lived-in."
+  "description": "Finishing touches that make the room feel lived-in.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "decor-003",
@@ -2908,7 +2992,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Finishing touches that make the room feel lived-in."
+  "description": "Finishing touches that make the room feel lived-in.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "decor-004",
@@ -2938,7 +3026,11 @@
   "source_image_url": "https://images.unsplash.com/photo-1545165375-1b744b9ed444?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Finishing touches that make the room feel lived-in."
+  "description": "Finishing touches that make the room feel lived-in.",
+  "room_types": [
+   "living_room",
+   "bedroom"
+  ]
  },
  {
   "id": "decor-005",
@@ -3184,5 +3276,1245 @@
   "is_walkable": false,
   "shape": "round",
   "description": "Finishing touches that make the room feel lived-in."
+ },
+ {
+  "id": "majlis-sofa-001",
+  "name": "Najd Long Majlis Bench",
+  "brand": "Najd Living",
+  "category": "sofa",
+  "price": 1690,
+  "mrp": 1990,
+  "width_cm": 300,
+  "depth_cm": 80,
+  "height_cm": 75,
+  "style_tags": [
+   "majlis",
+   "saudi_traditional",
+   "luxury"
+  ],
+  "colors": [
+   "Maroon",
+   "Gold"
+  ],
+  "materials": [
+   "Velvet",
+   "Carved Walnut"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.8,
+  "attrs": {
+   "seat_height_cm": 40,
+   "arm_height_cm": 62
+  },
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "Crafted for a formal Saudi majlis setting.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "perimeter",
+  "seating_capacity": 4,
+  "is_modular": true,
+  "formality": "formal",
+  "luxury_tier": "luxury",
+  "region": "saudi_arabia"
+ },
+ {
+  "id": "majlis-sofa-002",
+  "name": "Riyadh Modular Majlis 3-Seat",
+  "brand": "Diriyah Home",
+  "category": "sofa",
+  "price": 1190,
+  "mrp": null,
+  "width_cm": 240,
+  "depth_cm": 82,
+  "height_cm": 78,
+  "style_tags": [
+   "majlis",
+   "arabic",
+   "luxury"
+  ],
+  "colors": [
+   "Emerald",
+   "Gold"
+  ],
+  "materials": [
+   "Velvet",
+   "Oak"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.7,
+  "attrs": {
+   "seat_height_cm": 42,
+   "arm_height_cm": 64
+  },
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "Crafted for a formal Saudi majlis setting.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "perimeter",
+  "seating_capacity": 3,
+  "is_modular": true,
+  "formality": "formal",
+  "luxury_tier": "premium",
+  "region": "saudi_arabia"
+ },
+ {
+  "id": "majlis-sofa-003",
+  "name": "Hijazi Corner Majlis Seat",
+  "brand": "Hijazi Interiors",
+  "category": "sofa",
+  "price": 1450,
+  "mrp": null,
+  "width_cm": 280,
+  "depth_cm": 90,
+  "height_cm": 80,
+  "style_tags": [
+   "majlis",
+   "saudi_traditional"
+  ],
+  "colors": [
+   "Cream",
+   "Bronze"
+  ],
+  "materials": [
+   "Linen",
+   "Sheesham"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.6,
+  "attrs": {
+   "seat_height_cm": 41,
+   "arm_height_cm": 63
+  },
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "Crafted for a formal Saudi majlis setting.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "perimeter",
+  "seating_capacity": 4,
+  "is_modular": true,
+  "formality": "formal",
+  "luxury_tier": "luxury",
+  "region": "gcc"
+ },
+ {
+  "id": "majlis-sofa-004",
+  "name": "Diriyah Low Floor Majlis",
+  "brand": "Sadu Co.",
+  "category": "sofa",
+  "price": 890,
+  "mrp": null,
+  "width_cm": 210,
+  "depth_cm": 95,
+  "height_cm": 55,
+  "style_tags": [
+   "majlis",
+   "arabic",
+   "saudi_traditional"
+  ],
+  "colors": [
+   "Sand",
+   "Terracotta"
+  ],
+  "materials": [
+   "Cotton Weave",
+   "Mango Wood"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.5,
+  "attrs": {
+   "seat_height_cm": 30
+  },
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "Crafted for a formal Saudi majlis setting.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "floor",
+  "seating_capacity": 3,
+  "is_modular": true,
+  "formality": "formal",
+  "luxury_tier": "premium",
+  "region": "saudi_arabia"
+ },
+ {
+  "id": "majlis-sofa-005",
+  "name": "Qasr Velvet Majlis Sofa",
+  "brand": "Qasr Atelier",
+  "category": "sofa",
+  "price": 1390,
+  "mrp": null,
+  "width_cm": 260,
+  "depth_cm": 92,
+  "height_cm": 82,
+  "style_tags": [
+   "majlis",
+   "modern_arabic",
+   "luxury"
+  ],
+  "colors": [
+   "Royal Blue",
+   "Brass"
+  ],
+  "materials": [
+   "Velvet",
+   "Walnut"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.8,
+  "attrs": {
+   "seat_height_cm": 43,
+   "arm_height_cm": 66
+  },
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "Crafted for a formal Saudi majlis setting.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "perimeter",
+  "seating_capacity": 3,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "luxury",
+  "region": "gcc"
+ },
+ {
+  "id": "majlis-sofa-006",
+  "name": "Khaleeji Modern Majlis",
+  "brand": "Khaleeji Design",
+  "category": "sofa",
+  "price": 990,
+  "mrp": null,
+  "width_cm": 220,
+  "depth_cm": 88,
+  "height_cm": 80,
+  "style_tags": [
+   "modern_arabic",
+   "majlis"
+  ],
+  "colors": [
+   "Warm Grey",
+   "Gold"
+  ],
+  "materials": [
+   "Boucle",
+   "Oak"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.5,
+  "attrs": {
+   "seat_height_cm": 44,
+   "arm_height_cm": 65
+  },
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "Crafted for a formal Saudi majlis setting.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "wall_hug",
+  "seating_capacity": 3,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "premium",
+  "region": "gcc"
+ },
+ {
+  "id": "majlis-cushion-001",
+  "name": "Sadu Floor Cushion Set",
+  "brand": "Sadu Co.",
+  "category": "accent_chair",
+  "price": 220,
+  "mrp": null,
+  "width_cm": 70,
+  "depth_cm": 70,
+  "height_cm": 28,
+  "style_tags": [
+   "majlis",
+   "saudi_traditional",
+   "arabic"
+  ],
+  "colors": [
+   "Maroon",
+   "Sand"
+  ],
+  "materials": [
+   "Cotton Weave",
+   "Wool"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.4,
+  "attrs": {
+   "seat_height_cm": 18
+  },
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "Traditional sadu-woven floor seating for the majlis.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "floor",
+  "seating_capacity": 1,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "premium",
+  "region": "saudi_arabia"
+ },
+ {
+  "id": "majlis-cushion-002",
+  "name": "Najdi Jalsa Floor Cushion",
+  "brand": "Najd Living",
+  "category": "accent_chair",
+  "price": 260,
+  "mrp": null,
+  "width_cm": 75,
+  "depth_cm": 75,
+  "height_cm": 30,
+  "style_tags": [
+   "majlis",
+   "saudi_traditional"
+  ],
+  "colors": [
+   "Emerald",
+   "Gold"
+  ],
+  "materials": [
+   "Velvet",
+   "Cotton Weave"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.5,
+  "attrs": {
+   "seat_height_cm": 20
+  },
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "Plush jalsa floor cushion for ground-level seating.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "floor",
+  "seating_capacity": 1,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "premium",
+  "region": "saudi_arabia"
+ },
+ {
+  "id": "majlis-pouf-001",
+  "name": "Brass-Trim Velvet Pouf",
+  "brand": "Qasr Atelier",
+  "category": "accent_chair",
+  "price": 340,
+  "mrp": null,
+  "width_cm": 55,
+  "depth_cm": 55,
+  "height_cm": 42,
+  "style_tags": [
+   "majlis",
+   "luxury",
+   "modern_arabic"
+  ],
+  "colors": [
+   "Royal Blue",
+   "Brass"
+  ],
+  "materials": [
+   "Velvet",
+   "Brass"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.7,
+  "attrs": {
+   "seat_height_cm": 42
+  },
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "round",
+  "description": "A jewel-toned pouf with brass detailing.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "freestanding",
+  "seating_capacity": 1,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "luxury",
+  "region": "gcc"
+ },
+ {
+  "id": "majlis-pouf-002",
+  "name": "Arabesque Ottoman Pouf",
+  "brand": "Hijazi Interiors",
+  "category": "accent_chair",
+  "price": 290,
+  "mrp": null,
+  "width_cm": 60,
+  "depth_cm": 60,
+  "height_cm": 40,
+  "style_tags": [
+   "majlis",
+   "arabic"
+  ],
+  "colors": [
+   "Mustard",
+   "Bronze"
+  ],
+  "materials": [
+   "Velvet",
+   "Mango Wood"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.4,
+  "attrs": {
+   "seat_height_cm": 40
+  },
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "round",
+  "description": "An arabesque-patterned ottoman pouf.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "freestanding",
+  "seating_capacity": 1,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "premium",
+  "region": "gcc"
+ },
+ {
+  "id": "majlis-table-001",
+  "name": "Arabesque Low Brass Table",
+  "brand": "Qasr Atelier",
+  "category": "coffee_table",
+  "price": 520,
+  "mrp": null,
+  "width_cm": 95,
+  "depth_cm": 95,
+  "height_cm": 38,
+  "style_tags": [
+   "majlis",
+   "arabic",
+   "luxury"
+  ],
+  "colors": [
+   "Brass",
+   "Gold"
+  ],
+  "materials": [
+   "Brass",
+   "Glass"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.7,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "round",
+  "description": "A low brass centerpiece table for the majlis.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "center",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "luxury",
+  "region": "gcc"
+ },
+ {
+  "id": "majlis-table-002",
+  "name": "Carved Wood Majlis Table",
+  "brand": "Najd Living",
+  "category": "coffee_table",
+  "price": 640,
+  "mrp": null,
+  "width_cm": 120,
+  "depth_cm": 70,
+  "height_cm": 40,
+  "style_tags": [
+   "majlis",
+   "saudi_traditional"
+  ],
+  "colors": [
+   "Walnut",
+   "Bronze"
+  ],
+  "materials": [
+   "Carved Walnut",
+   "Brass"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.6,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "A hand-carved low table at floor-seat height.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "center",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "luxury",
+  "region": "saudi_arabia"
+ },
+ {
+  "id": "majlis-table-003",
+  "name": "Mother-of-Pearl Low Table",
+  "brand": "Hijazi Interiors",
+  "category": "coffee_table",
+  "price": 580,
+  "mrp": null,
+  "width_cm": 80,
+  "depth_cm": 80,
+  "height_cm": 36,
+  "style_tags": [
+   "majlis",
+   "arabic",
+   "luxury"
+  ],
+  "colors": [
+   "Cream",
+   "Brass"
+  ],
+  "materials": [
+   "Mother-of-Pearl",
+   "Sheesham"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.6,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "round",
+  "description": "Inlaid mother-of-pearl low table.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "center",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "premium",
+  "region": "gcc"
+ },
+ {
+  "id": "majlis-rug-001",
+  "name": "Persian Medallion Rug",
+  "brand": "Qasr Atelier",
+  "category": "rug",
+  "price": 699,
+  "mrp": null,
+  "width_cm": 350,
+  "depth_cm": 250,
+  "height_cm": 1,
+  "style_tags": [
+   "majlis",
+   "classic",
+   "luxury"
+  ],
+  "colors": [
+   "Maroon",
+   "Gold"
+  ],
+  "materials": [
+   "Wool"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.8,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": true,
+  "shape": "rect",
+  "description": "A medallion-pattern rug to anchor the majlis.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "floor",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "luxury",
+  "region": "gcc"
+ },
+ {
+  "id": "majlis-rug-002",
+  "name": "Sadu Geometric Rug",
+  "brand": "Sadu Co.",
+  "category": "rug",
+  "price": 420,
+  "mrp": null,
+  "width_cm": 300,
+  "depth_cm": 200,
+  "height_cm": 1,
+  "style_tags": [
+   "majlis",
+   "saudi_traditional",
+   "arabic"
+  ],
+  "colors": [
+   "Sand",
+   "Charcoal"
+  ],
+  "materials": [
+   "Wool",
+   "Cotton Flatweave"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.5,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": true,
+  "shape": "rect",
+  "description": "A sadu-geometric flatweave rug.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "floor",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "premium",
+  "region": "saudi_arabia"
+ },
+ {
+  "id": "majlis-rug-003",
+  "name": "Najdi Heritage Rug",
+  "brand": "Najd Living",
+  "category": "rug",
+  "price": 760,
+  "mrp": null,
+  "width_cm": 400,
+  "depth_cm": 300,
+  "height_cm": 1,
+  "style_tags": [
+   "majlis",
+   "saudi_traditional",
+   "luxury"
+  ],
+  "colors": [
+   "Emerald",
+   "Cream"
+  ],
+  "materials": [
+   "Wool"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.7,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": true,
+  "shape": "rect",
+  "description": "An oversized heritage rug for a grand majlis.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "floor",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "luxury",
+  "region": "saudi_arabia"
+ },
+ {
+  "id": "majlis-side-001",
+  "name": "Brass Tray Side Table",
+  "brand": "Qasr Atelier",
+  "category": "side_table",
+  "price": 230,
+  "mrp": null,
+  "width_cm": 45,
+  "depth_cm": 45,
+  "height_cm": 55,
+  "style_tags": [
+   "majlis",
+   "arabic",
+   "luxury"
+  ],
+  "colors": [
+   "Brass",
+   "Gold"
+  ],
+  "materials": [
+   "Brass"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.5,
+  "attrs": {
+   "arm_height_cm": 55
+  },
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "round",
+  "description": "A removable brass tray side table.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "freestanding",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "premium",
+  "region": "gcc"
+ },
+ {
+  "id": "majlis-side-002",
+  "name": "Octagonal Inlay Side Table",
+  "brand": "Hijazi Interiors",
+  "category": "side_table",
+  "price": 270,
+  "mrp": null,
+  "width_cm": 50,
+  "depth_cm": 50,
+  "height_cm": 52,
+  "style_tags": [
+   "majlis",
+   "saudi_traditional"
+  ],
+  "colors": [
+   "Walnut",
+   "Bronze"
+  ],
+  "materials": [
+   "Sheesham",
+   "Mother-of-Pearl"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.4,
+  "attrs": {
+   "arm_height_cm": 52
+  },
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "round",
+  "description": "An octagonal inlaid side table.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "freestanding",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "premium",
+  "region": "gcc"
+ },
+ {
+  "id": "majlis-storage-001",
+  "name": "Carved Wood Console",
+  "brand": "Najd Living",
+  "category": "storage",
+  "price": 879,
+  "mrp": null,
+  "width_cm": 160,
+  "depth_cm": 45,
+  "height_cm": 85,
+  "style_tags": [
+   "majlis",
+   "saudi_traditional"
+  ],
+  "colors": [
+   "Walnut",
+   "Bronze"
+  ],
+  "materials": [
+   "Carved Walnut"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.6,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "A carved console for the majlis perimeter.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "wall_hug",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "premium",
+  "region": "saudi_arabia"
+ },
+ {
+  "id": "majlis-storage-002",
+  "name": "Mashrabiya Cabinet",
+  "brand": "Hijazi Interiors",
+  "category": "storage",
+  "price": 1190,
+  "mrp": null,
+  "width_cm": 120,
+  "depth_cm": 42,
+  "height_cm": 160,
+  "style_tags": [
+   "majlis",
+   "arabic",
+   "luxury"
+  ],
+  "colors": [
+   "Walnut",
+   "Brass"
+  ],
+  "materials": [
+   "Mashrabiya Wood",
+   "Brass"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.7,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "A latticework mashrabiya storage cabinet.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "wall_hug",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "luxury",
+  "region": "gcc"
+ },
+ {
+  "id": "majlis-decor-001",
+  "name": "Geometric Islamic Wall Art",
+  "brand": "Qasr Atelier",
+  "category": "decor",
+  "price": 180,
+  "mrp": null,
+  "width_cm": 90,
+  "depth_cm": 4,
+  "height_cm": 90,
+  "style_tags": [
+   "majlis",
+   "arabic",
+   "modern_arabic"
+  ],
+  "colors": [
+   "Gold",
+   "Charcoal"
+  ],
+  "materials": [
+   "Brass",
+   "Wood"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.6,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "Geometric Islamic-pattern wall art.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "wall_hug",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "premium",
+  "region": "gcc"
+ },
+ {
+  "id": "majlis-decor-002",
+  "name": "Arabic Calligraphy Panel",
+  "brand": "Najd Living",
+  "category": "decor",
+  "price": 220,
+  "mrp": null,
+  "width_cm": 120,
+  "depth_cm": 4,
+  "height_cm": 80,
+  "style_tags": [
+   "majlis",
+   "saudi_traditional",
+   "arabic"
+  ],
+  "colors": [
+   "Bronze",
+   "Cream"
+  ],
+  "materials": [
+   "Wood",
+   "Brass"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.7,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "A framed Arabic calligraphy panel.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "wall_hug",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "premium",
+  "region": "saudi_arabia"
+ },
+ {
+  "id": "majlis-decor-003",
+  "name": "Velvet Majlis Drapery Set",
+  "brand": "Khaleeji Design",
+  "category": "decor",
+  "price": 340,
+  "mrp": null,
+  "width_cm": 150,
+  "depth_cm": 8,
+  "height_cm": 260,
+  "style_tags": [
+   "majlis",
+   "luxury",
+   "modern_arabic"
+  ],
+  "colors": [
+   "Maroon",
+   "Gold"
+  ],
+  "materials": [
+   "Velvet"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.5,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "Floor-length velvet drapery for the majlis.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "wall_hug",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "luxury",
+  "region": "gcc"
+ },
+ {
+  "id": "majlis-light-001",
+  "name": "Brass Arabic Lantern",
+  "brand": "Qasr Atelier",
+  "category": "lighting",
+  "price": 260,
+  "mrp": null,
+  "width_cm": 40,
+  "depth_cm": 40,
+  "height_cm": 55,
+  "style_tags": [
+   "majlis",
+   "arabic",
+   "saudi_traditional"
+  ],
+  "colors": [
+   "Brass",
+   "Gold"
+  ],
+  "materials": [
+   "Brass",
+   "Glass"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.6,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "round",
+  "description": "A pierced-brass Arabic lantern.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "freestanding",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "premium",
+  "region": "gcc"
+ },
+ {
+  "id": "majlis-light-002",
+  "name": "Crystal Majlis Chandelier",
+  "brand": "Khaleeji Design",
+  "category": "lighting",
+  "price": 1490,
+  "mrp": 1790,
+  "width_cm": 80,
+  "depth_cm": 80,
+  "height_cm": 90,
+  "style_tags": [
+   "majlis",
+   "luxury",
+   "modern_arabic"
+  ],
+  "colors": [
+   "Gold",
+   "Brass"
+  ],
+  "materials": [
+   "Crystal",
+   "Brass"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.8,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "round",
+  "description": "A statement crystal chandelier for the majlis.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "center",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "luxury",
+  "region": "gcc"
+ },
+ {
+  "id": "majlis-light-003",
+  "name": "Moroccan Pendant Lamp",
+  "brand": "Hijazi Interiors",
+  "category": "lighting",
+  "price": 320,
+  "mrp": null,
+  "width_cm": 45,
+  "depth_cm": 45,
+  "height_cm": 60,
+  "style_tags": [
+   "majlis",
+   "arabic"
+  ],
+  "colors": [
+   "Brass",
+   "Amber"
+  ],
+  "materials": [
+   "Brass",
+   "Glass"
+  ],
+  "in_stock": true,
+  "delivery_days": 14,
+  "rating": 4.5,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "round",
+  "description": "A Moroccan-style pierced pendant lamp.",
+  "room_types": [
+   "majlis"
+  ],
+  "placement_type": "center",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "formal",
+  "luxury_tier": "premium",
+  "region": "gcc"
+ },
+ {
+  "id": "bed-001",
+  "name": "Oslo Upholstered Queen Bed",
+  "brand": "Vanna Home",
+  "category": "bed",
+  "price": 899,
+  "mrp": 1079,
+  "width_cm": 165,
+  "depth_cm": 215,
+  "height_cm": 110,
+  "style_tags": [
+   "modern"
+  ],
+  "colors": [
+   "Ivory",
+   "Oak"
+  ],
+  "materials": [
+   "Linen",
+   "Oak"
+  ],
+  "in_stock": true,
+  "delivery_days": 10,
+  "rating": 4.7,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "A restful anchor for the bedroom.",
+  "room_types": [
+   "bedroom"
+  ],
+  "placement_type": "wall_hug",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "family",
+  "luxury_tier": "premium",
+  "region": "global"
+ },
+ {
+  "id": "bed-002",
+  "name": "Stockholm Double Bed",
+  "brand": "Studio Kova",
+  "category": "bed",
+  "price": 649,
+  "mrp": null,
+  "width_cm": 150,
+  "depth_cm": 205,
+  "height_cm": 100,
+  "style_tags": [
+   "scandinavian",
+   "minimal"
+  ],
+  "colors": [
+   "Oat",
+   "Walnut"
+  ],
+  "materials": [
+   "Oak"
+  ],
+  "in_stock": true,
+  "delivery_days": 10,
+  "rating": 4.5,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "A restful anchor for the bedroom.",
+  "room_types": [
+   "bedroom"
+  ],
+  "placement_type": "wall_hug",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "family",
+  "luxury_tier": "standard",
+  "region": "global"
+ },
+ {
+  "id": "bed-003",
+  "name": "Aspen King Bed",
+  "brand": "Studio Kova",
+  "category": "bed",
+  "price": 1190,
+  "mrp": 1399,
+  "width_cm": 200,
+  "depth_cm": 215,
+  "height_cm": 120,
+  "style_tags": [
+   "modern",
+   "classic"
+  ],
+  "colors": [
+   "Charcoal",
+   "Walnut"
+  ],
+  "materials": [
+   "Velvet",
+   "Walnut"
+  ],
+  "in_stock": true,
+  "delivery_days": 10,
+  "rating": 4.8,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "A restful anchor for the bedroom.",
+  "room_types": [
+   "bedroom"
+  ],
+  "placement_type": "wall_hug",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "family",
+  "luxury_tier": "luxury",
+  "region": "global"
+ },
+ {
+  "id": "bed-004",
+  "name": "Lumio Platform Queen",
+  "brand": "Vanna Home",
+  "category": "bed",
+  "price": 760,
+  "mrp": null,
+  "width_cm": 168,
+  "depth_cm": 210,
+  "height_cm": 95,
+  "style_tags": [
+   "minimal",
+   "modern"
+  ],
+  "colors": [
+   "Warm Grey",
+   "Oak"
+  ],
+  "materials": [
+   "Veneer",
+   "Oak"
+  ],
+  "in_stock": true,
+  "delivery_days": 10,
+  "rating": 4.4,
+  "attrs": {},
+  "image_url": "",
+  "is_walkable": false,
+  "shape": "rect",
+  "description": "A restful anchor for the bedroom.",
+  "room_types": [
+   "bedroom"
+  ],
+  "placement_type": "wall_hug",
+  "seating_capacity": 0,
+  "is_modular": false,
+  "formality": "family",
+  "luxury_tier": "standard",
+  "region": "global"
  }
 ]

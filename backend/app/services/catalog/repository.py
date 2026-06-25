@@ -6,6 +6,7 @@ from pathlib import Path
 
 from app.errors import PRODUCT_NOT_FOUND, UNKNOWN_PRODUCT, AppError
 from app.models.products import Product
+from app.services.catalog.backfill import backfill_product
 
 SORTS = {
     "relevance": lambda p: (-p.rating, p.price),
@@ -44,7 +45,8 @@ class CatalogRepository:
         product_dir = static_dir / "products"
         for entry in raw:
             entry.pop("source_image_url", None)
-            product = Product(**entry)
+            # migrate legacy rows -> fill taxonomy defaults + infer seating_capacity
+            product = Product(**backfill_product(entry))
             jpg = product_dir / f"{product.id}.jpg"
             svg = product_dir / f"{product.id}.svg"
             if jpg.exists():
@@ -75,6 +77,14 @@ class CatalogRepository:
     def in_category(self, category: str) -> list[Product]:
         return list(self._by_category.get(category, []))
 
+    def in_room_type(self, room_type: str) -> list[Product]:
+        """Products suitable for a room type (e.g. "living_room", "majlis").
+
+        Convenience for a future room-type-aware recommender pre-gate; the existing
+        living-room flow doesn't call it, so behaviour is unchanged today.
+        """
+        return [p for p in self.all() if room_type in p.room_types]
+
     def category_stats(self) -> dict[str, dict[str, float]]:
         return self._stats
 
@@ -91,6 +101,9 @@ class CatalogRepository:
         max_price: int | None = None,
         in_stock: bool | None = None,
         q: str | None = None,
+        room_type: str | None = None,
+        region: str | None = None,
+        luxury_tier: str | None = None,
         sort: str = "relevance",
         page: int = 1,
         page_size: int = 24,
@@ -98,6 +111,12 @@ class CatalogRepository:
         items = self._by_category.get(category, []) if category else self.all()
         if style:
             items = [p for p in items if style in p.style_tags]
+        if room_type:
+            items = [p for p in items if room_type in p.room_types]
+        if region:
+            items = [p for p in items if p.region == region]
+        if luxury_tier:
+            items = [p for p in items if p.luxury_tier == luxury_tier]
         if color:
             needle = color.lower()
             items = [p for p in items if any(needle in c.lower() for c in p.colors)]

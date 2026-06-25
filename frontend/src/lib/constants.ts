@@ -15,6 +15,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   lighting: "Lighting",
   storage: "Storage",
   decor: "Decor",
+  bed: "Bed",
   custom: "Your Item",
 };
 
@@ -29,6 +30,7 @@ export const CATEGORY_PLURALS: Record<Category, string> = {
   lighting: "Lighting",
   storage: "Storage",
   decor: "Decor",
+  bed: "Beds",
   custom: "Your Items",
 };
 
@@ -48,6 +50,8 @@ export const REASON_PHRASES: Record<string, string> = {
   corner_near_seating: "lights the seating corner",
   uses_remaining_wall: "uses a free wall",
   flexible_spot: "out of walking paths",
+  secondary_zone: "completes a second seating area",
+  headboard_to_wall: "headboard against the wall",
 };
 
 export const STYLE_LABELS: Record<string, string> = {
@@ -57,6 +61,11 @@ export const STYLE_LABELS: Record<string, string> = {
   boho: "Boho",
   classic: "Classic",
   minimal: "Minimal",
+  arabic: "Arabic",
+  saudi_traditional: "Saudi Traditional",
+  majlis: "Majlis",
+  modern_arabic: "Modern Arabic",
+  luxury: "Luxury",
 };
 
 /** Solid furniture tints for the canvas top views (warm only). */
