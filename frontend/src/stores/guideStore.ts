@@ -157,7 +157,10 @@ export const useGuideStore = create<GuideState>((set, get) => ({
     set({ planLoading: true });
     try {
       const res = await api.plan(room, prefs, items);
-      const steps = res.steps.length ? res.steps : DEFAULT_PLAN_STEPS;
+      // Majlis returns its own (currently empty) step list; never fall back to the family
+      // default steps for it. Living-room plans keep the existing fallback behaviour.
+      const isMajlis = prefs.room_type === "majlis";
+      const steps = res.steps.length ? res.steps : isMajlis ? [] : DEFAULT_PLAN_STEPS;
       set({
         planSteps: steps,
         planSource: res.plan_source,

@@ -19,6 +19,7 @@ from app.routers._common import resolve_placed, wall_label, zone_guidance_facts
 from app.services.ai import copy_service
 from app.services.catalog import get_repository
 from app.services.guide.flow import require_step, steps_from_plan, steps_with_status
+from app.services.majlis import plan as majlis_plan
 from app.services.plan import director
 from app.services.recommend.selector import Candidate, select_recommendations
 from app.services.spatial.analyze import analyze_room
@@ -157,6 +158,11 @@ async def step(step_key: str, req: StepRequest) -> StepResponse:
 @router.post("/plan", response_model=PlanResponse)
 async def plan(req: PlanRequest) -> PlanResponse:
     placed = resolve_placed(req.placed_items)
-    layout, source = await director.get_plan(req.room, req.preferences, placed)
+    # room_type dispatch: "majlis" routes to the separate Majlis engine; everything else
+    # (default "living_room") falls through to the unchanged family planner.
+    if req.preferences.room_type == "majlis":
+        layout, source = majlis_plan.get_majlis_plan(req.room, req.preferences, placed)
+    else:
+        layout, source = await director.get_plan(req.room, req.preferences, placed)
     steps = steps_from_plan(layout, placed)
     return PlanResponse(plan=layout, steps=steps, plan_source=source)  # type: ignore[arg-type]

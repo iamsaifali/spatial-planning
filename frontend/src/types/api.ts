@@ -89,12 +89,16 @@ export interface Product {
 }
 
 export type RoomPurpose = "family" | "entertaining" | "compact_living" | "work_lounge";
+// Top-level engine selector (separate from room_purpose, which flavours the living-room
+// engine). "majlis" routes to the perimeter-seating Majlis engine.
+export type RoomType = "living_room" | "majlis";
 
 export interface Preferences {
   styles: StyleTag[];
   budget_tier: "budget" | "mid" | "premium" | null;
   total_budget: number | null;
   colors: string[];
+  room_type: RoomType;
   room_purpose: RoomPurpose | null;
   seating_capacity: number | null;
 }
@@ -104,6 +108,7 @@ export const EMPTY_PREFERENCES: Preferences = {
   budget_tier: null,
   total_budget: null,
   colors: [],
+  room_type: "living_room",
   room_purpose: null,
   seating_capacity: null,
 };

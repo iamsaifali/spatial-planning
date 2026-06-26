@@ -8,7 +8,7 @@ import { useCurrencyStore } from "@/stores/currencyStore";
 import { useGuideStore } from "@/stores/guideStore";
 import { usePrefsStore } from "@/stores/prefsStore";
 import { useUiStore } from "@/stores/uiStore";
-import type { Preferences, StyleTag } from "@/types/api";
+import { EMPTY_PREFERENCES, type Preferences, type StyleTag } from "@/types/api";
 
 const COLOR_OPTIONS = ["Beige", "Ivory", "Warm Grey", "Charcoal", "Oak", "Walnut", "Olive", "Terracotta", "Rust", "Mustard"];
 // Cap at 9: a 3-sofa U covers ~9 seats and fills the conversation zone, so we don't offer
@@ -31,7 +31,9 @@ export function PreferencesDialog() {
   const currency = useCurrencyStore((s) => s.currency);
   const rates = useCurrencyStore((s) => s.config.rates);
   const rate = rates[currency] ?? 1.0;
-  const [draft, setDraft] = useState<Preferences>(stored);
+  // merge defaults so prefs persisted before room_type existed still carry it
+  const [draft, setDraft] = useState<Preferences>({ ...EMPTY_PREFERENCES, ...stored });
+  const isMajlis = draft.room_type === "majlis";
 
   if (!open) return null;
 
@@ -143,27 +145,48 @@ export function PreferencesDialog() {
         </section>
 
         <section>
-          <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-ink-soft">Room is mostly for</h3>
+          <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-ink-soft">Room type</h3>
           <div className="flex flex-wrap gap-1.5">
             {PURPOSES.map(({ key, label }) => (
               <ToggleChip
                 key={key}
-                active={draft.room_purpose === key}
-                onClick={() => setDraft((d) => ({ ...d, room_purpose: d.room_purpose === key ? null : key }))}
+                active={isMajlis ? false : draft.room_purpose === key}
+                onClick={() =>
+                  setDraft((d) => ({
+                    ...d,
+                    room_type: "living_room",
+                    room_purpose: d.room_type !== "majlis" && d.room_purpose === key ? null : key,
+                  }))
+                }
               >
                 {label}
               </ToggleChip>
             ))}
+            {/* Majlis is a separate room type (perimeter seating), selected alongside the
+                living-room purposes; choosing it disables the seat picker below. */}
+            <ToggleChip
+              active={isMajlis}
+              onClick={() =>
+                setDraft((d) =>
+                  d.room_type === "majlis"
+                    ? { ...d, room_type: "living_room" }
+                    : { ...d, room_type: "majlis", room_purpose: null },
+                )
+              }
+            >
+              Majlis
+            </ToggleChip>
           </div>
         </section>
 
-        <section>
+        <section aria-disabled={isMajlis} className={isMajlis ? "opacity-50" : undefined}>
           <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-ink-soft">Seats needed</h3>
           <div className="flex flex-wrap gap-1.5">
             {SEAT_OPTIONS.map((n) => (
               <ToggleChip
                 key={n}
-                active={draft.seating_capacity === n}
+                active={!isMajlis && draft.seating_capacity === n}
+                disabled={isMajlis}
                 onClick={() => setDraft((d) => ({ ...d, seating_capacity: d.seating_capacity === n ? null : n }))}
               >
                 {n}
@@ -171,8 +194,9 @@ export function PreferencesDialog() {
             ))}
           </div>
           <p className="mt-1.5 text-[11px] leading-4 text-ink-faint">
-            ZORY plans enough seating to fit this many people. Larger counts may need a
-            bigger room - ZORY will tell you if some seats won&apos;t fit.
+            {isMajlis
+              ? "A majlis seats around every wall automatically - no need to pick a count."
+              : "ZORY plans enough seating to fit this many people. Larger counts may need a bigger room - ZORY will tell you if some seats won't fit."}
           </p>
         </section>
       </div>
@@ -184,18 +208,21 @@ function ToggleChip({
   active,
   onClick,
   children,
+  disabled = false,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={active}
       className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
         active ? "border-accent bg-accent text-accent-ink" : "border-line bg-surface text-ink-soft hover:border-ink-faint"
-      }`}
+      } ${disabled ? "cursor-not-allowed hover:border-line" : ""}`}
     >
       {children}
     </button>
