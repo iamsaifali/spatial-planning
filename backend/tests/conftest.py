@@ -72,10 +72,45 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "")
     get_settings.cache_clear()
     from app.main import create_app
+    from app.services.plan.director import clear_cache as clear_plan_cache
     from app.services.spatial.analyze import clear_cache
 
     clear_cache()
+    clear_plan_cache()
     app = create_app()
     with TestClient(app) as c:
         yield c
     get_settings.cache_clear()
+
+
+# Canned, schema-valid family plan for exercising the LLM-only planning path offline.
+_CANNED_PLAN = {
+    "archetype": "family",
+    "rationale": "test plan",
+    "items": [
+        {"category": "sofa", "quantity": 1, "priority": 1, "tier": "essential"},
+        {"category": "tv_unit", "quantity": 1, "priority": 2, "tier": "essential"},
+        {"category": "rug", "quantity": 1, "priority": 3, "tier": "essential"},
+        {"category": "coffee_table", "quantity": 1, "priority": 4, "tier": "essential"},
+        {"category": "side_table", "quantity": 2, "priority": 5, "tier": "non_essential"},
+        {"category": "accent_chair", "quantity": 1, "priority": 6, "tier": "non_essential"},
+        {"category": "lighting", "quantity": 2, "priority": 7, "tier": "non_essential"},
+        {"category": "storage", "quantity": 1, "priority": 8, "tier": "non_essential"},
+        {"category": "decor", "quantity": 2, "priority": 9, "tier": "non_essential"},
+    ],
+}
+
+
+@pytest.fixture()
+def llm_plan(monkeypatch):
+    """Force the Director's LLM call to return the canned plan (and let copy fall back
+    to templates), so the LLM-only planning path can be exercised without an API key."""
+    async def _fake(kind, facts, instruction):
+        return {**_CANNED_PLAN} if kind == "layout_plan" else None
+
+    from app.services.ai import copy_service
+    from app.services.plan import director
+
+    monkeypatch.setattr(copy_service, "_llm_generate", _fake)
+    director.clear_cache()
+    return _CANNED_PLAN

@@ -19,6 +19,8 @@ const NO_FIT_HINTS: Record<string, string> = {
   NO_FIT: "Nothing in this category fits the available space.",
   no_zones: "There's no clear spot for this category in the current layout.",
   empty_category: "No products available in this category yet.",
+  SKIPPED_TIGHT_SPACE:
+    "Left out to keep the room comfortable — there's no clear spot for it without crowding a walkway. It's optional, so the layout skips it.",
 };
 
 export function ProductPanelContent() {
@@ -28,14 +30,21 @@ export function ProductPanelContent() {
   const stepLoading = useGuideStore((s) => s.stepLoading);
   const fetchStep = useGuideStore((s) => s.fetchStep);
 
+  const seatingNote = useGuideStore((s) => s.seatingNote);
+
   const step = stepCache[currentStepKey]?.data;
   const recs = step?.recommendations ?? [];
-  const emptySlots = step?.empty_slots ?? [];
-  const hero = recs.find((r) => r.slot === "best_match") ?? recs[0];
-  const others = recs.filter((r) => r !== hero);
+  const noFit = step?.no_fit ?? null;
+  const hero = recs[0];
+  const others = recs.slice(1);
 
   return (
     <div className="flex h-full flex-col">
+      {seatingNote && (
+        <div className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+          {seatingNote}
+        </div>
+      )}
       <div className="flex gap-1 border-b border-line p-2">
         {(["recommended", "all"] as const).map((t) => (
           <button
@@ -55,9 +64,7 @@ export function ProductPanelContent() {
         <div className="panel-scroll flex-1 space-y-3 overflow-y-auto p-3">
           {step && recs.length > 0 && (
             <p className="text-xs leading-5 text-ink-soft">
-              {recs.length === 3
-                ? `Three options that fit your ${CATEGORY_LABELS[currentStepKey].toLowerCase()} zone:`
-                : `${recs.length} option${recs.length > 1 ? "s" : ""} fit this spot:`}
+              {`${recs.length} ${CATEGORY_LABELS[currentStepKey].toLowerCase()} option${recs.length > 1 ? "s" : ""} that fit your space — best match first:`}
             </p>
           )}
           {step && step.quantity > 1 && (
@@ -73,16 +80,16 @@ export function ProductPanelContent() {
           )}
           {hero && <RecommendationCard rec={hero} hero />}
           {others.map((rec) => (
-            <RecommendationCard key={rec.slot} rec={rec} />
+            <RecommendationCard key={rec.product.id} rec={rec} />
           ))}
           {step && recs.length === 0 && (
             <EmptyState
               icon={SearchX}
               title="No good fit found"
               body={
-                NO_FIT_HINTS[String(emptySlots[0]?.reason ?? "NO_FIT")] +
-                (emptySlots[0]?.hints?.smallest_in_category_cm
-                  ? ` Smallest option is ${emptySlots[0].hints.smallest_in_category_cm} cm; the zone is ${emptySlots[0].hints.zone_cm} cm.`
+                NO_FIT_HINTS[String(noFit?.reason ?? "NO_FIT")] +
+                (noFit?.hints?.smallest_in_category_cm
+                  ? ` Smallest option is ${noFit.hints.smallest_in_category_cm} cm; the zone is ${noFit.hints.zone_cm} cm.`
                   : "")
               }
               action={
@@ -98,12 +105,6 @@ export function ProductPanelContent() {
               title="Recommendations load here"
               body="Draw or adjust your room and ZORY will pick products that fit."
             />
-          )}
-          {step && emptySlots.length > 0 && recs.length > 0 && (
-            <p className="rounded-md bg-surface-2 p-2.5 text-[11px] leading-4 text-ink-soft">
-              {emptySlots.length} slot{emptySlots.length > 1 ? "s" : ""} skipped:{" "}
-              {NO_FIT_HINTS[String(emptySlots[0]?.reason ?? "NO_FIT")]}
-            </p>
           )}
           {step && (
             <button

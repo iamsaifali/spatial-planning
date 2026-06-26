@@ -50,6 +50,7 @@ R_FRONT_LEGS_ON_RUG = "front_legs_on_rug"
 R_EASY_REACH = "within_easy_reach"
 R_CONVERSATION_ANGLE = "conversation_angle"
 R_CORNER_LIGHT = "corner_near_seating"
+R_BESIDE_SEATING = "beside_seating"
 R_REMAINING_WALL = "uses_remaining_wall"
 R_FLEXIBLE_SPOT = "flexible_spot"
 
@@ -62,6 +63,17 @@ def _find_placed(placed: list[PlacedProduct], category: str) -> PlacedProduct | 
         if product.category == category:
             return item, product
     return None
+
+
+def _sofa_group_front(placed: list[PlacedProduct]) -> Vec | None:
+    """Centre of the seating group: the mean of each sofa's front-edge midpoint. For a
+    single sofa this is just that sofa's front; for an L/U it is the open conversation
+    centre, so the rug and coffee table anchor to the group rather than one sofa."""
+    sofas = [(i, p) for i, p in placed if p.category == "sofa"]
+    if not sofas:
+        return None
+    pts = [add((i.x, i.y), front_vector(i.rotation_deg), p.depth_cm / 2.0) for i, p in sofas]
+    return (sum(x for x, _y in pts) / len(pts), sum(y for _x, y in pts) / len(pts))
 
 
 def _placed_blockers(placed: list[PlacedProduct], buffer_cm: float = 5.0):
@@ -78,6 +90,20 @@ def _corridor_overlap_ratio(analysis: RoomAnalysis, poly: Polygon) -> float:
         return 0.0
     union = unary_union([c.polygon for c in analysis.corridors])
     return poly.intersection(union).area / max(poly.area, 1e-9)
+
+
+def _window_keepout(analysis: RoomAnalysis):
+    """Floor strips in front of windows: a tall floor item (plant, floor lamp) parked
+    here blocks the glass, so decor/lighting zones overlapping it are dropped."""
+    polys = [strip for strip, _sill in analysis.window_strips.values()]
+    return unary_union(polys) if polys else Polygon()
+
+
+def _drop_window_blocking(analysis: RoomAnalysis, zones: list[ZoneData]) -> list[ZoneData]:
+    keepout = _window_keepout(analysis)
+    if keepout.is_empty:
+        return zones
+    return [z for z in zones if z.polygon.intersection(keepout).area < 300.0]
 
 
 def _window_overlap_ratio(wall: WallData, lo: float, hi: float) -> float:
@@ -127,6 +153,23 @@ class _BandCandidate:
     extent: float
 
 
+def _subtract_intervals(a: float, b: float, occupied: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """[a,b] minus the occupied sub-intervals -> the clear sub-intervals."""
+    clear = [(a, b)]
+    for lo, hi in occupied:
+        nxt: list[tuple[float, float]] = []
+        for ca, cb in clear:
+            if hi <= ca or lo >= cb:
+                nxt.append((ca, cb))
+                continue
+            if lo > ca:
+                nxt.append((ca, lo))
+            if hi < cb:
+                nxt.append((hi, cb))
+        clear = nxt
+    return clear
+
+
 def _wall_band_candidates(
     analysis: RoomAnalysis,
     depth: float,
@@ -146,17 +189,37 @@ def _wall_band_candidates(
                 add(wall.point_at(b), wall.normal, 2.0 + depth),
                 add(wall.point_at(a), wall.normal, 2.0 + depth),
             )
-            clipped = band.intersection(analysis.polygon).difference(analysis.keep_clear_union)
+            region = band.intersection(analysis.polygon).difference(analysis.keep_clear_union)
+            if region.is_empty:
+                continue
+            # A placed item shallower than the band leaves thin strips beside it, so the
+            # band stays one connected piece and its full extent reads as clear - which let
+            # a 2nd item land ON TOP. Instead remove each blocker's wall-axis span outright,
+            # splitting the segment into genuinely clear sub-intervals.
+            occupied: list[tuple[float, float]] = []
             if blockers is not None and not blockers.is_empty:
-                clipped = clipped.difference(blockers)
-            for piece in pieces_of(clipped):
-                lo, hi = extent_along(piece, wall.start, wall.dir)
-                extent = hi - lo
-                if extent < min_len:
+                for piece in pieces_of(region.intersection(blockers)):
+                    lo, hi = extent_along(piece, wall.start, wall.dir)
+                    occupied.append((lo - 4.0, hi + 4.0))
+            for lo, hi in _subtract_intervals(a, b, occupied):
+                if hi - lo < min_len:
                     continue
-                if piece.area < extent * depth * 0.45:
+                sub = quad(
+                    add(wall.point_at(lo), wall.normal, 2.0),
+                    add(wall.point_at(hi), wall.normal, 2.0),
+                    add(wall.point_at(hi), wall.normal, 2.0 + depth),
+                    add(wall.point_at(lo), wall.normal, 2.0 + depth),
+                )
+                piece = largest_piece(
+                    sub.intersection(analysis.polygon).difference(analysis.keep_clear_union)
+                )
+                if piece is None:
                     continue
-                out.append(_BandCandidate(wall=wall, lo=lo, hi=hi, piece=piece, extent=extent))
+                elo, ehi = extent_along(piece, wall.start, wall.dir)
+                extent = ehi - elo
+                if extent < min_len or piece.area < extent * depth * 0.45:
+                    continue
+                out.append(_BandCandidate(wall=wall, lo=elo, hi=ehi, piece=piece, extent=extent))
     return out
 
 
@@ -198,7 +261,77 @@ def _rank(zones: list[ZoneData], limit: int = 3) -> list[ZoneData]:
 VIEWING_DEPTH_CM = 400.0  # past this room depth, float the sofa in to keep a sane TV distance
 
 
+def _sofa_back_wall(analysis: RoomAnalysis, sofa_item: PlacedItem) -> int:
+    """Infer which wall a placed sofa backs onto: its front faces that wall's inward normal."""
+    f = front_vector(sofa_item.rotation_deg)
+    return max(range(len(analysis.walls)), key=lambda i: dot(f, analysis.walls[i].normal))
+
+
+def _additional_sofa_zones(
+    analysis: RoomAnalysis, placed: list[PlacedProduct], placed_sofas: list[PlacedProduct],
+    stats: CategoryStats,
+) -> list[ZoneData]:
+    """L/U return: FLANK the primary sofa's ends with perpendicular arms facing inward,
+    forming a tight group around the open conversation centre. The arm is anchored to the
+    primary sofa's ACTUAL position (not a far wall) so the group stays together even when
+    the primary has floated into a big room - a wall-anchored arm would strand it metres
+    away. One arm per side; the side already holding a sofa is skipped. Empty -> the room
+    can't take another sofa (capacity then falls to accent chairs)."""
+    s = stats.get("sofa", {})
+    arm_len = s.get("max_w", 240.0)
+    arm_depth = s.get("max_d", 105.0) + 6.0
+    primary_item, primary_prod = placed_sofas[0]
+    pc = (primary_item.x, primary_item.y)
+    pf = front_vector(primary_item.rotation_deg)  # primary faces the TV/centre
+    pw = width_axis(primary_item.rotation_deg)
+    half_w = primary_prod.width_cm / 2.0
+    half_d = primary_prod.depth_cm / 2.0
+    blockers = _placed_blockers(placed)
+    # sides (relative to the primary's width axis) that already hold an arm
+    occupied = {
+        1.0 if dot(sub2((it.x, it.y), pc), pw) >= 0 else -1.0
+        for it, _p in placed_sofas[1:]
+    }
+
+    zones: list[ZoneData] = []
+    for idx, side in enumerate((-1.0, 1.0)):
+        if side in occupied:
+            continue  # one arm per side
+        facing = (pw[0] * -side, pw[1] * -side)  # face inward toward the conversation centre
+        # anchor at the primary's BACK corner and run the arm forward, so it aligns with
+        # the primary's depth (forms the L corner) instead of reaching on toward the TV
+        # wall - an arm anchored at the front corner over-extends and crowds the TV.
+        corner = add(add(pc, pw, side * half_w), pf, -half_d)  # primary's BACK corner this side
+        # Keep the ~20 cm lateral gap (they read as two distinct sofas, not one mass), but
+        # drop the perpendicular arm DOWNWARD (forward, toward the TV) so its back edge sits
+        # near the primary's FRONT rather than level with the primary's back. The arm then
+        # steps down from the corner - it "starts where the primary ends" - instead of
+        # running alongside the primary's depth, which read as an overlap.
+        # drop so the arm's back edge sits at the primary's FRONT (corner_pf + 2*half_d):
+        # forward = (arm_len/2) shifts the arm's centre forward from the back corner; the
+        # extra 2*half_d steps it down past the primary's depth.
+        forward = arm_len / 2.0 + 2.0 * half_d
+        center = add(add(corner, pw, side * (arm_depth / 2.0 + 22.0)), pf, forward)
+        rotation = rotation_for_normal(facing)
+        rect = item_polygon(center[0], center[1], arm_len, arm_depth, rotation)
+        piece = largest_piece(rect.intersection(analysis.polygon).difference(blockers))
+        if piece is None or piece.area < arm_len * arm_depth * 0.65:
+            continue  # no room beside the primary for an arm on this side
+        z = _frame_zone(
+            "sofa", idx, piece, 0.92 - 0.02 * idx, rotation,
+            center, facing, pf, arm_depth, arm_len,
+            [R_ANCHORS_SEATING, R_CONVERSATION_ANGLE], "beside_primary_sofa", kind="free",
+        )
+        z.place_at_origin = True  # keep the 20 cm gap; don't drift to the clipped centroid
+        zones.append(z)
+    return _rank(zones)
+
+
 def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
+    placed_sofas = [(i, p) for i, p in placed if p.category == "sofa"]
+    if placed_sofas:  # 2nd/3rd sofa -> L/U return on a perpendicular wall
+        return _additional_sofa_zones(analysis, placed, placed_sofas, stats)
+
     s = stats.get("sofa", {})
     depth = s.get("max_d", 105.0) + 10.0
     min_w = s.get("min_w", 160.0)
@@ -305,7 +438,12 @@ def _tv_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Catego
             reasons.append(R_FACES_SOFA)
         if facing and 250.0 <= d_wall <= 400.0:
             reasons.append(R_IDEAL_VIEWING_DIST)
-        zones.append(_band_zone(analysis, cand, "tv_unit", i, score, reasons, depth))
+        z = _band_zone(analysis, cand, "tv_unit", i, score, reasons, depth)
+        # centre the TV on the sofa's projection along the wall, not the wall midpoint -
+        # otherwise an off-centre sofa gets a TV placed beside it instead of in front.
+        if facing and cand.hi > cand.lo:
+            z.anchor_t = max(0.0, min(1.0, (proj - cand.lo) / (cand.hi - cand.lo)))
+        zones.append(z)
     return _rank(zones)
 
 
@@ -365,13 +503,61 @@ def _free_zone_center(analysis: RoomAnalysis, category: str, size_w: float, size
 
 def _rug_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
     s = stats.get("rug", {})
-    sofa = _find_placed(placed, "sofa")
-    if sofa is None:
+    sofas = [(i, p) for i, p in placed if p.category == "sofa"]
+    if not sofas:
         return _free_zone_center(analysis, "rug", s.get("max_w", 300.0), s.get("max_d", 240.0))
 
-    item, product = sofa
+    item, product = sofas[0]  # the primary sofa sets the rug's orientation
     f = front_vector(item.rotation_deg)
     w = width_axis(item.rotation_deg)
+
+    if len(sofas) >= 2:
+        # L/U: place the rug IN FRONT of the seating group (the open conversation quadrant
+        # the sofas face), with each sofa's front edge tucked ~TUCK cm onto it (front legs
+        # on rug) - NOT buried under the seating. The rug stays axis-aligned to the primary:
+        # f = primary's forward, w = its width axis. This is a FRAME zone anchored at `origin`
+        # whose -f edge is the rug's back edge; anchor_pose then pushes it forward by the
+        # REAL rug's depth/2, so the primary front tucks exactly TUCK regardless of which rug
+        # is chosen. Laterally (along w): for an L (arm on one side) we shift the rug toward
+        # that arm so the arm's front tucks too; for a U (arms both sides) we centre on the
+        # primary's width. est_w estimates the rug width (the real one is unknown until a
+        # product is picked) to set the lateral shift.
+        TUCK = 25.0
+        est_w = product.width_cm + 70.0  # rug ~ primary width + overhang
+        primary_front = add((item.x, item.y), f, product.depth_cm / 2.0)
+        fc = dot(primary_front, f) - TUCK  # rug BACK edge tucks the primary front by TUCK
+
+        arm_sides = set()
+        arm_wc = None
+        for arm_i, arm_p in sofas[1:]:
+            fa = front_vector(arm_i.rotation_deg)
+            side = 1.0 if dot(fa, w) >= 0 else -1.0  # +w-ward direction the arm faces
+            arm_sides.add(side)
+            arm_front = add((arm_i.x, arm_i.y), fa, arm_p.depth_cm / 2.0)
+            arm_wc = dot(arm_front, w) + side * (est_w / 2.0 - TUCK)
+        wc = arm_wc if (len(arm_sides) == 1 and arm_wc is not None) else dot((item.x, item.y), w)
+
+        origin = (fc * f[0] + wc * w[0], fc * f[1] + wc * w[1])
+        lat_len = max(product.width_cm + 70.0, s.get("max_w", 350.0) + 10.0)
+        fwd_len = s.get("max_d", 250.0) + 20.0
+        inner = analysis.polygon.buffer(-12.0)
+        # display/fit polygon: the rug band from the back edge forward
+        rect = quad(
+            add(origin, w, -lat_len / 2.0),
+            add(origin, w, lat_len / 2.0),
+            add(add(origin, w, lat_len / 2.0), f, fwd_len),
+            add(add(origin, w, -lat_len / 2.0), f, fwd_len),
+        )
+        piece = largest_piece(rect.intersection(inner if not inner.is_empty else analysis.polygon))
+        if piece is None or piece.area < 5_000.0:
+            return []
+        return [
+            _frame_zone(
+                "rug", 0, piece, 0.92, item.rotation_deg, origin, f, w, fwd_len, lat_len,
+                [R_FRONT_LEGS_ON_RUG, R_ANCHORS_SEATING], "in_front_of_group",
+            )
+        ]
+
     sofa_front = add((item.x, item.y), f, product.depth_cm / 2.0)
     near = add(sofa_front, f, -25.0)  # rug slides 25 cm under the sofa front
     forward_clear = first_boundary_hit(analysis.polygon, sofa_front, f)
@@ -406,9 +592,12 @@ def _coffee_table_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], sta
     item, product = sofa
     f = front_vector(item.rotation_deg)
     w = width_axis(item.rotation_deg)
+    # Anchor on the PRIMARY sofa's own front, centred on its width - the group front
+    # skews toward a single L-arm and pulls the table off-centre. 45 cm of clearance
+    # keeps it reachable without tripping the too-tight / too-far warnings.
     sofa_front = add((item.x, item.y), f, product.depth_cm / 2.0)
-    origin = add(sofa_front, f, 40.0)
-    fwd_len = 75.0  # table near edge sits 40..115 cm from the sofa
+    origin = add(sofa_front, f, 45.0)
+    fwd_len = 75.0  # table near edge sits ~45 cm from the sofa
     lat_len = max(product.width_cm - 60.0, 70.0)
 
     rect = quad(
@@ -433,60 +622,170 @@ def _coffee_table_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], sta
     ]
 
 
+
+
+def _existing_near_sofas(
+    placed: list[PlacedProduct], sofas: list[PlacedProduct], category: str,
+) -> list[int]:
+    """Count already-placed items of `category`, attributed to their nearest sofa.
+    Lets a per-sofa generator deprioritise sofas that are already served so the next
+    instance spreads to an unserved sofa (the UI re-queries after each placement)."""
+    centers = [(i.x, i.y) for i, _p in sofas]
+    counts = [0] * len(centers)
+    if not centers:
+        return counts
+    for it, p in placed:
+        if p.category != category:
+            continue
+        k = min(range(len(centers)), key=lambda j: dist((it.x, it.y), centers[j]))
+        counts[k] += 1
+    return counts
+
+
 def _side_table_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
-    sofa = _find_placed(placed, "sofa")
-    if sofa is None:
+    sofas = [(i, p) for i, p in placed if p.category == "sofa"]
+    if not sofas:
         return _corner_spots(analysis, placed, "side_table", 70.0, max_zones=2)
 
-    item, product = sofa
-    f = front_vector(item.rotation_deg)
-    w = width_axis(item.rotation_deg)
     blockers = _placed_blockers(placed)
+    served = _existing_near_sofas(placed, sofas, "side_table")
     zones: list[ZoneData] = []
-    for idx, side in enumerate((-1.0, 1.0)):
-        origin = add((item.x, item.y), w, side * (product.width_cm / 2.0 + 4.0))
-        rect = item_polygon(*add(origin, w, side * 35.0), 78.0, max(product.depth_cm, 80.0), item.rotation_deg)
-        clipped = rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers)
-        piece = largest_piece(clipped)
-        if piece is None or piece.area < 1_500.0:
-            continue
-        zones.append(
-            _frame_zone(
-                "side_table", idx, piece, 0.85 if side < 0 else 0.84, item.rotation_deg,
-                origin, (w[0] * side, w[1] * side), f, 80.0, 80.0,
-                [R_EASY_REACH], f"sofa_{'left' if side < 0 else 'right'}", kind="side",
+    idx = 0
+    for s_idx, (item, product) in enumerate(sofas):
+        f = front_vector(item.rotation_deg)
+        w = width_axis(item.rotation_deg)
+        for side in (-1.0, 1.0):
+            origin = add((item.x, item.y), w, side * (product.width_cm / 2.0 + 4.0))
+            tbl_d = max(product.depth_cm, 80.0)
+            rect = item_polygon(*add(origin, w, side * 35.0), 78.0, tbl_d, item.rotation_deg)
+            clipped = rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers)
+            piece = largest_piece(clipped)
+            # require the spot to be MOSTLY clear - a heavily-clipped end abuts another
+            # sofa (the inner L corner) or a wall, where a table would overlap. Skip it.
+            if piece is None or piece.area < 0.55 * 78.0 * tbl_d:
+                continue
+            # a sofa that already has a side table drops behind any sofa with none, so
+            # the 2nd table goes to the OTHER sofa instead of crowding the first.
+            score = (0.85 if side < 0 else 0.84) - 0.40 * served[s_idx]
+            zones.append(
+                _frame_zone(
+                    "side_table", idx, piece, score, item.rotation_deg,
+                    origin, (w[0] * side, w[1] * side), f, 80.0, 80.0,
+                    [R_EASY_REACH], f"sofa{s_idx}_{'left' if side < 0 else 'right'}", kind="side",
+                )
             )
-        )
+            idx += 1
     return _rank(zones, limit=2)
 
 
+def _tv_view_corridor(analysis: RoomAnalysis, placed: list[PlacedProduct]) -> Polygon | None:
+    """The TV->sofa sightline as a polygon (same construction as validate.py's G5),
+    widened a little so flanking items stay clearly off the view. None if there is
+    no TV+sofa pair yet."""
+    tv = _find_placed(placed, "tv_unit")
+    sofas = [(i, p) for i, p in placed if p.category == "sofa"]
+    if tv is None or not sofas:
+        return None
+    ti, tp = tv
+    f = front_vector(ti.rotation_deg)
+    w = width_axis(ti.rotation_deg)
+    tv_front = add((ti.x, ti.y), f, tp.depth_cm / 2.0)
+    best_len = max(dot(sub2((i.x, i.y), tv_front), f) for i, _p in sofas)
+    if best_len < 100.0:  # no sofa actually in front of the TV
+        return None
+    half = tp.width_cm / 2.0 + 10.0  # small margin around the literal TV->sofa view band
+    return quad(
+        add(tv_front, w, -half),
+        add(tv_front, w, half),
+        add(add(tv_front, w, half), f, best_len),
+        add(add(tv_front, w, -half), f, best_len),
+    )
+
+
 def _accent_chair_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
-    sofa = _find_placed(placed, "sofa")
-    if sofa is None:
+    sofas = [(i, p) for i, p in placed if p.category == "sofa"]
+    group_front = _sofa_group_front(placed)
+    if not sofas or group_front is None:
         return _corner_spots(analysis, placed, "accent_chair", 110.0, max_zones=2)
 
-    item, product = sofa
+    item, product = sofas[0]  # flank the primary (TV-facing) sofa
     f = front_vector(item.rotation_deg)
-    seat_anchor = add((item.x, item.y), f, product.depth_cm / 2.0 + 60.0)
+    w = width_axis(item.rotation_deg)
     blockers = _placed_blockers(placed)
-    zones: list[ZoneData] = []
-    for idx, ang in enumerate((-55.0, 55.0)):
-        g = rotate_vec(f, ang)
-        center = add(seat_anchor, g, 170.0)
-        rotation = rotation_for_normal(unit(*sub2(seat_anchor, center)))
-        rect = item_polygon(center[0], center[1], 120.0, 120.0, rotation)
-        clipped = rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers)
-        piece = largest_piece(clipped)
-        if piece is None or piece.area < 4_000.0:
-            continue
-        corridor_pen = _corridor_overlap_ratio(analysis, piece)
-        zones.append(
-            _frame_zone(
-                "accent_chair", idx, piece, 0.8 - 0.2 * corridor_pen, rotation,
-                center, unit(*sub2(seat_anchor, center)), g, 110.0, 110.0,
-                [R_CONVERSATION_ANGLE], "beside_seating", kind="free",
-            )
+    corridor = _tv_view_corridor(analysis, placed)
+    CHAIR = 120.0
+    tv = _find_placed(placed, "tv_unit")
+    corridor_half = (tv[1].width_cm / 2.0 + 10.0) if tv is not None else 0.0
+    # lateral offset: clear the TV sightline AND leave ~50 cm to the sofa (no cramped warning)
+    lateral = max(product.width_cm / 2.0 + 95.0, corridor_half + CHAIR / 2.0 + 15.0)
+    sofa_front = add((item.x, item.y), f, product.depth_cm / 2.0)
+    coffee = _find_placed(placed, "coffee_table")
+    gc = (coffee[0].x, coffee[0].y) if coffee is not None else add(sofa_front, f, 45.0)  # conversation centre
+    placed_chairs = [(i.x, i.y) for i, p in placed if p.category == "accent_chair"]
+
+    def make_zone(center: Vec, idx: int) -> ZoneData | None:
+        if any(dist(center, c) < 90.0 for c in placed_chairs):
+            return None  # don't stack on an existing chair (but 90 cm+ apart is fine)
+        toward = unit(*sub2(gc, center))
+        rotation = rotation_for_normal(toward)
+        rect = item_polygon(center[0], center[1], CHAIR, CHAIR, rotation)
+        piece = largest_piece(
+            rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers)
         )
+        if piece is None or piece.area < 0.7 * CHAIR * CHAIR:
+            return None
+        if corridor is not None and piece.intersection(corridor).area > 600.0:
+            return None  # never in the TV->sofa view
+        corridor_pen = _corridor_overlap_ratio(analysis, piece)
+        return _frame_zone(
+            "accent_chair", idx, piece, 0.82 - 0.3 * corridor_pen, rotation,
+            center, toward, (0.0, 1.0), CHAIR, CHAIR, [R_CONVERSATION_ANGLE], "beside_seating", kind="free",
+        )
+
+    # Only an arm SOFA makes a side off-limits for flanking. An already-placed chair does
+    # NOT block its side (the make_zone 90 cm guard stops actual stacking) - so a 2nd chair
+    # can join the SAME open side as a pair instead of being stranded across the room.
+    taken = {
+        1.0 if dot(sub2((oi.x, oi.y), (item.x, item.y)), w) >= 0 else -1.0
+        for oi, op in placed
+        if op.category == "sofa" and (oi.x, oi.y) != (item.x, item.y)
+    }
+    free_sides = [s for s in (-1.0, 1.0) if s not in taken]
+    zones: list[ZoneData] = []
+    idx = 0
+    # Flank the open side(s). Both sides free (single sofa) -> one chair per side, a
+    # symmetric pair. Only ONE open side (an L/U arm holds the other) -> put BOTH chairs on
+    # that side: one beside the sofa and one a step forward toward the conversation centre,
+    # so they stay a tight pair facing the group rather than one being flung far away.
+    for side in free_sides:
+        offsets = (30.0,) if len(free_sides) == 2 else (30.0, 30.0 + CHAIR + 35.0)
+        for fwd in offsets:
+            z = make_zone(add(add(sofa_front, w, side * lateral), f, fwd), idx)
+            if z is not None:
+                zones.append(z)
+                idx += 1
+    # Fallback for a closed-in U (no open side): mirror each arm across the conversation
+    # centre so a chair lands opposite it, near the group (near-true reflection, just 5%
+    # past the mirror; the corridor check still keeps it off the TV sightline).
+    if len(zones) < 2:
+        for arm_i, _arm_p in sofas[1:]:
+            mx = gc[0] + 1.05 * (gc[0] - arm_i.x)
+            my = gc[1] + 1.05 * (gc[1] - arm_i.y)
+            z = make_zone((mx, my), idx)
+            if z is not None:
+                zones.append(z)
+                idx += 1
+    # Last resort (e.g. a closed-in U where every flank/mirror collides with a sofa):
+    # corners nearest the seating, clear of the TV sightline - a valid, non-overlapping
+    # spot beats falling back to the room centre on top of the group.
+    if not zones:
+        corner_zones = _corner_spots(
+            analysis, placed, "accent_chair", CHAIR, max_zones=2,
+            near=group_front, near_radius=analysis.diag_cm, reasons=[R_CONVERSATION_ANGLE],
+        )
+        if corridor is not None:
+            corner_zones = [z for z in corner_zones if z.polygon.intersection(corridor).area < 600.0]
+        zones = corner_zones
     return _rank(zones, limit=2)
 
 
@@ -571,13 +870,59 @@ def _long_wall_spots(
     return zones
 
 
+def _beside_seating_spots(
+    analysis: RoomAnalysis, placed: list[PlacedProduct], category: str,
+    size: float, reasons: list[str], score: float,
+) -> list[ZoneData]:
+    """A floor lamp / accent piece LEVEL BESIDE a seat - next to a sofa arm or an accent
+    chair, in the open side (not in front of the seats, not behind, not in the TV view).
+    A spot a side table already holds is skipped (the piece comes back clipped), so the
+    item finds a genuinely free space beside the seating - else it falls to a corner."""
+    seats = [(i, p) for i, p in placed if p.category in ("sofa", "accent_chair")]
+    blockers = _placed_blockers(placed, buffer_cm=6.0)
+    corridor = _tv_view_corridor(analysis, placed)  # a floor lamp must not block the TV
+    placed_here = [(i.x, i.y) for i, p in placed if p.category == category]
+    zones: list[ZoneData] = []
+    idx = 0
+    for item, product in seats:
+        w = width_axis(item.rotation_deg)
+        for side in (-1.0, 1.0):
+            pt = add((item.x, item.y), w, side * (product.width_cm / 2.0 + size / 2.0 + 10.0))
+            if any(dist(pt, c) < size + 30.0 for c in placed_here):
+                continue  # already a lamp/plant here - spread them out
+            rect = item_polygon(pt[0], pt[1], size, size, 0)
+            clipped = rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers)
+            piece = largest_piece(clipped)
+            # require the spot MOSTLY clear: a side table at this seat-end clips it heavily
+            if piece is None or piece.area < size * size * 0.6:
+                continue
+            if corridor is not None and piece.intersection(corridor).area > 300.0:
+                continue  # would sit in the TV->sofa sightline
+            # a lamp beside a small accent chair reads better than one stranded by a wide
+            # sofa whose ends are taken; nudge chair-side spots slightly higher.
+            bonus = 0.05 if product.category == "accent_chair" else 0.0
+            zones.append(
+                _frame_zone(
+                    category, 200 + idx, piece, score - 0.04 * side + bonus,
+                    0.0, pt, (0.0, 1.0), (1.0, 0.0), size, size, reasons, "beside_seat", kind="free",
+                )
+            )
+            idx += 1
+    return _rank(zones, limit=2)
+
+
 def _lighting_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
     sofa = _find_placed(placed, "sofa")
     near = None
+    secondary: list[ZoneData] = []
     if sofa is not None:
         item, product = sofa
         f = front_vector(item.rotation_deg)
         near = add((item.x, item.y), f, product.depth_cm / 2.0)
+        # a modern family room wants the floor lamp BESIDE the seating (a reading lamp by
+        # the sofa), not parked in a corner - so score it above the corner spots. The 1st
+        # lamp lands beside the seating; only a 2nd spills to a corner.
+        secondary = _beside_seating_spots(analysis, placed, "lighting", 40.0, [R_BESIDE_SEATING], 1.05)
     # all corners, ranked by proximity to the seating (no hard radius cut-off)
     zones = _corner_spots(
         analysis, placed, "lighting", 55.0, max_zones=8,
@@ -585,9 +930,10 @@ def _lighting_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: 
     )
     if analysis.area_cm2 >= BIG_ROOM_CM2:
         zones += _long_wall_spots(analysis, placed, "lighting", 55.0, [R_CORNER_LIGHT])
+    zones += secondary
     if not zones:
         zones = _corner_spots(analysis, placed, "lighting", 55.0, max_zones=4, reasons=[R_CORNER_LIGHT])
-    return _rank(zones, limit=4)
+    return _rank(_drop_window_blocking(analysis, zones), limit=4)
 
 
 def _storage_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
@@ -598,15 +944,24 @@ def _storage_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: C
     cands = _wall_band_candidates(analysis, depth, min_w, use_solid=True, blockers=blockers)
     if not cands:
         return []
-    max_extent = max(c.extent for c in cands)
-    zones = [
-        _band_zone(
-            analysis, cand, "storage", i,
-            0.7 * (cand.extent / max_extent) + 0.3 * _entry_distance_norm(analysis, cand.piece),
-            [R_REMAINING_WALL], depth,
+    corridor = _tv_view_corridor(analysis, placed)  # a tall cabinet must not block the TV
+
+    def cov(c: _BandCandidate) -> float:
+        return c.piece.intersection(corridor).area / max(c.piece.area, 1e-9) if corridor is not None else 0.0
+
+    # whenever any wall keeps storage out of the TV->sofa sightline, use only those;
+    # fall back to all walls (penalised) in a tiny room where every option clips it.
+    clear = [c for c in cands if cov(c) <= 0.30]
+    usable = clear if clear else cands
+    max_extent = max(c.extent for c in usable)
+    zones: list[ZoneData] = []
+    for i, cand in enumerate(usable):
+        score = (
+            0.7 * (cand.extent / max_extent)
+            + 0.3 * _entry_distance_norm(analysis, cand.piece)
+            - 0.6 * cov(cand)
         )
-        for i, cand in enumerate(cands)
-    ]
+        zones.append(_band_zone(analysis, cand, "storage", i, score, [R_REMAINING_WALL], depth))
     return _rank(zones)
 
 
@@ -621,7 +976,10 @@ def _decor_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cat
     )
     if analysis.area_cm2 >= BIG_ROOM_CM2:
         zones += _long_wall_spots(analysis, placed, "decor", 60.0, [R_FLEXIBLE_SPOT])
-    return _rank(zones, limit=6)
+    if near is not None:
+        # accent piece beside the seating - a secondary position alongside the corners
+        zones += _beside_seating_spots(analysis, placed, "decor", 45.0, [R_BESIDE_SEATING], 0.62)
+    return _rank(_drop_window_blocking(analysis, zones), limit=6)
 
 
 _GENERATORS = {
@@ -635,6 +993,19 @@ _GENERATORS = {
     "storage": _storage_zones,
     "decor": _decor_zones,
 }
+
+# the four pieces a family room must have; everything else is "soft" - placed only
+# when a clean spot exists, otherwise skipped (quality-gated, see drop_cramped_zones).
+ESSENTIAL_CATEGORIES = frozenset({"sofa", "tv_unit", "rug", "coffee_table"})
+
+
+def drop_cramped_zones(
+    analysis: RoomAnalysis, zones: list[ZoneData], max_walkway: float = 0.20
+) -> list[ZoneData]:
+    """Keep only zones that sit clear of the walking paths - used to quality-gate
+    non-essential items so a 2nd chair / extra decor is SKIPPED rather than jammed
+    into a circulation route when the room is tight."""
+    return [z for z in zones if _corridor_overlap_ratio(analysis, z.polygon) <= max_walkway]
 
 
 def zones_for_category(
@@ -658,9 +1029,14 @@ def anchor_pose(zone: ZoneData, product: Product, analysis: RoomAnalysis) -> Pos
         wall = analysis.walls[zone.wall_index]
         a, b = zone.seg
         half = product.width_cm / 2.0
-        mid = (a + b) / 2.0
-        if b - a > product.width_cm + 4.0:
-            mid = min(max(mid, a + half + 2.0), b - half - 2.0)
+        lo_c, hi_c = a + half + 2.0, b - half - 2.0
+        if zone.anchor_t is not None and hi_c > lo_c:
+            # bias toward a wall end (corner-tight L return) instead of centring
+            mid = lo_c + max(0.0, min(1.0, zone.anchor_t)) * (hi_c - lo_c)
+        else:
+            mid = (a + b) / 2.0
+            if b - a > product.width_cm + 4.0:
+                mid = min(max(mid, lo_c), hi_c)
         center = add(wall.point_at(mid), wall.normal, product.depth_cm / 2.0 + 4.0 + zone.float_cm)
         return Pose(x=round(center[0], 1), y=round(center[1], 1), rotation_deg=zone.rotation_deg)
 
@@ -672,6 +1048,10 @@ def anchor_pose(zone: ZoneData, product: Product, analysis: RoomAnalysis) -> Pos
         center = add(zone.origin, zone.fwd, product.width_cm / 2.0 + 2.0)
         return Pose(x=round(center[0], 1), y=round(center[1], 1), rotation_deg=zone.rotation_deg)
 
+    if zone.place_at_origin and zone.origin is not None:
+        # honour the intended centre (e.g. an L/U arm sofa) so a clipped piece's centroid
+        # can't shift the item toward its neighbour and overlap it.
+        return Pose(x=round(zone.origin[0], 1), y=round(zone.origin[1], 1), rotation_deg=zone.rotation_deg)
     c = zone.polygon.centroid
     return Pose(x=round(c.x, 1), y=round(c.y, 1), rotation_deg=zone.rotation_deg)
 

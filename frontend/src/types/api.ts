@@ -226,7 +226,6 @@ export interface SuggestResponse {
 // --- guide ---
 
 export type CopySource = "llm" | "template" | "offline";
-export type Slot = "best_match" | "budget" | "premium";
 
 export interface WhyItFits {
   why_product: string;
@@ -236,7 +235,7 @@ export interface WhyItFits {
 }
 
 export interface Recommendation {
-  slot: Slot;
+  rank: number; // 0 = best style+colour match
   product: Product;
   why_it_fits: WhyItFits;
   suggested_pose: Pose;
@@ -245,8 +244,7 @@ export interface Recommendation {
   notices: string[];
 }
 
-export interface EmptySlot {
-  slot: Slot;
+export interface NoFit {
   reason: string;
   hints: Record<string, number | string>;
 }
@@ -278,9 +276,8 @@ export interface StepResponse {
   guidance: Guidance;
   zones: Zone[];
   recommendations: Recommendation[];
-  empty_slots: EmptySlot[];
+  no_fit: NoFit | null;
   quantity: number;
-  anchor: string | null;
 }
 
 // --- layout plan ---
@@ -288,16 +285,16 @@ export interface StepResponse {
 export interface PlanItem {
   category: Category;
   quantity: number;
-  anchor: string;
-  anchor_ref: string;
+  tier: "essential" | "non_essential";
   priority: number;
-  params: Record<string, number>;
 }
 
 export interface LayoutPlan {
   archetype: string;
   items: PlanItem[];
   rationale: string;
+  /** Set when requested seating exceeds what the room holds; explains the shortfall. */
+  seating_note?: string | null;
 }
 
 export interface PlanResponse {

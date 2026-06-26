@@ -17,6 +17,7 @@ from app.models.validation import (
     OUT_OF_BOUNDS,
     OVERLAP_ITEM,
     TV_TOO_CLOSE,
+    TV_VIEW_BLOCKED,
     Finding,
 )
 from app.services.spatial.core import CorridorData, RoomAnalysis
@@ -40,6 +41,10 @@ OVERLAP_RATIO = 0.02
 SWING_RATIO = 0.05
 SEATING = {"sofa", "accent_chair"}
 FRONT_STRIP = {"tv_unit": 80.0, "storage": 60.0}
+# Items at/below this height don't block a seated viewer's sightline (coffee tables,
+# rugs). Anything taller standing between the TV and the sofa blocks the view.
+VIEW_CLEAR_HEIGHT_CM = 60.0
+VIEW_OVERLAP_AREA_CM2 = 600.0  # ignore a tall item that only clips the corridor edge
 
 
 def build_poly(item: PlacedItem, product: Product) -> Polygon:
@@ -61,6 +66,59 @@ def _front_strip_poly(item: PlacedItem, product: Product, depth: float) -> Polyg
         add(add(front_center, w, half), f, depth),
         add(add(front_center, w, -half), f, depth),
     )
+
+
+def _tv_view_findings(
+    item: PlacedItem,
+    product: Product,
+    poly: Polygon,
+    others: list[tuple[PlacedItem, Product, Polygon]],
+) -> list[Finding]:
+    """G5 - nothing tall in the TV->sofa sightline. The item being validated is the
+    potential blocker: only TALL, non-walkable items that aren't the TV/sofa
+    endpoints can block (a low coffee table or rug is fine to sit in the corridor)."""
+    if product.is_walkable or product.height_cm <= VIEW_CLEAR_HEIGHT_CM:
+        return []
+    if product.category in ("tv_unit", "sofa"):
+        return []  # endpoints don't block their own sightline
+
+    tv = next(((i, p) for i, p, _ in others if p.category == "tv_unit"), None)
+    if tv is None:
+        return []
+    tv_item, tv_prod = tv
+    f = front_vector(tv_item.rotation_deg)
+    w = width_axis(tv_item.rotation_deg)
+    tv_front = add((tv_item.x, tv_item.y), f, tv_prod.depth_cm / 2.0)
+
+    # the sofa furthest in front of the TV defines how far the sightline runs
+    best_len = 0.0
+    for i, p, _op in others:
+        if p.category != "sofa":
+            continue
+        length = dot(sub((i.x, i.y), tv_front), f)
+        best_len = max(best_len, length)
+    if best_len < 100.0:  # no sofa actually in front of the TV
+        return []
+
+    half = tv_prod.width_cm / 2.0
+    corridor = quad(
+        add(tv_front, w, -half),
+        add(tv_front, w, half),
+        add(add(tv_front, w, half), f, best_len),
+        add(add(tv_front, w, -half), f, best_len),
+    )
+    if poly.intersection(corridor).area < VIEW_OVERLAP_AREA_CM2:
+        return []
+    return [
+        Finding(
+            code=TV_VIEW_BLOCKED,
+            severity="warning",
+            message=f"The {_label(product).lower()} stands between the sofa and the TV, blocking the view.",
+            item_instance_id=item.instance_id,
+            other_instance_id=tv_item.instance_id,
+            geometry=poly_pts(corridor),
+        )
+    ]
 
 
 def corridor_blocked(corridor: CorridorData, blockers) -> tuple[bool, float]:
@@ -219,6 +277,9 @@ def validate_item(
             )
             break
 
+    # TV sightline (G5): a tall item between the sofa and the TV blocks the view
+    findings.extend(_tv_view_findings(item, product, poly, others))
+
     findings.extend(_pair_findings(item, product, poly, others))
 
     # Dominates room
@@ -267,32 +328,51 @@ def _pair_findings(
                     )
                 )
             elif in_front and d > 75.0:
+                # in an L/U the table is centred on the group and can't be 45 cm from
+                # every arm; only nag about reach when there's a single sofa.
+                n_sofas = (1 if cat == "sofa" else 0) + sum(
+                    1 for _i, op, _p in others if op.category == "sofa"
+                )
+                if n_sofas < 2:
+                    findings.append(
+                        Finding(
+                            code=CLEARANCE_TOO_FAR,
+                            severity="info",
+                            message=f"The coffee table sits {d:.0f} cm from the sofa - "
+                            "within 45-60 cm keeps drinks in easy reach.",
+                            item_instance_id=item.instance_id,
+                            other_instance_id=other_item.instance_id,
+                        )
+                    )
+        elif cat in SEATING and ocat in SEATING and 0.0 < d < (30.0 if "accent_chair" in pair else 45.0):
+            # The 45 cm rule is about walking space between BULKY sofas. An accent chair
+            # nestles into a conversation group beside a sofa or another chair and may sit
+            # closer (you don't walk between them), so only a genuinely crammed <30 cm gap
+            # warns when a chair is involved.
+            # Two perpendicular sofas meeting at a corner ARE an L/U sectional - that
+            # adjacency is intended, not a cramped-seating problem, so don't warn on it.
+            l_corner = (
+                pair == {"sofa"}
+                and abs(dot(front_vector(item.rotation_deg), front_vector(other_item.rotation_deg))) < 0.4
+            )
+            if not l_corner:
                 findings.append(
                     Finding(
-                        code=CLEARANCE_TOO_FAR,
-                        severity="info",
-                        message=f"The coffee table sits {d:.0f} cm from the sofa - "
-                        "within 45-60 cm keeps drinks in easy reach.",
+                        code=CLEARANCE_TOO_TIGHT,
+                        severity="warning",
+                        message=f"Seats are only {d:.0f} cm apart; 45 cm or more avoids a cramped feel.",
                         item_instance_id=item.instance_id,
                         other_instance_id=other_item.instance_id,
                     )
                 )
-        elif cat in SEATING and ocat in SEATING and 0.0 < d < 45.0:
-            findings.append(
-                Finding(
-                    code=CLEARANCE_TOO_TIGHT,
-                    severity="warning",
-                    message=f"Seats are only {d:.0f} cm apart; 45 cm or more avoids a cramped feel.",
-                    item_instance_id=item.instance_id,
-                    other_instance_id=other_item.instance_id,
-                )
-            )
         elif pair == {"sofa", "tv_unit"}:
             sofa_item = item if cat == "sofa" else other_item
             tv_item = other_item if cat == "sofa" else item
             f = front_vector(sofa_item.rotation_deg)
             to_tv = unit(*sub((tv_item.x, tv_item.y), (sofa_item.x, sofa_item.y)))
-            if dot(f, to_tv) > 0.5 and d < 200.0:
+            # only the sofa facing the TV HEAD-ON (the primary viewer) is held to the
+            # viewing distance; an L/U arm only partly faces it and may sit closer.
+            if dot(f, to_tv) > 0.85 and d < 200.0:
                 findings.append(
                     Finding(
                         code=TV_TOO_CLOSE,

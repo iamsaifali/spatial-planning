@@ -183,8 +183,11 @@ def suggest_pose(
         # spread multiples of a category: prefer the spot farthest from same-category
         # items already placed (2nd side table flanks the other side of the sofa, extra
         # decor lands in a different corner). With none placed this is just the top zone.
+        # Accent chairs are the EXCEPTION: they must complete one conversation group, so
+        # they keep the zone ranking (which already flanks the seating / mirrors an L arm
+        # near the centre) instead of being pushed to the farthest corner of the room.
         same_cat = [(i.x, i.y) for i, p in placed if p.category == product.category]
-        if same_cat:
+        if same_cat and product.category != "accent_chair":
             def _clearance(z: ZoneData) -> tuple[float, float]:
                 ap = anchor_pose(z, product, analysis)
                 return (min(dist((ap.x, ap.y), c) for c in same_cat), -float(z.rank))

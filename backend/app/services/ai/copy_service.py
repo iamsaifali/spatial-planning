@@ -28,14 +28,24 @@ SYSTEM_PROMPT = (
 )
 
 DIRECTOR_SYSTEM_PROMPT = (
-    "You are ZORY's living-room layout director. Using ONLY the room facts, the user's "
-    "preferences, the available furniture categories, and the seating target provided, decide "
-    "which categories belong in this room (not necessarily all of them), how many of each "
-    "(respect quantity_caps), and a sensible arrangement anchor per category. Never choose a "
-    "category outside available_categories. Prefer fewer, well-chosen pieces for small rooms or "
-    "minimal styles, but for LARGE rooms (high room_area_m2) scale quantities UP toward "
-    "quantity_caps so the space doesn't look sparse - more accent seating, lighting and decor. "
-    "Add accent seating to meet the seating target when entertaining. "
+    "You are ZORY's layout director for FAMILY living rooms. A family living room is centred "
+    "on the TV: seating faces the focal/TV wall so everyone can watch together. Using ONLY the "
+    "room facts (each wall's length and clear run, doors/windows, total area), the user's "
+    "preferences and the seating_capacity, decide which of the available_categories belong, how "
+    "many of each, each item's priority (placement order, lower = earlier), and its tier "
+    "(necessary = 'essential', optional = 'non_essential').\n"
+    "SEATING - each sofa seats 3 people, each accent chair seats 1. To seat N people: use as many "
+    "sofas as the seating needs (floor(N / 3), at least 1) BUT NEVER MORE than quantity_caps['sofa'] "
+    "- a small room may allow only 1. Then add accent chairs for EVERY remaining seat: "
+    "chairs = N - 3 x (sofas you used). Never leave the seating target short when the sofa cap bites. "
+    "Examples: N=6, sofa cap 3 -> 2 sofas, 0 chairs; N=6, sofa cap 1 -> 1 sofa + 3 chairs; "
+    "N=4 -> 1 sofa + 1 chair; N=8, sofa cap 2 -> 2 sofas + 2 chairs.\n"
+    "TIER - sofa, tv_unit, rug, coffee_table, and the accent chairs needed to reach the seating "
+    "target are 'essential'. side_table, lighting, storage, decor (and any extra seating) are "
+    "'non_essential' - include them only if the room has space.\n"
+    "QUANTITIES - respect quantity_caps. Prefer fewer pieces in small rooms; for LARGE rooms "
+    "(high room_area_m2) scale non-essential quantities UP toward quantity_caps so the space "
+    "doesn't look sparse. Never choose a category outside available_categories. "
     "Output only the structured plan."
 )
 
@@ -98,19 +108,10 @@ SCHEMAS: dict[str, dict] = {
                             ],
                         },
                         "quantity": {"type": "integer"},
-                        "anchor": {
-                            "type": "string",
-                            "enum": [
-                                "on_focal_wall", "facing", "flanking", "in_front_of",
-                                "beside", "conversation_angle", "corner", "center",
-                            ],
-                        },
-                        "anchor_ref": {
-                            "type": "string",
-                            "enum": ["sofa", "tv_unit", "window", "focal_wall", "room"],
-                        },
+                        "priority": {"type": "integer"},
+                        "tier": {"type": "string", "enum": ["essential", "non_essential"]},
                     },
-                    "required": ["category", "quantity", "anchor", "anchor_ref"],
+                    "required": ["category", "quantity", "priority", "tier"],
                     "additionalProperties": False,
                 },
             },
@@ -187,7 +188,7 @@ INSTRUCTIONS = {
     "why_it_fits": "Explain why this product, why this size, and why this placement.",
     "summary": "Write a short room summary narrative (and optional upgrade pitch).",
     "assistant": "Answer the user's question using only the facts. If the facts cannot answer it, say so and give the closest helpful guidance.",
-    "layout_plan": "Choose the categories, quantities, and per-category anchor for this living room from the allowed values.",
+    "layout_plan": "Choose the categories, quantities, priority and tier for this family living room from the allowed values; apply the seating rule to seating_capacity.",
 }
 
 

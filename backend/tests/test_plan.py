@@ -1,4 +1,4 @@
-"""Preference-driven layout planning: catalog pool, director fallback, endpoints."""
+"""Preference-driven layout planning: catalog pool, LLM-only director, endpoints."""
 
 from app.models.preferences import Preferences
 from app.services.plan import archetypes, capacity, director
@@ -38,108 +38,139 @@ def test_category_summary_exposes_no_products(catalog_repo):
     assert sofa["count"] > 0 and sofa["price_min"] <= sofa["price_max"]
 
 
-# --- capacity maths ----------------------------------------------------------
+# --- deterministic knowledge tables (still own the plan's content bounds) -----
 
 def test_capacity_helpers():
     assert capacity.target_capacity(Preferences(seating_capacity=6)) == 6
     assert capacity.target_capacity(Preferences(room_purpose="entertaining")) == 6
-    assert capacity.extra_seats_as_chairs(Preferences(seating_capacity=6)) == 3  # 6 - 3-seat sofa
-    assert capacity.extra_seats_as_chairs(Preferences(seating_capacity=2)) == 0
-    assert capacity.extra_seats_as_chairs(Preferences(seating_capacity=12)) == 4  # capped at 4
+    assert capacity.target_capacity(Preferences(room_purpose="family")) == 4
 
 
-# --- deterministic fallback plan (no LLM) ------------------------------------
-
-def test_fallback_plan_is_deterministic_and_sofa_first(catalog_repo, rect_room):
-    prefs = Preferences(room_purpose="entertaining", seating_capacity=6, styles=["boho"])
-    analysis = analyze_room(rect_room)
-    summary = catalog_repo.category_summary(prefs)
-    p1 = director.fallback_plan(prefs, analysis, summary)
-    p2 = director.fallback_plan(prefs, analysis, summary)
-    assert p1.model_dump() == p2.model_dump()
-    cats = [i.category for i in p1.items]
-    assert cats and cats[0] == "sofa"
-    assert "accent_chair" in cats
-    chair = next(i for i in p1.items if i.category == "accent_chair")
-    assert chair.quantity == 2  # 6 seats - 3-seat sofa -> 2 chairs
-    for item in p1.items:
-        assert item.quantity <= archetypes.QUANTITY_CAPS[item.category]
-
-
-def test_style_drops_categories(catalog_repo, rect_room):
-    prefs = Preferences(room_purpose="family", styles=["minimal"])
-    analysis = analyze_room(rect_room)
-    summary = catalog_repo.category_summary(prefs)
-    cats = [i.category for i in director.fallback_plan(prefs, analysis, summary).items]
+def test_candidate_categories_drops_by_style():
+    cats = archetypes.candidate_categories(Preferences(room_purpose="family", styles=["minimal"]))
     assert "sofa" in cats
     assert "decor" not in cats and "side_table" not in cats  # minimal drops these
 
 
-# --- LLM-output coercion / validation ----------------------------------------
+def test_caps_scale_with_area():
+    small = archetypes.caps_for(15.0)
+    big = archetypes.caps_for(40.0)
+    assert big["accent_chair"] > small["accent_chair"]
+    assert big["decor"] >= small["decor"]
+    # sofas scale for L/U seating only in larger rooms; tiny rooms stay single
+    assert small["sofa"] == 1 and big["sofa"] >= 2
 
-def test_coerce_plan_drops_and_clamps(catalog_repo, rect_room):
+
+# --- LLM-output coercion / validation (pure, no LLM) -------------------------
+
+def test_coerce_plan_drops_clamps_and_tiers(catalog_repo, rect_room):
     analysis = analyze_room(rect_room)
     summary = catalog_repo.category_summary(Preferences())
     data = {
-        "archetype": "x",
+        "archetype": "family",
         "rationale": "y",
         "items": [
-            {"category": "sofa", "quantity": 5, "anchor": "on_focal_wall", "anchor_ref": "focal_wall"},
-            {"category": "bathtub", "quantity": 1, "anchor": "center", "anchor_ref": "room"},
-            {"category": "tv_unit", "quantity": 1, "anchor": "levitate", "anchor_ref": "sofa"},
+            {"category": "sofa", "quantity": 5, "priority": 1, "tier": "non_essential"},
+            {"category": "bathtub", "quantity": 1, "priority": 2, "tier": "essential"},
+            {"category": "decor", "quantity": 2, "priority": 9, "tier": "non_essential"},
         ],
     }
     plan = director._coerce_plan(data, summary, analysis)
     cats = [i.category for i in plan.items]
-    assert "bathtub" not in cats            # off-vocab category dropped
-    assert cats[0] == "sofa"                # dependency order
+    assert "bathtub" not in cats                       # off-vocab category dropped
+    assert cats[0] == "sofa"                            # dependency order
     sofa = next(i for i in plan.items if i.category == "sofa")
-    assert sofa.quantity == 1               # clamped from 5 to cap
-    tv = next(i for i in plan.items if i.category == "tv_unit")
-    assert tv.anchor in director._VALID_ANCHORS  # off-vocab anchor replaced
+    assert sofa.quantity == 1                           # clamped from 5 to cap
+    assert sofa.tier == "essential"                     # essential pinned, overriding the LLM
+    decor = next(i for i in plan.items if i.category == "decor")
+    assert decor.tier == "non_essential"                # non-essential tier preserved
+    # essentials guaranteed present even though the LLM only sent sofa + decor
+    assert {"sofa", "tv_unit", "rug", "coffee_table"} <= set(cats)
 
 
-def test_resolve_anchor_demotes_unavailable_geometry():
-    class _Stub:
-        focal_wall_index = None
-        window_strips: dict = {}
+# --- endpoints: planning is LLM-only (no second path) ------------------------
 
-    assert director._resolve_anchor("sofa", "on_focal_wall", "focal_wall", _Stub()) == ("center", "room")
-
-
-# --- endpoints (client has no OpenAI key -> heuristic fallback) --------------
-
-def test_plan_endpoint(client):
+def test_plan_endpoint_uses_llm(client, llm_plan):
     r = client.post(f"{API}/guide/plan", json={"room": ROOM, "placed_items": []})
     assert r.status_code == 200
     body = r.json()
-    assert body["plan"]["items"] and body["plan_source"] == "template"
+    assert body["plan"]["items"] and body["plan_source"] == "llm"
     cats = [i["category"] for i in body["plan"]["items"]]
     assert cats[0] == "sofa"
     assert body["steps"] and body["steps"][0]["status"] == "current"
 
 
-def test_plan_respects_preferences(client):
-    r = client.post(
-        f"{API}/guide/plan",
-        json={"room": ROOM, "preferences": {"room_purpose": "family", "styles": ["minimal"]}, "placed_items": []},
-    )
-    cats = [i["category"] for i in r.json()["plan"]["items"]]
-    assert "sofa" in cats and "decor" not in cats and "side_table" not in cats
+def test_plan_requires_llm(client):
+    """With no API key and no fallback, planning surfaces a clear error."""
+    r = client.post(f"{API}/guide/plan", json={"room": ROOM, "placed_items": []})
+    assert r.status_code == 503
+    assert r.json()["error"]["code"] == "PLAN_UNAVAILABLE"
 
 
-def test_step_quantity_comes_from_plan(client):
+def test_step_quantity_comes_from_plan(client, llm_plan):
     r = client.post(
         f"{API}/guide/step/side_table",
         json={"room": ROOM, "preferences": {"room_purpose": "family"}, "placed_items": []},
     )
     assert r.status_code == 200
-    assert r.json()["quantity"] == 2  # 17 m2 room -> pair of side tables
+    assert r.json()["quantity"] == 2  # canned plan -> a pair of side tables
 
 
-# --- large room: scaling + enough decor spots --------------------------------
+def test_multi_sofa_flow_end_to_end(client, monkeypatch):
+    """A high-capacity plan in a big room drives 2nd/3rd sofas onto perpendicular walls
+    through the real /guide endpoints (plan -> step -> place -> re-step)."""
+    big = {
+        "vertices": [[0, 0], [700, 0], [700, 600], [0, 600]],  # 42 m^2 -> sofa cap 3
+        "doors": [{"id": "d", "wall_index": 0, "offset_cm": 60, "width_cm": 90}],
+    }
+    plan = {
+        "archetype": "family", "rationale": "x",
+        "items": [{"category": "sofa", "quantity": 3, "priority": 1, "tier": "essential"}],
+    }
 
-def test_large_room_scales_and_has_decor_spots(catalog_repo):
+    async def _fake(kind, facts, instruction):
+        return {**plan} if kind == "layout_plan" else None
+
+    from app.services.ai import copy_service
+    from app.services.plan import director
+    monkeypatch.setattr(copy_service, "_llm_generate", _fake)
+    director.clear_cache()
+    prefs = {"room_purpose": "family", "seating_capacity": 8}
+
+    # plan: sofa stays current with quantity 3 (not clamped to 1)
+    r = client.post(f"{API}/guide/plan", json={"room": big, "preferences": prefs, "placed_items": []})
+    assert r.status_code == 200
+    sofa_step = next(s for s in r.json()["steps"] if s["category"] == "sofa")
+    assert sofa_step["quantity"] == 3 and sofa_step["status"] == "current"
+
+    # sofa #1: primary zone + a recommendation we can "place"
+    r = client.post(f"{API}/guide/step/sofa", json={"room": big, "preferences": prefs, "placed_items": []})
+    assert r.status_code == 200 and r.json()["zones"]
+    rec = r.json()["recommendations"][0]
+    pose1 = rec["suggested_pose"]
+    placed1 = [{"instance_id": "s1", "product_id": rec["product"]["id"], **pose1}]
+
+    # sofa #2: with one placed, the step must offer a perpendicular L-return zone
+    r = client.post(f"{API}/guide/step/sofa", json={"room": big, "preferences": prefs, "placed_items": placed1})
+    assert r.status_code == 200
+    z2 = r.json()["zones"]
+    assert z2, "expected an L-return zone for the 2nd sofa"
+    d = abs((z2[0]["suggested_rotation_deg"] - pose1["rotation_deg"]) % 180)
+    assert 60 < d < 120, f"2nd sofa zone should be perpendicular to the 1st (got {d})"
+
+
+def test_step_degrades_without_plan(client):
+    """The step endpoint still serves recommendations when planning is unavailable."""
+    r = client.post(f"{API}/guide/step/sofa", json={"room": ROOM, "placed_items": []})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["quantity"] == 1                       # no plan -> default quantity
+    assert 1 <= len(body["recommendations"]) <= 5      # recommendations don't need the LLM
+
+
+# --- large-room geometry: enough distinct zone spots (unchanged engine) ------
+
+def test_large_room_has_decor_spots(catalog_repo):
     from app.models.geometry import PlacedItem, Room
     from app.services.spatial.zones import anchor_pose, zones_for_category
 
@@ -148,20 +179,12 @@ def test_large_room_scales_and_has_decor_spots(catalog_repo):
         doors=[{"id": "d1", "wall_index": 0, "offset_cm": 60, "width_cm": 90}],
     )
     analysis = analyze_room(big)
-    prefs = Preferences(room_purpose="entertaining", seating_capacity=6)
-    summary = catalog_repo.category_summary(prefs)
-
-    q = {i.category: i.quantity for i in director.fallback_plan(prefs, analysis, summary).items}
-    assert q.get("decor", 0) >= 3          # big room -> more decor (was effectively 1)
-    assert q.get("lighting", 0) >= 2
-    assert q.get("accent_chair", 0) >= 2
-
-    # the "No good fit" decor bug: a big room must offer >= 3 distinct decor spots
     stats = catalog_repo.category_stats()
     sofa = catalog_repo.in_category("sofa")[0]
     sz = zones_for_category("sofa", analysis, [], stats)
     pose = anchor_pose(sz[0], sofa, analysis)
     placed = [(PlacedItem(instance_id="s1", product_id=sofa.id, x=pose.x, y=pose.y, rotation_deg=pose.rotation_deg), sofa)]
+    # a big room must offer >= 3 distinct decor spots (the "No good fit" decor bug)
     assert len(zones_for_category("decor", analysis, placed, stats)) >= 3
 
 

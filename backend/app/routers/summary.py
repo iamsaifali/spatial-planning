@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.errors import AppError
 from app.models.api import (
     MissingEssential,
     SuggestedUpgrade,
@@ -25,7 +26,12 @@ async def summary(req: SummaryRequest) -> SummaryResponse:
     placed = resolve_placed(req.placed_items)
     analysis = analyze_room(req.room)
     repo = get_repository()
-    layout, _plan_source = await director.get_plan(req.room, req.preferences, placed)
+    # Completeness/missing-essentials are plan-relative when a plan exists; if planning
+    # is unavailable (LLM-only), fall back to the fixed-essentials baseline (plan=None).
+    try:
+        layout, _plan_source = await director.get_plan(req.room, req.preferences, placed)
+    except AppError:
+        layout = None
 
     lines = [
         SummaryLine(product=product, pose=item, instance_id=item.instance_id, line_price=product.price)

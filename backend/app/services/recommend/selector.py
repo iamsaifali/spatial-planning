@@ -1,22 +1,21 @@
-"""Slot selection (Best Match / Budget / Premium) with a relaxation ladder."""
+"""Recommendation selection: a spatial GATE (zones-before-products) with a relaxation
+ladder decides which products are eligible, then they are RANKED by style+colour
+similarity and the top N are returned. No price-based Best/Budget/Premium slots."""
 
 from dataclasses import dataclass, field
 
 from app.models.geometry import PlacedItem
 from app.models.preferences import Preferences
 from app.models.products import Product
-from app.models.recommend import (
-    NOTICE_NO_FIT,
-    NOTICE_OVER_BUDGET,
-    NOTICE_PREORDER,
-    NOTICE_TIGHT_FIT,
-)
+from app.models.recommend import NOTICE_NO_FIT, NOTICE_PREORDER, NOTICE_TIGHT_FIT
 from app.services.catalog.repository import CatalogRepository
 from app.services.recommend.scoring import total_score
 from app.services.spatial.core import ZoneData
 from app.services.spatial.zones import fits_zone
 
 PlacedProduct = tuple[PlacedItem, Product]
+
+TOP_N = 5  # how many recommendations the sidebar shows
 
 
 @dataclass
@@ -29,10 +28,8 @@ class Candidate:
 
 
 @dataclass
-class SlotResult:
-    best: Candidate | None
-    budget: Candidate | None
-    premium: Candidate | None
+class RecResult:
+    recommendations: list[Candidate]  # ranked best-first by style+colour
     no_fit_hints: dict[str, float | str]
 
 
@@ -58,7 +55,7 @@ def _gate(
     return out
 
 
-def select_slots(
+def select_recommendations(
     category: str,
     zones: list[ZoneData],
     prefs: Preferences,
@@ -66,18 +63,18 @@ def select_slots(
     repo: CatalogRepository,
     products: list[Product] | None = None,
     exclude_ids: set[str] | None = None,
-) -> SlotResult:
+    limit: int = TOP_N,
+) -> RecResult:
     products = products if products is not None else repo.in_category(category)
     if exclude_ids:
         products = [p for p in products if p.id not in exclude_ids]
-    hints: dict[str, float | str] = {}
 
     if not products:
-        return SlotResult(None, None, None, {"reason": "empty_category"})
+        return RecResult([], {"reason": "empty_category"})
     if not zones:
-        return SlotResult(None, None, None, {"reason": "no_zones"})
+        return RecResult([], {"reason": "no_zones"})
 
-    # relaxation ladder: strict -> include out-of-stock -> tight fit margin
+    # spatial gate with relaxation ladder: strict -> include out-of-stock -> tight fit
     gated: list[tuple[Product, ZoneData, list[str]]] = []
     for margin, include_oos in ((1.0, False), (1.0, True), (1.05, True)):
         gated = _gate(products, zones, margin, include_oos)
@@ -92,45 +89,17 @@ def select_slots(
                 zone_len = max(zone_len, zone.seg[1] - zone.seg[0])
             else:
                 zone_len = max(zone_len, zone.lat_len)
-        hints = {
+        return RecResult([], {
             "reason": NOTICE_NO_FIT,
             "smallest_in_category_cm": smallest.width_cm,
             "zone_cm": round(zone_len, 0),
-        }
-        return SlotResult(None, None, None, hints)
+        })
 
     candidates: list[Candidate] = []
     for product, zone, notices in gated:
-        score, facts = total_score(product, zone, prefs, placed, repo)
+        score, facts = total_score(product, zone, prefs, placed)
         candidates.append(Candidate(product=product, zone=zone, score=score, facts=facts, notices=list(notices)))
 
-    # deterministic ordering: score desc, then price asc, rating desc, id
+    # rank by style+colour score, then deterministic tie-breakers
     candidates.sort(key=lambda c: (-c.score, c.product.price, -c.product.rating, c.product.id))
-    best = candidates[0]
-
-    threshold = 0.55 * best.score
-    affordable = [c for c in candidates if c.score >= threshold and c.product.id != best.product.id]
-    budget = min(affordable, key=lambda c: (c.product.price, c.product.id), default=None)
-    if budget is None:
-        # relax: cheapest of all remaining candidates, flagged
-        rest = [c for c in candidates if c.product.id != best.product.id]
-        budget = min(rest, key=lambda c: (c.product.price, c.product.id), default=None)
-        if budget is not None:
-            budget.notices.append(NOTICE_OVER_BUDGET)
-
-    premium_pool = [
-        c
-        for c in candidates
-        if c.score >= 0.5 * best.score
-        and c.product.rating >= 4.0
-        and c.product.id not in {best.product.id, budget.product.id if budget else ""}
-    ]
-    premium = max(premium_pool, key=lambda c: (c.product.price, c.product.rating, c.product.id), default=None)
-    if premium is None:
-        rest = [
-            c for c in candidates
-            if c.product.id not in {best.product.id, budget.product.id if budget else ""}
-        ]
-        premium = max(rest, key=lambda c: (c.product.price, c.product.id), default=None)
-
-    return SlotResult(best=best, budget=budget, premium=premium, no_fit_hints=hints)
+    return RecResult(recommendations=candidates[:limit], no_fit_hints={})

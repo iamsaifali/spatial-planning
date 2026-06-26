@@ -1,48 +1,43 @@
 """Deterministic knowledge tables that condition (and bound) the layout plan.
 
-These constrain what the LLM Director may produce and drive the heuristic fallback
-when the LLM is unavailable. Geometry itself stays in services/spatial/zones.py - the
-anchor here is the *intent* the LLM commits to and the resolver/zone engine honours.
+These constrain what the LLM Director may produce. Placement itself is owned by the
+per-category geometric rules in services/spatial - this module only governs the plan's
+*content* (which categories, how many, in what order).
 """
 
 # Dependency-safe ordering: a category must come AFTER anything its placement
-# anchors to (chairs/tv/rug anchor to the sofa, so sofa is first). Also the order
-# the guided flow walks the user through.
+# depends on (chairs/tv/rug are positioned relative to the sofa, so sofa is first).
+# Also the order the guided flow walks the user through.
 CATEGORY_ORDER = [
     "sofa", "tv_unit", "rug", "coffee_table",
     "side_table", "accent_chair", "lighting", "storage", "decor",
 ]
 
-# Per-category instance caps (baseline / small rooms) - the LLM's quantity is clamped to these.
+# Per-category instance caps (baseline / small rooms) - the LLM's quantity is clamped to
+# these. Tuned to a MODERN FAMILY living room: one media console, a floor lamp or two, a
+# couple of plants - NOT a showroom. A big room scales seating (sofas/chairs/side tables),
+# but soft clutter (lighting/storage/decor) only nudges up. The geometry engine then skips
+# any planned unit that has no clean spot, so these are ceilings, not targets.
 QUANTITY_CAPS: dict[str, int] = {
     "sofa": 1, "tv_unit": 1, "rug": 1, "coffee_table": 1,
-    "side_table": 2, "accent_chair": 2, "lighting": 3, "storage": 2, "decor": 4,
+    "side_table": 2, "accent_chair": 2, "lighting": 1, "storage": 1, "decor": 2,
 }
 
 
 def caps_for(area_m2: float) -> dict[str, int]:
-    """Quantity caps scaled to room area so a large room can hold more soft
-    seating, lighting and decor (a big space shouldn't get a small room's count).
-    Sofa/TV/rug/coffee stay single - one main seating group (size handled by scoring)."""
+    """Quantity caps scaled to room area. TV/rug/coffee stay single (one media wall / one
+    seating zone). The SOFA cap scales so larger rooms can form an L (2) or U (3); the
+    geometry engine is the final arbiter of whether the extra sofa actually fits."""
     caps = dict(QUANTITY_CAPS)
-    if area_m2 >= 35.0:
-        caps.update({"accent_chair": 4, "side_table": 3, "lighting": 5, "storage": 3, "decor": 6})
+    if area_m2 >= 22.0:
+        caps.update({"sofa": 2, "lighting": 2})  # room for an L-shape + a 2nd floor lamp
+    if area_m2 >= 40.0:
+        # U-shape seating; a sideboard alongside the media console; a 3rd plant. Side
+        # tables stay at 2 - one per sofa end is plenty; a 3rd just crowds the seating.
+        caps.update({"sofa": 3, "accent_chair": 3, "storage": 2, "decor": 3})
     if area_m2 >= 60.0:
-        caps.update({"accent_chair": 6, "lighting": 6, "decor": 8})
+        caps["accent_chair"] = 4  # a big room can seat a 4th accent chair
     return caps
-
-# Default (anchor, anchor_ref) per category - the natural arrangement intent.
-DEFAULT_ANCHORS: dict[str, tuple[str, str]] = {
-    "sofa": ("on_focal_wall", "focal_wall"),
-    "tv_unit": ("facing", "sofa"),
-    "rug": ("in_front_of", "sofa"),
-    "coffee_table": ("in_front_of", "sofa"),
-    "side_table": ("flanking", "sofa"),
-    "accent_chair": ("conversation_angle", "sofa"),
-    "lighting": ("corner", "room"),
-    "storage": ("on_focal_wall", "room"),
-    "decor": ("corner", "room"),
-}
 
 # Which categories suit each living-room purpose, in priority order.
 PURPOSE_RULES: dict[str, list[str]] = {

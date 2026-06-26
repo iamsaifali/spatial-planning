@@ -15,15 +15,7 @@ import { useProductStore } from "@/stores/productStore";
 import { useUiStore } from "@/stores/uiStore";
 import type { Recommendation } from "@/types/api";
 
-const SLOT_LABELS = {
-  best_match: { text: "Best match", tone: "amber" as const },
-  budget: { text: "Budget pick", tone: "success" as const },
-  premium: { text: "Premium", tone: "ink" as const },
-};
-
 const NOTICE_LABELS: Record<string, string> = {
-  OVER_BUDGET: "Over budget",
-  UNDER_BUDGET: "Below tier",
   PREORDER: "Pre-order",
   TIGHT_FIT: "Tight fit",
 };
@@ -38,7 +30,6 @@ export function RecommendationCard({
   const money = useMoney();
   const [why, setWhy] = useState(false);
   const [busy, setBusy] = useState(false);
-  const slot = SLOT_LABELS[rec.slot];
   const product = rec.product;
 
   const items = usePlannerStore((s) => s.items);
@@ -85,7 +76,7 @@ export function RecommendationCard({
       <div className="relative">
         <ProductImage src={product.image_url} alt={product.name} className={`w-full ${hero ? "h-40" : "h-24"}`} />
         <div className="absolute top-2 left-2 flex flex-wrap gap-1">
-          <Chip tone={slot.tone}>{slot.text}</Chip>
+          {rec.rank === 0 ? <Chip tone="amber">Best match</Chip> : null}
           {rec.notices.map((n) =>
             NOTICE_LABELS[n] ? (
               <Chip key={n} tone="warn">

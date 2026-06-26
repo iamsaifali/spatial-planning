@@ -1,9 +1,9 @@
 """Layout-plan contract: the LLM Director's structured output.
 
-The LLM never emits coordinates or products - only a list of PlanItems, each
-choosing a furniture category, a quantity, and an ARRANGEMENT INTENT expressed
-as a closed-vocabulary anchor. The deterministic resolver turns each anchor into
-real poses (see services/plan/resolver.py).
+The LLM decides ONLY content - which furniture categories belong, how many of
+each, a placement priority, and whether each is essential. It never emits
+coordinates, products, or arrangement intent; placement is owned entirely by the
+deterministic per-category geometric rules in services/spatial.
 """
 
 from typing import Literal
@@ -13,30 +13,23 @@ from pydantic import Field
 from app.models.geometry import StrictModel
 from app.models.products import Category
 
-# Closed vocabulary shared by the LLM schema and the deterministic resolver.
-Anchor = Literal[
-    "on_focal_wall",      # back to the focal wall, facing into the room
-    "facing",             # rotate to face anchor_ref's centre
-    "flanking",           # mirrored pair either side of anchor_ref
-    "in_front_of",        # in front of anchor_ref along its forward axis
-    "beside",             # offset along anchor_ref's lateral axis
-    "conversation_angle", # splayed toward the seating centre
-    "corner",             # tucked into a room corner
-    "center",             # floating in the usable-area centre
-]
-AnchorRef = Literal["sofa", "tv_unit", "window", "focal_wall", "room"]
+Tier = Literal["essential", "non_essential"]
 
 
 class PlanItem(StrictModel):
     category: Category
-    quantity: int = Field(default=1, ge=1, le=4)
-    anchor: Anchor = "center"
-    anchor_ref: AnchorRef = "room"
-    priority: int = Field(default=5, ge=0, le=99)  # lower = placed earlier
-    params: dict[str, float] = Field(default_factory=dict)  # angle/gap/dist overrides
+    # The LLM owns the count (it reasons from room size + purpose). This ceiling is
+    # only an anti-garbage bound; archetypes.caps_for does the real area-scaled clamp.
+    quantity: int = Field(default=1, ge=1, le=12)
+    # essential = must-have; non_essential = include only if the room has space.
+    tier: Tier = "essential"
+    priority: int = Field(default=5, ge=0, le=99)  # lower = placed earlier (essentials first)
 
 
 class LayoutPlan(StrictModel):
     archetype: str = ""
     items: list[PlanItem] = Field(default_factory=list)
     rationale: str = ""
+    # set when the requested seating exceeds what the room can hold at proper
+    # clearances; the plan is built for what fits and this explains the shortfall.
+    seating_note: str | None = None

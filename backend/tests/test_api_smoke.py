@@ -34,7 +34,7 @@ def test_full_happy_path(client):
     step = r.json()
     assert step["guidance"]["message"]
     assert step["guidance"]["copy_source"] == "template"
-    assert len(step["recommendations"]) == 3
+    assert 1 <= len(step["recommendations"]) <= 5  # top-N style+colour matches
     best = step["recommendations"][0]
     assert best["why_it_fits"]["why_product"]
     pose = best["suggested_pose"]

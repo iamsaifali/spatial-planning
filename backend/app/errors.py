@@ -39,6 +39,7 @@ PRODUCT_NOT_FOUND = "PRODUCT_NOT_FOUND"
 # Guide
 UNKNOWN_STEP = "UNKNOWN_STEP"
 PLAN_FAILED = "PLAN_FAILED"
+PLAN_UNAVAILABLE = "PLAN_UNAVAILABLE"  # layout planning is LLM-only; no LLM/invalid output -> no plan
 
 # Designs / orders
 DESIGN_NOT_FOUND = "DESIGN_NOT_FOUND"

@@ -103,6 +103,8 @@ class ZoneData:
     seg: tuple[float, float] | None = None
     band_depth: float = 0.0
     float_cm: float = 0.0  # wall_band: extra inward offset (floats the sofa into the room)
+    anchor_t: float | None = None  # wall_band: bias placement along seg (0=start end, 1=far end); None=centre
+    place_at_origin: bool = False  # free zone: place at `origin` (intended centre) not the clipped centroid
     origin: Vec | None = None  # frame zones: center of near edge
     fwd: Vec | None = None  # frame zones: unit forward
     lat: Vec | None = None  # frame zones: unit lateral

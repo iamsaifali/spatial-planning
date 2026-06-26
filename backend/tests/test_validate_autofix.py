@@ -4,6 +4,7 @@ from app.models.validation import (
     MUST_FIX_CODES,
     OUT_OF_BOUNDS,
     OVERLAP_ITEM,
+    TV_VIEW_BLOCKED,
 )
 from app.services.spatial.analyze import analyze_room
 from app.services.spatial.autofix import find_autofix, find_better_placement
@@ -60,6 +61,30 @@ def test_rug_exempt_from_overlap(rect_room, catalog_repo):
     rug_item = _item(rug, 240, 250, 180, "r")
     findings = validate_item(analysis, [(sofa_item, sofa)], rug_item, rug)
     assert not [f for f in findings if f.code == OVERLAP_ITEM]
+
+
+def test_tall_item_blocks_tv_view(rect_room, catalog_repo):
+    analysis = analyze_room(rect_room)
+    tv = catalog_repo.in_category("tv_unit")[0]
+    sofa = _sofa(catalog_repo)
+    chair = catalog_repo.in_category("accent_chair")[0]  # ~80 cm tall
+    tv_item = _item(tv, 240, 45, 0, "tv")          # top, facing down
+    sofa_item = _item(sofa, 240, 310, 180, "s")    # bottom, facing up
+    chair_item = _item(chair, 240, 180, 0, "c")    # squarely between them
+    findings = validate_item(analysis, [(tv_item, tv), (sofa_item, sofa)], chair_item, chair)
+    assert any(f.code == TV_VIEW_BLOCKED for f in findings)
+
+
+def test_low_table_does_not_block_tv_view(rect_room, catalog_repo):
+    analysis = analyze_room(rect_room)
+    tv = catalog_repo.in_category("tv_unit")[0]
+    sofa = _sofa(catalog_repo)
+    table = catalog_repo.in_category("coffee_table")[0]  # ~40 cm tall, below sightline
+    tv_item = _item(tv, 240, 45, 0, "tv")
+    sofa_item = _item(sofa, 240, 310, 180, "s")
+    table_item = _item(table, 240, 180, 0, "t")  # same spot, but low
+    findings = validate_item(analysis, [(tv_item, tv), (sofa_item, sofa)], table_item, table)
+    assert not any(f.code == TV_VIEW_BLOCKED for f in findings)
 
 
 def test_autofix_resolves_bad_poses(rect_room, catalog_repo):

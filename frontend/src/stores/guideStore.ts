@@ -44,6 +44,7 @@ interface CachedStep {
 interface GuideState {
   planSteps: StepInfo[];
   planSource: string | null;
+  seatingNote: string | null;
   planLoading: boolean;
   currentStepKey: StepKey;
   skipped: Set<string>;
@@ -92,6 +93,7 @@ function placedCountsByCategory(): Record<string, number> {
 export const useGuideStore = create<GuideState>((set, get) => ({
   planSteps: DEFAULT_PLAN_STEPS,
   planSource: null,
+  seatingNote: null,
   planLoading: false,
   currentStepKey: "sofa",
   skipped: new Set(),
@@ -156,7 +158,12 @@ export const useGuideStore = create<GuideState>((set, get) => ({
     try {
       const res = await api.plan(room, prefs, items);
       const steps = res.steps.length ? res.steps : DEFAULT_PLAN_STEPS;
-      set({ planSteps: steps, planSource: res.plan_source, planLoading: false });
+      set({
+        planSteps: steps,
+        planSource: res.plan_source,
+        seatingNote: res.plan?.seating_note ?? null,
+        planLoading: false,
+      });
       // keep the current step valid; if the plan dropped it, jump to the first unfinished
       const keys = new Set(steps.map((s) => s.key));
       if (!keys.has(get().currentStepKey)) {
@@ -237,6 +244,7 @@ export const useGuideStore = create<GuideState>((set, get) => ({
       guideFinished: false,
       planSteps: DEFAULT_PLAN_STEPS,
       planSource: null,
+      seatingNote: null,
       planningStarted: false,
     }),
 

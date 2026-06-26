@@ -8,14 +8,11 @@ from app.models.products import Product
 
 CopySource = Literal["llm", "template", "offline"]
 
-Slot = Literal["best_match", "budget", "premium"]
-
 # Recommendation notices
-NOTICE_OVER_BUDGET = "OVER_BUDGET"
-NOTICE_UNDER_BUDGET = "UNDER_BUDGET"
 NOTICE_PREORDER = "PREORDER"
 NOTICE_TIGHT_FIT = "TIGHT_FIT"
 NOTICE_NO_FIT = "NO_FIT"
+NOTICE_SKIPPED_TIGHT = "SKIPPED_TIGHT_SPACE"  # non-essential left out: no clean spot
 NOTICE_ROOM_CHANGED = "ROOM_CHANGED"
 NOTICE_QUANTITY_RELAXED = "QUANTITY_RELAXED"
 
@@ -28,7 +25,7 @@ class WhyItFits(StrictModel):
 
 
 class Recommendation(StrictModel):
-    slot: Slot
+    rank: int  # 0 = best style+colour match
     product: Product
     why_it_fits: WhyItFits
     suggested_pose: Pose
@@ -37,8 +34,7 @@ class Recommendation(StrictModel):
     notices: list[str] = Field(default_factory=list)
 
 
-class EmptySlot(StrictModel):
-    slot: Slot
+class NoFit(StrictModel):
     reason: str  # NO_FIT etc.
     hints: dict[str, float | str] = Field(default_factory=dict)
 
@@ -70,6 +66,5 @@ class StepResponse(StrictModel):
     guidance: Guidance
     zones: list[Zone]
     recommendations: list[Recommendation] = Field(default_factory=list)
-    empty_slots: list[EmptySlot] = Field(default_factory=list)
+    no_fit: NoFit | None = None  # set when nothing fits the zone
     quantity: int = 1
-    anchor: str | None = None

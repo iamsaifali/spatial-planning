@@ -66,11 +66,52 @@ def test_tiny_room_only_fits_compact_sofas(tiny_room, catalog_repo):
             assert not fits_zone(zone, product), f"{product.id} should not fit a 2x2 m room"
 
     from app.models.preferences import Preferences
-    from app.services.recommend.selector import select_slots
+    from app.services.recommend.selector import select_recommendations
 
-    result = select_slots("sofa", zones, Preferences(), [], catalog_repo)
-    if result.best is not None:
-        assert result.best.product.width_cm < 200, "tiny room must get a compact recommendation"
+    result = select_recommendations("sofa", zones, Preferences(), [], catalog_repo)
+    if result.recommendations:
+        assert result.recommendations[0].product.width_cm < 200, "tiny room must get a compact recommendation"
+
+
+def test_additional_sofa_flanks_primary_perpendicular(catalog_repo):
+    """L/U scaling: the 2nd and 3rd sofas are perpendicular arms flanking the primary
+    sofa's two ends, forming a tight conversation group around the open centre (not
+    stranded against the far walls)."""
+    from app.models.geometry import Room
+    from app.services.spatial.geometry_utils import dot, sub, width_axis
+
+    big = Room(
+        vertices=[(0, 0), (700, 0), (700, 600), (0, 600)],
+        doors=[{"id": "d", "wall_index": 0, "offset_cm": 40, "width_cm": 90}],
+    )
+    analysis = analyze_room(big)
+    stats = catalog_repo.category_stats()
+    sofa = catalog_repo.in_category("sofa")[0]
+
+    z1 = zones_for_category("sofa", analysis, [], stats)
+    assert z1
+    p1 = anchor_pose(z1[0], sofa, analysis)
+    s1 = PlacedItem(instance_id="s1", product_id=sofa.id, x=p1.x, y=p1.y, rotation_deg=p1.rotation_deg)
+    pw = width_axis(p1.rotation_deg)  # primary's width axis - arms sit on either side of it
+
+    # 2nd sofa -> a perpendicular arm beside the primary
+    z2 = zones_for_category("sofa", analysis, [(s1, sofa)], stats)
+    assert z2, "expected an L-return arm for the 2nd sofa"
+    assert 60 < abs((z2[0].rotation_deg - p1.rotation_deg) % 180) < 120, "2nd sofa not perpendicular"
+    p2 = anchor_pose(z2[0], sofa, analysis)
+    side2 = dot(sub((p2.x, p2.y), (p1.x, p1.y)), pw)
+
+    # arm sits close to the primary, NOT stranded against a far wall (tight group)
+    assert abs(side2) < sofa.width_cm + 200, "2nd sofa stranded too far from the primary"
+
+    # 3rd sofa -> the OPPOSITE arm (U)
+    s2 = PlacedItem(instance_id="s2", product_id=sofa.id, x=p2.x, y=p2.y, rotation_deg=p2.rotation_deg)
+    z3 = zones_for_category("sofa", analysis, [(s1, sofa), (s2, sofa)], stats)
+    assert z3, "expected the opposite arm for the 3rd sofa"
+    assert 60 < abs((z3[0].rotation_deg - p1.rotation_deg) % 180) < 120, "3rd sofa not perpendicular"
+    p3 = anchor_pose(z3[0], sofa, analysis)
+    side3 = dot(sub((p3.x, p3.y), (p1.x, p1.y)), pw)
+    assert side2 * side3 < 0, "3rd sofa should flank the opposite side from the 2nd"
 
 
 def test_busy_room_sofa_zones_tight_or_absent(busy_room, catalog_repo):

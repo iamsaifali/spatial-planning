@@ -2,12 +2,14 @@ import asyncio
 
 from fastapi import APIRouter
 
+from app.errors import AppError
 from app.models.api import PlanRequest, PlanResponse, StepRequest
 from app.models.geometry import Pose
 from app.models.recommend import (
     NOTICE_NO_FIT,
-    EmptySlot,
+    NOTICE_SKIPPED_TIGHT,
     Guidance,
+    NoFit,
     Recommendation,
     StepResponse,
     StepsResponse,
@@ -18,11 +20,17 @@ from app.services.ai import copy_service
 from app.services.catalog import get_repository
 from app.services.guide.flow import require_step, steps_from_plan, steps_with_status
 from app.services.plan import director
-from app.services.recommend.selector import Candidate, select_slots
+from app.services.recommend.selector import Candidate, select_recommendations
 from app.services.spatial.analyze import analyze_room
 from app.services.spatial.autofix import settle_pose
 from app.services.spatial.core import RoomAnalysis
-from app.services.spatial.zones import anchor_pose, zones_for_category
+from app.services.spatial.geometry_utils import item_polygon
+from app.services.spatial.zones import (
+    ESSENTIAL_CATEGORIES,
+    anchor_pose,
+    drop_cramped_zones,
+    zones_for_category,
+)
 
 router = APIRouter(prefix="/guide", tags=["guide"])
 
@@ -59,31 +67,46 @@ async def step(step_key: str, req: StepRequest) -> StepResponse:
     repo = get_repository()
     stats = repo.category_stats()
 
-    # The cached plan (keyed by room+prefs hash) tells us how many of this category
-    # to place and the arrangement intent; no extra LLM call on a warm cache.
-    layout, _plan_source = await director.get_plan(req.room, req.preferences, placed)
-    plan_item = next((it for it in layout.items if it.category == step_def.category), None)
-    step_quantity = plan_item.quantity if plan_item else 1
-    step_anchor = plan_item.anchor if plan_item else None
+    # The cached plan (keyed by room+prefs hash) tells us how many of this category to
+    # place; no extra LLM call on a warm cache. Recommendations don't need the plan, so
+    # if planning is unavailable (LLM-only) we still serve the step with quantity 1.
+    try:
+        layout, _plan_source = await director.get_plan(req.room, req.preferences, placed)
+        plan_item = next((it for it in layout.items if it.category == step_def.category), None)
+        step_quantity = plan_item.quantity if plan_item else 1
+    except AppError:
+        step_quantity = 1
 
     zones = zones_for_category(step_def.category, analysis, placed, stats)
+    # quality-gate non-essentials: a 2nd chair / extra decor is SKIPPED rather than
+    # jammed into a walkway when the room is tight. Essentials are never gated.
+    skipped_for_space = False
+    if step_def.category not in ESSENTIAL_CATEGORIES:
+        clean = drop_cramped_zones(analysis, zones)
+        skipped_for_space = bool(zones) and not clean
+        zones = clean
     pool = repo.pool_for(step_def.category, req.preferences)
-    result = select_slots(step_def.category, zones, req.preferences, placed, repo, products=pool)
+    result = select_recommendations(step_def.category, zones, req.preferences, placed, repo, products=pool)
 
     guidance_facts = zone_guidance_facts(step_def.category, analysis, zones, placed)
 
-    slots: list[tuple[str, Candidate | None]] = [
-        ("best_match", result.best),
-        ("budget", result.budget),
-        ("premium", result.premium),
+    # placed non-walkable footprints - a recommendation must never land on top of one.
+    placed_polys = [
+        item_polygon(it.x, it.y, p.width_cm, p.depth_cm, it.rotation_deg)
+        for it, p in placed
+        if not p.is_walkable
     ]
 
-    async def build_rec(slot: str, candidate: Candidate) -> Recommendation:
+    def _overlaps_placed(pose: Pose, product) -> bool:
+        poly = item_polygon(pose.x, pose.y, product.width_cm, product.depth_cm, pose.rotation_deg)
+        return any(poly.intersection(op).area > 400.0 for op in placed_polys)
+
+    async def build_rec(rank: int, candidate: Candidate) -> tuple[Recommendation, bool]:
         copy, source = await copy_service.generate("why_it_fits", _why_facts(candidate, analysis))
         raw_pose = anchor_pose(candidate.zone, candidate.product, analysis)
         pose = settle_pose(analysis, placed, candidate.product, raw_pose)
-        return Recommendation(
-            slot=slot,  # type: ignore[arg-type]
+        rec = Recommendation(
+            rank=rank,
             product=candidate.product,
             why_it_fits=WhyItFits(**copy, copy_source=source),  # type: ignore[arg-type]
             suggested_pose=Pose(x=pose.x, y=pose.y, rotation_deg=pose.rotation_deg),
@@ -91,17 +114,27 @@ async def step(step_key: str, req: StepRequest) -> StepResponse:
             fit_facts=candidate.facts,
             notices=candidate.notices,
         )
+        # a non-essential whose settled pose still overlaps a placed item has no clean
+        # spot left - drop it rather than recommend placing on top of something.
+        bad = step_def.category not in ESSENTIAL_CATEGORIES and _overlaps_placed(pose, candidate.product)
+        return rec, bad
 
     guidance_task = copy_service.generate("guide", guidance_facts)
-    rec_tasks = [build_rec(slot, cand) for slot, cand in slots if cand is not None]
-    guidance_result, *recommendations = await asyncio.gather(guidance_task, *rec_tasks)
+    rec_tasks = [build_rec(i, cand) for i, cand in enumerate(result.recommendations)]
+    guidance_result, *rec_pairs = await asyncio.gather(guidance_task, *rec_tasks)
     guidance_copy, guidance_source = guidance_result
+    recommendations = [r for r, bad in rec_pairs if not bad]
+    for rank, r in enumerate(recommendations):  # keep ranks contiguous after filtering
+        r.rank = rank
+    dropped_overlap = bool(rec_pairs) and not recommendations
 
-    empty_slots = [
-        EmptySlot(slot=slot, reason=str(result.no_fit_hints.get("reason", NOTICE_NO_FIT)), hints=result.no_fit_hints)  # type: ignore[arg-type]
-        for slot, cand in slots
-        if cand is None
-    ]
+    no_fit = None
+    if not recommendations:
+        if skipped_for_space or dropped_overlap:
+            reason = NOTICE_SKIPPED_TIGHT
+        else:
+            reason = str(result.no_fit_hints.get("reason", NOTICE_NO_FIT))
+        no_fit = NoFit(reason=reason, hints=result.no_fit_hints or {"reason": reason})
 
     return StepResponse(
         analysis_hash=analysis.analysis_hash,
@@ -114,9 +147,8 @@ async def step(step_key: str, req: StepRequest) -> StepResponse:
         ),
         zones=[z.to_model() for z in zones],
         recommendations=list(recommendations),
-        empty_slots=empty_slots,
+        no_fit=no_fit,
         quantity=step_quantity,
-        anchor=step_anchor,
     )
 
 
