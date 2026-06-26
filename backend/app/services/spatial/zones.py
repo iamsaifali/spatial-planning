@@ -259,6 +259,7 @@ def _rank(zones: list[ZoneData], limit: int = 3) -> list[ZoneData]:
 # --- per-category generators -------------------------------------------------
 
 VIEWING_DEPTH_CM = 400.0  # past this room depth, float the sofa in to keep a sane TV distance
+MAX_VIEW_CM = 420.0  # don't pull a cluster so far back that the primary's TV distance exceeds this
 
 
 def _sofa_back_wall(analysis: RoomAnalysis, sofa_item: PlacedItem) -> int:
@@ -327,7 +328,9 @@ def _additional_sofa_zones(
     return _rank(zones)
 
 
-def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
+def _sofa_zones(
+    analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats, n_planned: int = 1
+) -> list[ZoneData]:
     placed_sofas = [(i, p) for i, p in placed if p.category == "sofa"]
     if placed_sofas:  # 2nd/3rd sofa -> L/U return on a perpendicular wall
         return _additional_sofa_zones(analysis, placed, placed_sofas, stats)
@@ -360,6 +363,18 @@ def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cate
         # high windows above the sofa back are fine to sit under; low/floor windows push
         # the sofa to another wall. window_term in [0,1] (1 = no window behind the sofa).
         window_term = max(0.0, 1.0 - 0.4 * win_ratio - 0.9 * low_win)
+        # The sofa FACES the wall opposite its back - that's where the TV ends up. A TV
+        # belongs on a clear, solid wall, not a window (glare, can't mount) and ideally not
+        # a door wall. Penalise candidates that would face an opening so the primary orients
+        # toward the non-window wall and the room builds around that. (Without this, pushing
+        # the sofa OFF a low-window wall can leave it FACING that window wall - worse.)
+        faced_window = faced_door = 0.0
+        for ow in analysis.walls:
+            if ow.index != cand.wall.index and dot(ow.normal, cand.wall.normal) < -0.5:
+                kinds = {o.kind for o in ow.openings}
+                faced_window = 1.0 if "window" in kinds else 0.0
+                faced_door = 1.0 if "door" in kinds else 0.0
+                break
         # big rooms: float the sofa inward so the seating forms a media group at a sane
         # viewing distance from the facing wall, instead of stranding it on a far wall.
         mid = (cand.lo + cand.hi) / 2.0
@@ -369,12 +384,27 @@ def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cate
         depth_to_far = 10.0 + first_boundary_hit(analysis.polygon, start_in, cand.wall.normal)
         float_cm = max(0.0, depth_to_far - VIEWING_DEPTH_CM)
         float_cm = min(float_cm, max(0.0, depth_to_far * 0.45 - depth / 2.0))
+        if n_planned >= 2:
+            # An L/U adds arms that extend FORWARD of the primary, so floating the primary to
+            # its own ideal viewing distance leaves the whole seating cluster crammed against
+            # the TV wall (bottom-heavy). Pull the primary back so the CLUSTER is centred in
+            # the room - but never so far that the primary's own TV distance exceeds
+            # MAX_VIEW_CM (which would happen in a very deep room, where staying forward is
+            # the right call). arm_reach = how far an arm's front sits ahead of the primary
+            # centre (mirrors _additional_sofa_zones' forward offset).
+            arm_reach = s.get("max_w", 240.0) / 2.0 + 1.5 * s.get("max_d", 105.0)
+            cluster_offset = max(0.0, (arm_reach - depth / 2.0) / 2.0)
+            centered_float = (depth_to_far / 2.0 - cluster_offset) - depth / 2.0
+            min_float_for_view = (depth_to_far - 50.0) - (s.get("max_d", 105.0) + 4.0) - MAX_VIEW_CM
+            float_cm = min(float_cm, max(centered_float, min_float_for_view, 0.0))
         score = (
             0.35 * (cand.extent / max_extent)
             + 0.25 * window_term
             + 0.20 * entry_norm
             + 0.20 * focal
             - 0.15 * corridor_ratio
+            - 0.60 * faced_window  # never face the TV onto a window wall
+            - 0.15 * faced_door  # prefer not to face a door wall either
         )
         reasons = []
         if cand.wall.is_longest_clear:
@@ -753,31 +783,37 @@ def _accent_chair_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], sta
     free_sides = [s for s in (-1.0, 1.0) if s not in taken]
     zones: list[ZoneData] = []
     idx = 0
-    # Flank the open side(s). Both sides free (single sofa) -> one chair per side, a
-    # symmetric pair. Only ONE open side (an L/U arm holds the other) -> put BOTH chairs on
-    # that side: one beside the sofa and one a step forward toward the conversation centre,
-    # so they stay a tight pair facing the group rather than one being flung far away.
-    for side in free_sides:
-        offsets = (30.0,) if len(free_sides) == 2 else (30.0, 30.0 + CHAIR + 35.0)
-        for fwd in offsets:
-            z = make_zone(add(add(sofa_front, w, side * lateral), f, fwd), idx)
+    if free_sides:
+        # SINGLE sofa (both sides free) -> one chair per side, a symmetric pair.
+        # L (one arm holds the other side) -> BOTH chairs on the open side: one beside the
+        # sofa, one a step forward toward the conversation centre, so they stay a tight pair
+        # facing the group rather than one being flung far away.
+        for side in free_sides:
+            offsets = (30.0,) if len(free_sides) == 2 else (30.0, 30.0 + CHAIR + 35.0)
+            for fwd in offsets:
+                z = make_zone(add(add(sofa_front, w, side * lateral), f, fwd), idx)
+                if z is not None:
+                    zones.append(z)
+                    idx += 1
+    else:
+        # U-FORMATION: both lateral sides hold arm sofas, so the chairs can't flank the
+        # primary. Set the two chairs along the SIDE WALLS (the open left/right zones beside
+        # the U), a little forward of the group and angled inward toward the conversation
+        # centre. They read as intentional, keep the central floor and the TV sightline
+        # clear, and still face the group rather than stranding in far corners facing a wall.
+        # make_zone orients each chair at gc and rejects anything in the TV corridor.
+        FORWARD = 80.0  # a little forward, toward the open/TV side
+        for sd in (-1.0, 1.0):
+            side_dir = (sd * w[0], sd * w[1])  # toward the left / right side wall
+            wall_dist = first_boundary_hit(analysis.polygon, gc, side_dir)
+            lateral = max(0.0, wall_dist - CHAIR / 2.0 - 12.0)  # sit against the wall, clear of it
+            center = add(add(gc, side_dir, lateral), f, FORWARD)
+            z = make_zone(center, idx)
             if z is not None:
                 zones.append(z)
                 idx += 1
-    # Fallback for a closed-in U (no open side): mirror each arm across the conversation
-    # centre so a chair lands opposite it, near the group (near-true reflection, just 5%
-    # past the mirror; the corridor check still keeps it off the TV sightline).
-    if len(zones) < 2:
-        for arm_i, _arm_p in sofas[1:]:
-            mx = gc[0] + 1.05 * (gc[0] - arm_i.x)
-            my = gc[1] + 1.05 * (gc[1] - arm_i.y)
-            z = make_zone((mx, my), idx)
-            if z is not None:
-                zones.append(z)
-                idx += 1
-    # Last resort (e.g. a closed-in U where every flank/mirror collides with a sofa):
-    # corners nearest the seating, clear of the TV sightline - a valid, non-overlapping
-    # spot beats falling back to the room centre on top of the group.
+    # Last resort (every flank/mouth spot collided): corners nearest the seating, clear of
+    # the TV sightline - but RE-FACED toward the group so a chair never faces a wall.
     if not zones:
         corner_zones = _corner_spots(
             analysis, placed, "accent_chair", CHAIR, max_zones=2,
@@ -785,6 +821,11 @@ def _accent_chair_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], sta
         )
         if corridor is not None:
             corner_zones = [z for z in corner_zones if z.polygon.intersection(corridor).area < 600.0]
+        for z in corner_zones:
+            cen = z.polygon.centroid
+            toward = unit(*sub2(gc, (cen.x, cen.y)))
+            z.rotation_deg = rotation_for_normal(toward)
+            z.fwd = toward
         zones = corner_zones
     return _rank(zones, limit=2)
 
@@ -1013,7 +1054,12 @@ def zones_for_category(
     analysis: RoomAnalysis,
     placed: list[PlacedProduct],
     stats: CategoryStats,
+    n_planned: int = 1,
 ) -> list[ZoneData]:
+    """`n_planned` is how many of this category the plan calls for; only the sofa
+    generator uses it (to centre an L/U cluster rather than just the primary sofa)."""
+    if category == "sofa":
+        return _sofa_zones(analysis, placed, stats, n_planned=n_planned)
     gen = _GENERATORS.get(category)
     return gen(analysis, placed, stats) if gen else []
 

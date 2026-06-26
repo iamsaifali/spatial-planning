@@ -11,6 +11,10 @@ import { useUiStore } from "@/stores/uiStore";
 import type { Preferences, StyleTag } from "@/types/api";
 
 const COLOR_OPTIONS = ["Beige", "Ivory", "Warm Grey", "Charcoal", "Oak", "Walnut", "Olive", "Terracotta", "Rust", "Mustard"];
+// Cap at 9: a 3-sofa U covers ~9 seats and fills the conversation zone, so we don't offer
+// more (the backend also stops planning accent chairs at >= 9). Backend still accepts le=12.
+const MAX_SEATS = 9;
+const SEAT_OPTIONS = Array.from({ length: MAX_SEATS }, (_, i) => i + 1);
 const PURPOSES = [
   { key: "family", label: "Family time" },
   { key: "entertaining", label: "Entertaining" },
@@ -156,18 +160,19 @@ export function PreferencesDialog() {
         <section>
           <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-ink-soft">Seats needed</h3>
           <div className="flex flex-wrap gap-1.5">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+            {SEAT_OPTIONS.map((n) => (
               <ToggleChip
                 key={n}
                 active={draft.seating_capacity === n}
                 onClick={() => setDraft((d) => ({ ...d, seating_capacity: d.seating_capacity === n ? null : n }))}
               >
-                {n === 8 ? "8+" : n}
+                {n}
               </ToggleChip>
             ))}
           </div>
           <p className="mt-1.5 text-[11px] leading-4 text-ink-faint">
-            ZORY plans enough seating to fit this many people.
+            ZORY plans enough seating to fit this many people. Larger counts may need a
+            bigger room - ZORY will tell you if some seats won&apos;t fit.
           </p>
         </section>
       </div>

@@ -77,7 +77,9 @@ async def step(step_key: str, req: StepRequest) -> StepResponse:
     except AppError:
         step_quantity = 1
 
-    zones = zones_for_category(step_def.category, analysis, placed, stats)
+    # step_quantity for the sofa step is the planned sofa count; the sofa zone generator
+    # uses it to centre an L/U cluster (arms extend forward) instead of just the primary.
+    zones = zones_for_category(step_def.category, analysis, placed, stats, n_planned=step_quantity)
     # quality-gate non-essentials: a 2nd chair / extra decor is SKIPPED rather than
     # jammed into a walkway when the room is tight. Essentials are never gated.
     skipped_for_space = False

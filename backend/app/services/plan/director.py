@@ -34,6 +34,9 @@ _VALID_CATEGORIES = set(get_args(Category)) - {"custom"}
 _VALID_TIERS = {"essential", "non_essential"}
 # Family essentials: always present, always essential, regardless of LLM output.
 ESSENTIAL_CATEGORIES = ("sofa", "tv_unit", "rug", "coffee_table")
+# At/above this seat count the layout goes to a 3-sofa U (~9 seats) that already fills the
+# conversation zone, so extra accent chairs read as stranded - drop them from the plan.
+SKIP_CHAIRS_AT_SEATS = 9
 
 _plan_cache: LRUCache[tuple[LayoutPlan, str]] = LRUCache(128)
 
@@ -193,6 +196,11 @@ async def get_plan(room: Room, prefs: Preferences, placed=None) -> tuple[LayoutP
         raise AppError(PLAN_UNAVAILABLE, "Layout planning produced an invalid result.", status_code=503) from exc
     if not plan.items:
         raise AppError(PLAN_UNAVAILABLE, "Layout planning produced an empty result.", status_code=503)
+
+    # A 3-sofa U already covers ~9 seats and the conversation zone; accent chairs on top of
+    # it look stranded, so drop them once the user asks for >= SKIP_CHAIRS_AT_SEATS seats.
+    if (prefs.seating_capacity or 0) >= SKIP_CHAIRS_AT_SEATS:
+        plan.items = [it for it in plan.items if it.category != "accent_chair"]
 
     plan.seating_note = _seating_note(plan, prefs)
 

@@ -2,7 +2,7 @@ import { expect, Page } from "@playwright/test";
 
 export const BACKEND = "http://localhost:8000/api/v1";
 
-export type Seats = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+export type Seats = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 export type Purpose = "Family time" | "Entertaining" | "Compact living" | "Work & lounge";
 
 export interface DraftItem {
@@ -66,8 +66,7 @@ export async function planFamily(page: Page, seats: Seats, styles: string[] = ["
 
   for (const s of styles) await dialog.getByRole("button", { name: s, exact: true }).click();
   await dialog.getByRole("button", { name: "Family time" }).click();
-  const seatLabel = seats === 8 ? "8+" : String(seats);
-  await dialog.getByRole("button", { name: seatLabel, exact: true }).click();
+  await dialog.getByRole("button", { name: String(seats), exact: true }).click();
   await dialog.getByRole("button", { name: "Save preferences" }).click();
 
   // First step (Sofa) recommendations confirm the plan→recommend pipeline ran.
