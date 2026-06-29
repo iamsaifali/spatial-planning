@@ -12,10 +12,24 @@ from shapely.ops import unary_union
 
 from app.models.validation import (
     BLOCKS_DOOR_SWING,
+    CLEARANCE_TOO_FAR,
+    CLEARANCE_TOO_TIGHT,
+    DOMINATES_ROOM,
+    FRONT_BLOCKED,
     OUT_OF_BOUNDS,
     OVERLAP_ITEM,
+    TV_TOO_CLOSE,
+    TV_VIEW_BLOCKED,
     Finding,
 )
+
+# Family findings that DON'T apply to a majlis: perimeter sofas meeting at corners are
+# intentionally close (not "cramped"), there is no TV, and seating filling the walls is the
+# whole point (not "dominating"). Dropped from per-item validation for room_type="majlis".
+MAJLIS_SUPPRESSED_CODES = frozenset(
+    {CLEARANCE_TOO_TIGHT, CLEARANCE_TOO_FAR, TV_TOO_CLOSE, TV_VIEW_BLOCKED, FRONT_BLOCKED, DOMINATES_ROOM}
+)
+from app.services.majlis.accessories import WALKABLE, MajlisAccessory
 from app.services.majlis.layout import SeatPlacement
 from app.services.spatial.core import RoomAnalysis
 
@@ -29,7 +43,11 @@ SWING_RATIO = 0.05
 CENTER_MARGIN_CM = 50.0
 
 
-def validate_majlis(analysis: RoomAnalysis, placements: list[SeatPlacement]) -> list[Finding]:
+def validate_majlis(
+    analysis: RoomAnalysis,
+    placements: list[SeatPlacement],
+    accessories: list[MajlisAccessory] | None = None,
+) -> list[Finding]:
     findings: list[Finding] = []
     polys = [(i, p.polygon()) for i, p in enumerate(placements)]
     room_buffered = analysis.polygon.buffer(1.5)
@@ -66,7 +84,41 @@ def validate_majlis(analysis: RoomAnalysis, placements: list[SeatPlacement]) -> 
                     item_instance_id="majlis",
                 )
             )
+
+    findings.extend(_accessory_findings(analysis, [p for _i, p in polys], accessories or [], room_buffered))
     return findings
+
+
+def _accessory_findings(
+    analysis: RoomAnalysis,
+    sofa_polys: list[Polygon],
+    accessories: list[MajlisAccessory],
+    room_buffered: Polygon,
+) -> list[Finding]:
+    """Non-walkable accessories (side tables, lamps, plants) must stay in-bounds, off the
+    sofas, and clear of door swings. The rug is walkable, so only its bounds matter."""
+    out: list[Finding] = []
+    for a in accessories:
+        poly = a.polygon()
+        name = a.category
+        if poly.difference(room_buffered).area > OOB_TOLERANCE_RATIO * poly.area:
+            out.append(_acc(OUT_OF_BOUNDS, f"The {name} extends outside the room.", name))
+        if a.category in WALKABLE:
+            continue
+        for sp in sofa_polys:
+            inter = poly.intersection(sp)
+            if not inter.is_empty and inter.area > OVERLAP_RATIO * min(poly.area, sp.area):
+                out.append(_acc(OVERLAP_ITEM, f"The {name} overlaps a sofa.", name))
+                break
+        for arc in analysis.swing_arcs.values():
+            if poly.intersection(arc).area > SWING_RATIO * arc.area:
+                out.append(_acc(BLOCKS_DOOR_SWING, f"The {name} blocks a door from opening.", name))
+                break
+    return out
+
+
+def _acc(code: str, message: str, name: str) -> Finding:
+    return Finding(code=code, severity="error", message=message, item_instance_id=f"acc-{name}")
 
 
 def _center_island(analysis: RoomAnalysis, placements: list[SeatPlacement]) -> Polygon | None:

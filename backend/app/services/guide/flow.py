@@ -108,6 +108,7 @@ def steps_from_plan(
             StepInfo(
                 key=cat, category=cat, title=_step_title(cat), order=order,
                 status=status, quantity=item.quantity, placed_count=done_n,
+                fill=item.fill,
             )
         )
     return infos

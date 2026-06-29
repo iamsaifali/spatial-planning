@@ -13,18 +13,29 @@ def test_room_type_defaults_to_living_room():
     assert Preferences(room_purpose="family", seating_capacity=5).room_type == "living_room"
 
 
-def test_majlis_plan_returns_stub_without_llm(client):
-    """A majlis plan request resolves via the Majlis engine (no LLM) and returns the P0
-    'coming soon' stub - proving the dispatch took the majlis branch, not the family
-    director (which would 503 here without an LLM)."""
+def test_majlis_plan_returns_guided_steps_without_llm(client):
+    """A majlis plan resolves via the Majlis engine (no LLM) and returns the guided step
+    sequence (Sofa per slot, Rug, Side table, Lighting, Decor) - proving the dispatch took
+    the majlis branch, not the family director (which would 503 here without an LLM)."""
     body = {"room": ROOM, "preferences": {"styles": ["modern"], "room_type": "majlis"}, "placed_items": []}
     r = client.post(f"{API}/guide/plan", json=body)
     assert r.status_code == 200, r.text
     data = r.json()
     assert data["plan"]["archetype"] == "majlis"
-    assert data["plan"]["items"] == []
-    assert data["steps"] == []
-    assert "coming soon" in (data["plan"]["seating_note"] or "").lower()
+    cats = [it["category"] for it in data["plan"]["items"]]
+    assert cats[0] == "sofa" and "rug" in cats and "tv_unit" not in cats
+    step_keys = [s["key"] for s in data["steps"]]
+    assert step_keys[:2] == ["sofa", "rug"]
+    # seat count is a soft estimate now, not a cap: the note talks seats + filling the walls
+    note = (data["plan"]["seating_note"] or "").lower()
+    assert "seat" in note and "wall" in note
+    # the sofa step is open-ended ("fill until full") so a narrow/wide sofa choice isn't
+    # capped by the up-front count; every other category stays bounded.
+    sofa_item = next(it for it in data["plan"]["items"] if it["category"] == "sofa")
+    assert sofa_item["fill"] is True
+    assert all(it["fill"] is False for it in data["plan"]["items"] if it["category"] != "sofa")
+    sofa_step = next(s for s in data["steps"] if s["key"] == "sofa")
+    assert sofa_step["fill"] is True
 
 
 def test_majlis_engine_does_not_touch_family_plan_cache():

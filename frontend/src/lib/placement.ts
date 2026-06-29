@@ -6,6 +6,7 @@
 import { api, ApiError, NetworkError, debounced } from "@/lib/api";
 import { useGuideStore } from "@/stores/guideStore";
 import { newInstanceId, usePlannerStore } from "@/stores/plannerStore";
+import { usePrefsStore } from "@/stores/prefsStore";
 import { useProductStore } from "@/stores/productStore";
 import { useUiStore } from "@/stores/uiStore";
 import type { PlacedItem, Pose, Product } from "@/types/api";
@@ -24,7 +25,7 @@ export async function validateItem(instanceId: string): Promise<void> {
   }
   ui.setPendingValidation(instanceId);
   try {
-    const result = await api.validatePlacement(room, othersOf(instanceId), item);
+    const result = await api.validatePlacement(room, othersOf(instanceId), item, usePrefsStore.getState().preferences);
     const current = useUiStore.getState();
     current.setPendingValidation(null);
     if (result.findings.length > 0) {
@@ -62,7 +63,22 @@ export async function addProductToRoom(
         planner.items,
         product.id,
         opts.zoneId,
+        usePrefsStore.getState().preferences,
       );
+      // Majlis: a null zone means the geometry has no slot left for this category (the
+      // perimeter is full, or a tight room has no corner). Don't drop the piece in the centre -
+      // mark the step complete so the user moves on, instead of being stuck unable to place or
+      // advance. This is what makes sofas "fill until full" regardless of the up-front estimate.
+      if (!suggestion.zone_id && usePrefsStore.getState().preferences.room_type === "majlis") {
+        ui.toast(
+          "info",
+          product.category === "sofa"
+            ? "The walls are full - that completes your majlis seating."
+            : "No open spot left for this piece - moving on.",
+        );
+        useGuideStore.getState().completeFillStep(product.category);
+        return null;
+      }
       pose = suggestion.pose;
       zoneId = suggestion.zone_id;
     } catch (err) {
@@ -132,6 +148,7 @@ export async function swapProduct(instanceId: string, next: Product): Promise<vo
       planner.room,
       othersOf(instanceId),
       { ...item, product_id: next.id },
+      usePrefsStore.getState().preferences,
     );
     const hasErrors = result.findings.some((f) => f.severity === "error");
     if (hasErrors && result.better_placement) {
@@ -220,6 +237,7 @@ export async function revalidateAll(): Promise<void> {
         room,
         items.filter((i) => i.instance_id !== item.instance_id),
         item,
+        usePrefsStore.getState().preferences,
       );
       const worst = result.findings.reduce<"error" | "warning" | null>((acc, f) => {
         if (f.severity === "error") return "error";

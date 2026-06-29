@@ -24,6 +24,10 @@ class PlanItem(StrictModel):
     # essential = must-have; non_essential = include only if the room has space.
     tier: Tier = "essential"
     priority: int = Field(default=5, ge=0, le=99)  # lower = placed earlier (essentials first)
+    # open-ended "fill until full": quantity is a soft estimate, not a cap. The user keeps
+    # placing this category until the geometry reports no slot (e.g. majlis sofas line the
+    # walls regardless of the up-front count). Family steps leave this False.
+    fill: bool = False
 
 
 class LayoutPlan(StrictModel):

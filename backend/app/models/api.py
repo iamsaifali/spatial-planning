@@ -37,12 +37,16 @@ class SuggestRequest(StrictModel):
     placed_items: list[PlacedItem] = Field(default_factory=list, max_length=MAX_PLACED_ITEMS)
     product_id: str
     zone_id: str | None = None
+    # room_type selects the placement engine (majlis -> next open perimeter spot)
+    preferences: Preferences = Field(default_factory=Preferences)
 
 
 class ValidateItemRequest(StrictModel):
     room: Room
     placed_items: list[PlacedItem] = Field(default_factory=list, max_length=MAX_PLACED_ITEMS)
     item: PlacedItem
+    # room_type selects which rule set applies (majlis drops TV/clearance/dominates rules)
+    preferences: Preferences = Field(default_factory=Preferences)
 
 
 class SummaryRequest(StrictModel):

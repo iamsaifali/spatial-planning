@@ -7,6 +7,7 @@ import { removeItem, validateItemDebounced } from "@/lib/placement";
 import { CATEGORY_LABELS } from "@/lib/constants";
 import { useGuideStore, type StepKey } from "@/stores/guideStore";
 import { usePlannerStore } from "@/stores/plannerStore";
+import { usePrefsStore } from "@/stores/prefsStore";
 import { useProductStore } from "@/stores/productStore";
 import { useUiStore } from "@/stores/uiStore";
 
@@ -41,7 +42,7 @@ export function ItemActionsBar() {
     try {
       const { room, items: placed } = usePlannerStore.getState();
       const others = placed.filter((i) => i.instance_id !== item.instance_id);
-      const res = await api.suggestPlacement(room, others, item.product_id, null);
+      const res = await api.suggestPlacement(room, others, item.product_id, null, usePrefsStore.getState().preferences);
       const moved =
         Math.hypot(res.pose.x - item.x, res.pose.y - item.y) > 20 ||
         res.pose.rotation_deg !== item.rotation_deg;

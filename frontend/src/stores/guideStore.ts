@@ -48,6 +48,9 @@ interface GuideState {
   planLoading: boolean;
   currentStepKey: StepKey;
   skipped: Set<string>;
+  // open-ended ("fill") steps the geometry has reported full, so we stop offering more and
+  // advance past them - even though their soft quantity may not have been reached.
+  filled: Set<string>;
   stepCache: Record<string, CachedStep>;
   stepLoading: boolean;
   stepError: string | null;
@@ -62,6 +65,9 @@ interface GuideState {
   setCurrentStep: (key: StepKey) => void;
   skipStep: (key: StepKey) => void;
   advanceAfterPlacement: () => void;
+  /** the geometry has no more room for `category` (a fill step or a tight room) - mark it
+   *  satisfied and move on, instead of leaving the user stuck unable to place or advance. */
+  completeFillStep: (category: string) => void;
   fetchPlan: () => Promise<void>;
   fetchStep: (key?: StepKey, force?: boolean) => Promise<StepResponse | null>;
   fetchAnalysis: () => Promise<void>;
@@ -97,6 +103,7 @@ export const useGuideStore = create<GuideState>((set, get) => ({
   planLoading: false,
   currentStepKey: "sofa",
   skipped: new Set(),
+  filled: new Set(),
   stepCache: {},
   stepLoading: false,
   stepError: null,
@@ -130,19 +137,26 @@ export const useGuideStore = create<GuideState>((set, get) => ({
 
   advanceAfterPlacement: () => {
     const counts = placedCountsByCategory();
-    const { skipped, currentStepKey } = get();
+    const { skipped, filled, currentStepKey } = get();
     const order = get().planSteps.length ? get().planSteps : DEFAULT_PLAN_STEPS;
     const startIdx = Math.max(0, order.findIndex((s) => s.key === currentStepKey));
 
-    // multi-instance: stay on the current category until its quantity is met
+    // a fill step (e.g. majlis sofas) keeps wanting more until the geometry reports it full
+    // (completeFillStep adds it to `filled`); a normal step until its quantity is met.
+    const wantsMore = (s: StepInfo) =>
+      !skipped.has(s.key) &&
+      !filled.has(s.key) &&
+      (s.fill ? true : (counts[s.category] ?? 0) < s.quantity);
+
+    // multi-instance: stay on the current category until it's satisfied
     const cur = order[startIdx];
-    if (cur && !skipped.has(cur.key) && (counts[cur.category] ?? 0) < cur.quantity) {
+    if (cur && wantsMore(cur)) {
       void get().fetchStep(cur.key as StepKey, true);
       return;
     }
     for (let offset = 1; offset <= order.length; offset++) {
       const step = order[(startIdx + offset) % order.length];
-      if (!skipped.has(step.key) && (counts[step.category] ?? 0) < step.quantity) {
+      if (wantsMore(step)) {
         set({ currentStepKey: step.key as StepKey });
         void get().fetchStep(step.key as StepKey);
         return;
@@ -151,16 +165,24 @@ export const useGuideStore = create<GuideState>((set, get) => ({
     set({ guideFinished: true });
   },
 
+  completeFillStep: (category) => {
+    const step = (get().planSteps.length ? get().planSteps : DEFAULT_PLAN_STEPS).find(
+      (s) => s.category === category,
+    );
+    const key = step?.key ?? category;
+    const filled = new Set(get().filled);
+    filled.add(key);
+    set({ filled });
+    get().advanceAfterPlacement();
+  },
+
   fetchPlan: async () => {
     const { room, items } = usePlannerStore.getState();
     const prefs = usePrefsStore.getState().preferences;
     set({ planLoading: true });
     try {
       const res = await api.plan(room, prefs, items);
-      // Majlis returns its own (currently empty) step list; never fall back to the family
-      // default steps for it. Living-room plans keep the existing fallback behaviour.
-      const isMajlis = prefs.room_type === "majlis";
-      const steps = res.steps.length ? res.steps : isMajlis ? [] : DEFAULT_PLAN_STEPS;
+      const steps = res.steps.length ? res.steps : DEFAULT_PLAN_STEPS;
       set({
         planSteps: steps,
         planSource: res.plan_source,
@@ -240,6 +262,7 @@ export const useGuideStore = create<GuideState>((set, get) => ({
     set({
       currentStepKey: "sofa",
       skipped: new Set(),
+      filled: new Set(),
       stepCache: {},
       stepError: null,
       analysis: null,

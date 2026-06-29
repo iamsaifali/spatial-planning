@@ -55,6 +55,7 @@ interface PlannerState {
   removeItem: (instanceId: string) => void;
   swapItem: (instanceId: string, newProductId: string, pose?: Pose) => void;
   clearItems: () => void;
+  setItems: (items: PlacedItem[]) => void;
 
   loadDesign: (designId: string | null, name: string, room: Room, items: PlacedItem[]) => void;
   markSaved: (designId: string) => void;
@@ -184,6 +185,9 @@ export const usePlannerStore = create<PlannerState>()(
         })),
 
       clearItems: () => set({ items: [], dirtySinceSave: true }),
+
+      // bulk replace (used by the Majlis batch generator)
+      setItems: (items) => set({ items, dirtySinceSave: true }),
 
       loadDesign: (designId, name, room, items) =>
         set((s) => ({

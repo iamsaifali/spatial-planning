@@ -9,6 +9,7 @@ import type {
   DesignCreateResponse,
   DesignResponse,
   HealthResponse,
+  MajlisGenerateResponse,
   OrderResponse,
   PlacedItem,
   PlanResponse,
@@ -115,12 +116,20 @@ export const api = {
   plan: (room: Room, preferences: Preferences, placed_items: PlacedItem[]) =>
     latest("guide/plan", (s) => post<PlanResponse>("/guide/plan", { room, preferences, placed_items }, s)),
 
-  suggestPlacement: (room: Room, placed_items: PlacedItem[], product_id: string, zone_id?: string | null) =>
-    post<SuggestResponse>("/placement/suggest", { room, placed_items, product_id, zone_id }),
+  majlisGenerate: (room: Room, preferences: Preferences) =>
+    latest("majlis/generate", (s) => post<MajlisGenerateResponse>("/majlis/generate", { room, preferences }, s)),
 
-  validatePlacement: (room: Room, placed_items: PlacedItem[], item: PlacedItem) =>
+  suggestPlacement: (
+    room: Room,
+    placed_items: PlacedItem[],
+    product_id: string,
+    zone_id?: string | null,
+    preferences?: Preferences,
+  ) => post<SuggestResponse>("/placement/suggest", { room, placed_items, product_id, zone_id, preferences }),
+
+  validatePlacement: (room: Room, placed_items: PlacedItem[], item: PlacedItem, preferences: Preferences) =>
     latest(`validate/${item.instance_id}`, (s) =>
-      post<ValidateResponse>("/placement/validate", { room, placed_items, item }, s),
+      post<ValidateResponse>("/placement/validate", { room, placed_items, item, preferences }, s),
     ),
 
   products: (params: Record<string, string | number | boolean | undefined>) => {

@@ -93,6 +93,13 @@ export type RoomPurpose = "family" | "entertaining" | "compact_living" | "work_l
 // engine). "majlis" routes to the perimeter-seating Majlis engine.
 export type RoomType = "living_room" | "majlis";
 
+// Majlis is generated as a batch (perimeter seating fills every wall at once).
+export interface MajlisGenerateResponse {
+  placed_items: PlacedItem[];
+  seats: number;
+  note: string;
+}
+
 export interface Preferences {
   styles: StyleTag[];
   budget_tier: "budget" | "mid" | "premium" | null;
@@ -269,6 +276,8 @@ export interface StepInfo {
   status: "done" | "current" | "pending";
   quantity: number;
   placed_count: number;
+  /** open-ended step: place until the geometry runs out of room, not capped at `quantity`. */
+  fill?: boolean;
 }
 
 export interface StepsResponse {

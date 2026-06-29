@@ -54,6 +54,9 @@ class StepInfo(StrictModel):
     status: Literal["done", "current", "pending"] = "pending"
     quantity: int = 1
     placed_count: int = 0
+    # open-ended step: keep placing this category until the geometry runs out of room,
+    # rather than stopping at `quantity` (majlis sofas). See PlanItem.fill.
+    fill: bool = False
 
 
 class StepsResponse(StrictModel):

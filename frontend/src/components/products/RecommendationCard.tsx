@@ -11,6 +11,7 @@ import { addProductToRoom, swapProduct } from "@/lib/placement";
 import { useFavoritesStore } from "@/stores/favoritesStore";
 import { useGuideStore } from "@/stores/guideStore";
 import { usePlannerStore } from "@/stores/plannerStore";
+import { usePrefsStore } from "@/stores/prefsStore";
 import { useProductStore } from "@/stores/productStore";
 import { useUiStore } from "@/stores/uiStore";
 import type { Recommendation } from "@/types/api";
@@ -37,12 +38,17 @@ export function RecommendationCard({
   const isFavorite = useFavoritesStore((s) => s.ids.includes(product.id));
   const toggleFavorite = useFavoritesStore((s) => s.toggle);
   const planSteps = useGuideStore((s) => s.planSteps);
+  const roomType = usePrefsStore((s) => s.preferences.room_type);
   const placedSameCategory = items.find((i) => byId[i.product_id]?.category === product.category);
   const placedInCategory = items.filter((i) => byId[i.product_id]?.category === product.category).length;
   const alreadyPlaced = items.some((i) => i.product_id === product.id);
   // how many of this category the plan wants (defaults to 1 for un-planned categories)
-  const plannedQty = planSteps.find((s) => s.category === product.category)?.quantity ?? 1;
-  const atCapacity = placedInCategory >= plannedQty;
+  const planStep = planSteps.find((s) => s.category === product.category);
+  const plannedQty = planStep?.quantity ?? 1;
+  // fill steps (majlis sofas) have no cap: the user keeps adding until the geometry reports
+  // the walls are full (suggest returns no zone -> placement.ts completes the step).
+  const isFill = planStep?.fill ?? false;
+  const atCapacity = !isFill && placedInCategory >= plannedQty;
   const hasMrp = product.mrp != null && product.mrp > product.price;
 
   const onAdd = async () => {
@@ -53,11 +59,19 @@ export function RecommendationCard({
         // category under its planned quantity -> add another. The first uses the
         // recommended spot; extra instances re-suggest (no pose) so the backend
         // spreads them (e.g. the 2nd side table flanks the other side of the sofa).
-        await addProductToRoom(
+        // Majlis always re-suggests server-side: /placement/suggest is now majlis-aware
+        // (next open perimeter slot from the CURRENT placed items), which avoids both a
+        // stale client pose on rapid clicks and the family fallback.
+        const useRecPose = roomType !== "majlis" && placedInCategory === 0;
+        const placedId = await addProductToRoom(
           product,
-          placedInCategory === 0 ? { pose: rec.suggested_pose, zoneId: rec.zone_id } : {},
+          useRecPose ? { pose: rec.suggested_pose, zoneId: rec.zone_id } : {},
         );
-        useUiStore.getState().toast("success", `${product.name} placed on your canvas.`);
+        // a null id means placement was rejected (e.g. majlis walls full) - the placement
+        // layer already toasted the reason, so don't claim success on top of it.
+        if (placedId) {
+          useUiStore.getState().toast("success", `${product.name} placed on your canvas.`);
+        }
       } else if (placedSameCategory && !alreadyPlaced) {
         // category is full -> swap replaces an existing piece rather than exceeding the plan
         await swapProduct(placedSameCategory.instance_id, product);

@@ -97,6 +97,7 @@ def create_app() -> FastAPI:
         designs,
         guide,
         health,
+        majlis,
         placement,
         products,
         render,
@@ -109,6 +110,7 @@ def create_app() -> FastAPI:
     app.include_router(config_router.router, prefix=api_prefix)
     app.include_router(rooms.router, prefix=api_prefix)
     app.include_router(guide.router, prefix=api_prefix)
+    app.include_router(majlis.router, prefix=api_prefix)
     app.include_router(placement.router, prefix=api_prefix)
     app.include_router(products.router, prefix=api_prefix)
     app.include_router(summary.router, prefix=api_prefix)

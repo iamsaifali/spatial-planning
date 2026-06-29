@@ -20,6 +20,7 @@ from app.services.ai import copy_service
 from app.services.catalog import get_repository
 from app.services.guide.flow import require_step, steps_from_plan, steps_with_status
 from app.services.majlis import plan as majlis_plan
+from app.services.majlis.zones import majlis_zones_for_category
 from app.services.plan import director
 from app.services.recommend.selector import Candidate, select_recommendations
 from app.services.spatial.analyze import analyze_room
@@ -68,26 +69,35 @@ async def step(step_key: str, req: StepRequest) -> StepResponse:
     repo = get_repository()
     stats = repo.category_stats()
 
-    # The cached plan (keyed by room+prefs hash) tells us how many of this category to
-    # place; no extra LLM call on a warm cache. Recommendations don't need the plan, so
-    # if planning is unavailable (LLM-only) we still serve the step with quantity 1.
-    try:
-        layout, _plan_source = await director.get_plan(req.room, req.preferences, placed)
+    is_majlis = req.preferences.room_type == "majlis"
+    skipped_for_space = False
+    if is_majlis:
+        # Majlis: same guided UX, but positions come from the perimeter engine (next open
+        # wall slot / centre / corner). No LLM, no walkway gating.
+        layout, _src = majlis_plan.get_majlis_plan(req.room, req.preferences, placed)
         plan_item = next((it for it in layout.items if it.category == step_def.category), None)
         step_quantity = plan_item.quantity if plan_item else 1
-    except AppError:
-        step_quantity = 1
+        zones = majlis_zones_for_category(step_def.category, analysis, placed, stats)
+    else:
+        # The cached plan (keyed by room+prefs hash) tells us how many of this category to
+        # place; no extra LLM call on a warm cache. Recommendations don't need the plan, so
+        # if planning is unavailable (LLM-only) we still serve the step with quantity 1.
+        try:
+            layout, _plan_source = await director.get_plan(req.room, req.preferences, placed)
+            plan_item = next((it for it in layout.items if it.category == step_def.category), None)
+            step_quantity = plan_item.quantity if plan_item else 1
+        except AppError:
+            step_quantity = 1
 
-    # step_quantity for the sofa step is the planned sofa count; the sofa zone generator
-    # uses it to centre an L/U cluster (arms extend forward) instead of just the primary.
-    zones = zones_for_category(step_def.category, analysis, placed, stats, n_planned=step_quantity)
-    # quality-gate non-essentials: a 2nd chair / extra decor is SKIPPED rather than
-    # jammed into a walkway when the room is tight. Essentials are never gated.
-    skipped_for_space = False
-    if step_def.category not in ESSENTIAL_CATEGORIES:
-        clean = drop_cramped_zones(analysis, zones)
-        skipped_for_space = bool(zones) and not clean
-        zones = clean
+        # step_quantity for the sofa step is the planned sofa count; the sofa zone generator
+        # uses it to centre an L/U cluster (arms extend forward) instead of just the primary.
+        zones = zones_for_category(step_def.category, analysis, placed, stats, n_planned=step_quantity)
+        # quality-gate non-essentials: a 2nd chair / extra decor is SKIPPED rather than
+        # jammed into a walkway when the room is tight. Essentials are never gated.
+        if step_def.category not in ESSENTIAL_CATEGORIES:
+            clean = drop_cramped_zones(analysis, zones)
+            skipped_for_space = bool(zones) and not clean
+            zones = clean
     pool = repo.pool_for(step_def.category, req.preferences)
     result = select_recommendations(step_def.category, zones, req.preferences, placed, repo, products=pool)
 
