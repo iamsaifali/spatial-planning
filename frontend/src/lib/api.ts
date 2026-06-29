@@ -6,7 +6,7 @@ import type {
   ApiErrorBody,
   AppConfigResponse,
   AssistantResponse,
-  AssistLayoutResponse,
+  AssistLayoutOptions,
   DesignCreateResponse,
   DesignResponse,
   HealthResponse,
@@ -120,7 +120,7 @@ export const api = {
     opts: { categories?: string[] | null; room_type?: string } = {},
   ) =>
     latest("assist/layout", (s) =>
-      post<AssistLayoutResponse>(
+      post<AssistLayoutOptions>(
         "/assist/layout",
         {
           room,

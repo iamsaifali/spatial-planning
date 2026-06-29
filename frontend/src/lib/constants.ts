@@ -52,6 +52,7 @@ export const REASON_PHRASES: Record<string, string> = {
   flexible_spot: "out of walking paths",
   secondary_zone: "completes a second seating area",
   headboard_to_wall: "headboard against the wall",
+  media_at_viewing_distance: "at a comfortable viewing distance",
 };
 
 export const STYLE_LABELS: Record<string, string> = {

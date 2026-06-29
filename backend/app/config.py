@@ -30,7 +30,10 @@ class Settings(BaseSettings):
 
     db_path: str = "var/zory.db"
     static_dir: str = "static"
-    catalog_path: str = "app/data/catalog.json"
+    # production default: the real store catalog (~5.6k products). Tests pin CATALOG_PATH
+    # to the small fixture catalog (app/data/catalog.json) so the golden layouts stay
+    # stable regardless of how the production catalog grows. See tests/conftest.py.
+    catalog_path: str = "app/data/catalog_real.json"
     analysis_cache_size: int = 256
     copy_cache_size: int = 512
 

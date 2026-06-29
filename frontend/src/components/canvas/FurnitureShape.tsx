@@ -4,8 +4,49 @@
  *  Local origin = footprint center; width along +x, front faces +y.
  */
 
-import { Circle, Ellipse, Group, Line, Rect } from "react-konva";
+import { useEffect, useState } from "react";
+import { Circle, Ellipse, Group, Image as KonvaImage, Line, Rect } from "react-konva";
 import type { Product } from "@/types/api";
+
+/** Route an icon through our same-origin proxy so drawing it on the canvas doesn't taint
+ *  it (the bucket has no CORS) - which would otherwise break the AI-preview export. */
+function iconSrc(url: string): string {
+  return `/api/icon?u=${encodeURIComponent(url)}`;
+}
+
+/** Load an <img> for Konva (client-only). crossOrigin="anonymous" + the proxy's CORS
+ *  header keep the canvas clean/exportable. */
+function useHtmlImage(src?: string): HTMLImageElement | null {
+  // keyed by src so a stale load never shows on a changed/cleared src (and we never
+  // call setState synchronously in the effect - only in the async onload callback)
+  const [loaded, setLoaded] = useState<{ src: string; img: HTMLImageElement } | null>(null);
+  useEffect(() => {
+    if (!src) return;
+    const im = new window.Image();
+    im.crossOrigin = "anonymous";
+    let alive = true;
+    im.onload = () => {
+      if (alive) setLoaded({ src, img: im });
+    };
+    im.src = src;
+    return () => {
+      alive = false;
+    };
+  }, [src]);
+  return loaded && loaded.src === src ? loaded.img : null;
+}
+
+/** Render the product's real top-down icon as a "sticker" at its footprint; fall back to
+ *  the parametric glyph while the image loads or when the product has no icon. */
+export function FurnitureSprite({ product, fill }: { product: Product; fill: string }) {
+  const img = useHtmlImage(product.two_d_icon ? iconSrc(product.two_d_icon) : undefined);
+  if (product.two_d_icon && img) {
+    const w = product.width_cm;
+    const d = product.depth_cm;
+    return <KonvaImage image={img} x={-w / 2} y={-d / 2} width={w} height={d} listening={false} />;
+  }
+  return <FurnitureGlyph product={product} fill={fill} />;
+}
 
 function darken(hex: string, amount = 0.22): string {
   const n = parseInt(hex.slice(1), 16);

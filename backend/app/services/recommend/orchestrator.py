@@ -327,6 +327,9 @@ class _PlanState:
     skipped: list[AssistSkip] = field(default_factory=list)
     have_categories: set[str] = field(default_factory=set)
     ids: Iterator[int] = field(default_factory=lambda: count(1))
+    # role -> a pinned zone (template generation forces the primary piece onto a chosen
+    # wall; every other role still resolves normally and cascades around it)
+    zone_overrides: dict[str, ZoneData] = field(default_factory=dict)
 
 
 def _topological_order(roles: list[RoleDefinition]) -> list[RoleDefinition]:
@@ -394,7 +397,8 @@ def _execute_single(role: RoleDefinition, st: _PlanState) -> None:
         st.skipped.append(AssistSkip(category=category, reason="ALREADY_PRESENT"))
         return
 
-    zones = _run_strategy(role, category, st)
+    pinned = st.zone_overrides.get(role.role)
+    zones = [pinned] if pinned is not None else _run_strategy(role, category, st)
     result = select_slots(category, zones, st.preferences, st.working, st.repo)
     candidate = result.best
     if candidate is None:
@@ -602,6 +606,7 @@ def plan_layout_from_recipe(
     preferences: Preferences,
     placed_items: list[PlacedItem],
     room_type: str | None = "living_room",
+    zone_overrides: dict[str, ZoneData] | None = None,
 ) -> AssistLayoutResponse:
     """Recipe interpreter entry point (Phase 3).
 
@@ -631,6 +636,7 @@ def plan_layout_from_recipe(
         room_type=effective_room_type,
         working=working,
         have_categories={product.category for _i, product in working},
+        zone_overrides=zone_overrides or {},
     )
 
     for role in _topological_order(recipe.roles):
@@ -642,6 +648,198 @@ def plan_layout_from_recipe(
         _furnish_secondary_zone(st)
 
     return _finalize_response(st.analysis, st.placements, st.skipped, st.working)
+
+
+def _primary_role(recipe: Recipe) -> RoleDefinition | None:
+    """The single 'anchor' piece a room is built around (sofa, bed) - the one whose wall
+    we vary to make templates. None for recipes with no single focal piece (majlis)."""
+    for role in recipe.roles:
+        if role.essential and role.zone_strategy.name == "focal_wall" and role.count.mode == "single":
+            return role
+    return None
+
+
+def _wall_side(analysis: RoomAnalysis, zone: ZoneData) -> str:
+    """Which side of the room a zone's wall is on, as the user sees it on the canvas.
+
+    Uses the wall's outward normal (unique per wall) rather than the zone centroid - a
+    door can push the clear band to one side and skew a centroid-based guess.
+    """
+    if zone.wall_index is not None and zone.wall_index < len(analysis.walls):
+        n = analysis.walls[zone.wall_index].normal  # points INTO the room
+        ox, oy = -n[0], -n[1]  # so the wall is on the OUTWARD side
+    else:
+        c = zone.polygon.centroid
+        rc = analysis.polygon.centroid
+        ox, oy = c.x - rc.x, c.y - rc.y
+    if abs(ox) >= abs(oy):
+        return "right" if ox > 0 else "left"
+    return "bottom" if oy > 0 else "top"  # canvas y grows downward
+
+
+def _anchor_label(analysis: RoomAnalysis, room: Room, zone: ZoneData, piece: str) -> tuple[str, str]:
+    """A human name for a template, by where its anchor piece sits. Returns (label, side)."""
+    side = _wall_side(analysis, zone)
+    wi = zone.wall_index
+    if wi is not None and any(w.wall_index == wi for w in room.windows):
+        return f"{piece} under the window", side
+    if wi is not None and wi == analysis.longest_clear_wall_index:
+        return f"{piece} on the long wall", side
+    return f"{piece} on the {side} wall", side
+
+
+def _template_layout_score(resp: AssistLayoutResponse) -> float:
+    """A design-quality score used to rank/recommend templates. Today it rewards a working
+    sofa<->TV pair (the TV actually faces the sofa, at a comfortable distance) - so we
+    recommend a sofa wall whose opposite wall can host the TV, instead of one where the TV
+    gets pushed to a side wall. 0 for rooms without a sofa+TV (e.g. bedrooms), leaving
+    their order unchanged."""
+    from app.services.spatial.geometry_utils import front_vector
+
+    by_cat = {p.category: p for p in resp.placements}
+    sofa, tv = by_cat.get("sofa"), by_cat.get("tv_unit")
+    if sofa is None or tv is None:
+        return 0.0
+    f = front_vector(sofa.pose.rotation_deg)
+    fx = sofa.pose.x + f[0] * sofa.product.depth_cm / 2.0
+    fy = sofa.pose.y + f[1] * sofa.product.depth_cm / 2.0
+    vx, vy = tv.pose.x - fx, tv.pose.y - fy
+    d = (vx * vx + vy * vy) ** 0.5
+    facing = (f[0] * vx + f[1] * vy) / d if d > 1.0 else -1.0
+    score = 2.0 if facing > 0.6 else (0.7 if facing > 0.3 else 0.0)  # TV in front of the sofa
+    if 200.0 <= d <= 430.0:
+        score += 1.0  # comfortable viewing distance
+    elif d <= 480.0:
+        score += 0.4
+    return score
+
+
+def _template_quality_ok(room: Room, zone: ZoneData, category: str) -> bool:
+    """Would a designer offer this anchor wall? A bed wants a solid wall (never under a
+    window or beside the door); a sofa may sit under a window but not on the door wall.
+    Used to avoid surfacing weak alternatives - we only fall back to one if nothing
+    better exists."""
+    wi = zone.wall_index
+    if wi is None:
+        return True
+    on_door = any(d.wall_index == wi for d in room.doors)
+    on_window = any(w.wall_index == wi for w in room.windows)
+    if category == "bed":
+        return not on_door and not on_window
+    return not on_door  # sofa under a window is fine; on the door wall is not
+
+
+def plan_layout_variants(
+    room: Room,
+    preferences: Preferences,
+    placed_items: list[PlacedItem],
+    room_type: str | None = "living_room",
+    max_variants: int = 3,
+) -> list[tuple[str, AssistLayoutResponse]]:
+    """Several complete layouts, made by placing the primary piece on different walls.
+
+    Each template pins the sofa/bed to a candidate wall and re-runs the recipe; the rest
+    of the room cascades around it. Curated - distinct walls only, every layout valid (no
+    hard errors, primary actually placed), no duplicates, ranked best-first. Falls back to
+    a single layout when there's no single focal piece (majlis) or only one workable wall.
+    """
+    effective_room_type = preferences.room_type or room_type or "living_room"
+    recipe = get_recipe(effective_room_type)
+    prefs = preferences
+    if recipe is not None and effective_room_type != "living_room" and prefs.room_type is None:
+        prefs = prefs.model_copy(update={"room_type": effective_room_type})
+
+    primary = _primary_role(recipe) if recipe is not None else None
+    if primary is None:  # no single anchor -> one honest layout
+        return [("Suggested layout", plan_layout_from_recipe(room, prefs, placed_items, room_type))]
+
+    analysis = analyze_room(room)
+    stats = get_repository().category_stats()
+    strategy = resolve_strategy(primary.zone_strategy.name)
+    cands = strategy.resolver(primary.categories[0], effective_room_type, analysis, [], stats, primary.zone_strategy.params)
+
+    # keep one candidate per distinct wall, best-first
+    distinct: list[ZoneData] = []
+    seen_walls: set = set()
+    for z in cands:
+        key = z.wall_index if z.wall_index is not None else id(z)
+        if key in seen_walls:
+            continue
+        seen_walls.add(key)
+        distinct.append(z)
+
+    piece = CATEGORY_LABELS.get(primary.categories[0], primary.categories[0].replace("_", " ").title())
+    category = primary.categories[0]
+    good_rows: list[tuple[str, str, AssistLayoutResponse]] = []  # design-sound options
+    other_rows: list[tuple[str, str, AssistLayoutResponse]] = []  # weak fallbacks
+    seen_ids: set[str] = set()
+    for z in distinct[: max_variants + 3]:  # pool extra so we can drop weak walls
+        resp = plan_layout_from_recipe(room, prefs, placed_items, room_type, zone_overrides={primary.role: z})
+        if category not in {p.category for p in resp.placements}:
+            continue  # primary couldn't be placed on this wall - drop the template
+        if any(f.severity == "error" for f in resp.findings):
+            continue
+        if resp.proposal_id in seen_ids:
+            continue  # identical arrangement - not a real alternative
+        seen_ids.add(resp.proposal_id)
+        label, side = _anchor_label(analysis, room, z, piece)
+        bucket = good_rows if _template_quality_ok(room, z, category) else other_rows
+        bucket.append((label, side, resp))
+
+    # rank the design-sound options by layout quality (a working sofa<->TV pair wins), so
+    # the recommended template is the one that actually composes - stable on the original
+    # best-first order for ties (and for bedrooms, which score 0 across the board).
+    good_rows.sort(key=lambda r: _template_layout_score(r[2]), reverse=True)
+    # only ever surface design-sound options; fall back to the single best weak one only
+    # when nothing better exists (e.g. a tiny room with one viable wall)
+    rows = good_rows[:max_variants] if good_rows else other_rows[:1]
+    if not rows:  # safety net: always return at least the natural layout
+        return [(f"{piece} layout", plan_layout_from_recipe(room, prefs, placed_items, room_type))]
+
+    # unique, readable labels (disambiguate collisions by side)
+    out: list[tuple[str, AssistLayoutResponse]] = []
+    used: set[str] = set()
+    for label, side, resp in rows:
+        name = label if label not in used else f"{label} ({side})"
+        n = 2
+        while name in used:
+            name = f"{label} ({side}) {n}"
+            n += 1
+        used.add(name)
+        out.append((name, resp))
+    return out
+
+
+def plan_assist_templates(
+    room: Room,
+    preferences: Preferences,
+    placed_items: list[PlacedItem],
+    categories: list[str] | None = None,
+    room_type: str | None = "living_room",
+    max_variants: int = 3,
+) -> list[tuple[str, bool, AssistLayoutResponse]]:
+    """Mode-aware template set for /assist/layout: (label, recommended, layout).
+
+    Recipe mode + a single-anchor recipe -> several position templates (the first is the
+    recommendation). Legacy/shadow/categories-override/no-recipe -> one template, so the
+    endpoint always returns the same shape.
+    """
+    mode = get_settings().assist_planner_mode
+    effective_room_type = preferences.room_type or room_type or "living_room"
+    multi = mode == "recipe" and categories is None and get_recipe(effective_room_type) is not None
+    if not multi:
+        resp = plan_assist_layout(room, preferences, placed_items, categories, room_type)
+        return [("Suggested layout", True, resp)]
+    try:
+        variants = plan_layout_variants(room, preferences, placed_items, room_type, max_variants)
+    except Exception:  # noqa: BLE001 - never break the request; fall back to a single layout
+        logger.exception("assist templates[%s]: variant generation failed; single layout", effective_room_type)
+        return [("Suggested layout", True, plan_assist_layout(room, preferences, placed_items, categories, room_type))]
+    logger.info(
+        "assist templates[%s]: %d option(s) %s",
+        effective_room_type, len(variants), [lbl for lbl, _ in variants],
+    )
+    return [(lbl, i == 0, resp) for i, (lbl, resp) in enumerate(variants)]
 
 
 def plan_assist_layout(

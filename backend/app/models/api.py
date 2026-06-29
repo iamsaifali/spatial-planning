@@ -154,6 +154,20 @@ class AssistLayoutResponse(StrictModel):
     totals: AssistTotals
 
 
+class AssistTemplate(StrictModel):
+    """One complete, selectable layout option (e.g. 'Bed under the window')."""
+
+    label: str  # human name by where the primary piece sits
+    recommended: bool  # the best-scoring option, pre-selected in the UI
+    layout: AssistLayoutResponse
+
+
+class AssistLayoutOptions(StrictModel):
+    """The set of layout templates returned by /assist/layout - always >= 1."""
+
+    templates: list[AssistTemplate] = Field(default_factory=list)
+
+
 class DesignCreateRequest(StrictModel):
     name: str | None = Field(default=None, max_length=120)
     room: Room

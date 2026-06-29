@@ -231,3 +231,33 @@ def test_majlis_never_composes_secondary_zone(catalog_repo):
         _room(ROOMS["large"]), Preferences(room_type="majlis", seating_capacity=10), [], room_type="majlis"
     )
     assert not _secondary(mj)
+
+
+# --- viewing-distance-aware TV (great-rooms float the media; normal rooms wall-mount) --
+
+GREAT_ROOM = {
+    "vertices": [[0, 0], [850, 0], [850, 700], [0, 700]],
+    "doors": [_door(0, 380, 100)], "windows": [_window(2, 320, 200)],
+}
+
+
+def test_great_room_floats_tv_at_viewing_distance(catalog_repo):
+    import math
+    resp = plan_layout_from_recipe(_room(GREAT_ROOM), Preferences(styles=["modern"]), [])
+    tv = next((p for p in resp.placements if p.category == "tv_unit"), None)
+    sofa = next((p for p in resp.placements if p.category == "sofa"), None)
+    assert tv is not None and sofa is not None
+    # the media floats at a human viewing distance, not on the far wall
+    assert "media_at_viewing_distance" in (tv.reason_codes or [])
+    assert math.hypot(tv.pose.x - sofa.pose.x, tv.pose.y - sofa.pose.y) < 430
+    # and circulation is never sacrificed for it
+    assert not [f for f in resp.findings if f.severity == "error"]
+    assert not [f for f in resp.findings if f.code == "BLOCKS_WALKWAY"]
+
+
+def test_normal_room_keeps_wall_mounted_tv(catalog_repo):
+    # a normal room must NOT float - the wall is at a comfortable distance (golden-safe)
+    resp = plan_layout_from_recipe(_room(ROOMS["medium"]), Preferences(styles=["modern"]), [])
+    tv = next((p for p in resp.placements if p.category == "tv_unit"), None)
+    assert tv is not None
+    assert "media_at_viewing_distance" not in (tv.reason_codes or [])

@@ -5,7 +5,7 @@ import { CATEGORY_LABELS, REASON_PHRASES } from "@/lib/constants";
 import { useProduct } from "@/stores/productStore";
 import type { AnalysisResponse, GhostPreviewPose, Point, Zone } from "@/types/overlays";
 import type { PlacedItem, Product } from "@/types/api";
-import { FurnitureGlyph } from "./FurnitureShape";
+import { FurnitureSprite } from "./FurnitureShape";
 import { productFill } from "@/lib/constants";
 
 function centroidTop(polygon: Point[]): Point {
@@ -205,7 +205,7 @@ export function ProposedItemNode({
       onMouseEnter={setCursor("pointer")}
       onMouseLeave={setCursor("default")}
     >
-      <FurnitureGlyph product={product} fill={productFill(product.colors)} />
+      <FurnitureSprite product={product} fill={productFill(product.colors)} />
       <Line
         points={[-w / 2 - 6, -d / 2 - 6, w / 2 + 6, -d / 2 - 6, w / 2 + 6, d / 2 + 6, -w / 2 - 6, d / 2 + 6]}
         closed
@@ -232,7 +232,7 @@ export function GhostNode({ ghost, scale }: { ghost: GhostPreviewPose; scale: nu
       opacity={0.55}
       listening={false}
     >
-      <FurnitureGlyph product={product} fill={productFill(product.colors)} />
+      <FurnitureSprite product={product} fill={productFill(product.colors)} />
       <Line
         points={[
           -product.width_cm / 2 - 6, -product.depth_cm / 2 - 6,

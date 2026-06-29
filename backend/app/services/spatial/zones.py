@@ -61,6 +61,7 @@ R_MAXIMIZE_SEATING = "maximize_seating"
 R_HEADBOARD_TO_WALL = "headboard_to_wall"
 # Composition (large rooms)
 R_SECONDARY_ZONE = "secondary_zone"
+R_FLOATING_MEDIA = "media_at_viewing_distance"
 
 CategoryStats = dict[str, dict[str, float]]
 PlacedProduct = tuple[PlacedItem, Product]
@@ -231,6 +232,67 @@ def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cate
     return _rank(zones)
 
 
+# Viewing geometry. A TV is comfortable ~2.5-4 m from the sofa; beyond ~4.4 m it is too
+# far to watch. When every facing wall is past that (a great-room), we place the media on
+# a console at a human viewing distance instead - but ONLY if there is a clear walk-around
+# (so circulation is never sacrificed); otherwise we keep the wall, far as it is.
+TV_VIEWING_DISTANCE = 330.0  # sofa-front -> TV-center target
+# Only float the media console when the facing wall is GENUINELY far (a great-room / open
+# plan, where a floating console reads as a zone divider). In a normal closed room - even
+# a large 6x5 m one - a wall-mounted TV at 5-5.6 m is fine and a floating console looks
+# marooned, so we keep it on the wall. (Raised from 4.4 m after real-room review.)
+TV_WALL_TOO_FAR = 600.0  # facing-wall distance beyond which we consider floating
+TV_FLOAT_SIDE_WALK = 80.0  # required walk-around gap beside a floating console
+TV_FLOAT_BACK_MIN = 90.0  # required open space behind it (the back zone / not jammed)
+
+
+def _floating_tv_zone(
+    analysis: RoomAnalysis, sofa_item: PlacedItem, sofa_product: Product,
+    stats: CategoryStats, blockers,
+) -> ZoneData | None:
+    """A media console floating at a human viewing distance, facing the sofa.
+
+    Returns a zone only if the console sits fully inside the room, clear of door keep-out
+    and other furniture, with a >=80 cm walk-around on a side and open space behind it.
+    Otherwise None (caller keeps the wall-mounted TV). This is the open-plan 'media as a
+    soft divider' pattern - the space behind becomes the next zone.
+    """
+    s = stats.get("tv_unit", {})
+    tv_w = s.get("max_w", 150.0)
+    tv_d = s.get("max_d", 48.0) + 4.0
+    f = front_vector(sofa_item.rotation_deg)
+    lat = (-f[1], f[0])
+    sofa_front = add((sofa_item.x, sofa_item.y), f, sofa_product.depth_cm / 2.0)
+    center = add(sofa_front, f, TV_VIEWING_DISTANCE)
+    rot = rotation_for_normal((-f[0], -f[1]))  # console faces back toward the sofa
+
+    poly = item_polygon(center[0], center[1], tv_w, tv_d, rot)
+    if poly.difference(analysis.polygon).area > 50.0:
+        return None  # would poke outside the room
+    if poly.intersection(analysis.keep_clear_union).area > 50.0:
+        return None  # would sit in a door swing / entry
+    if blockers is not None and not blockers.is_empty and poly.intersection(blockers).area > 50.0:
+        return None  # would collide with existing furniture
+    # walk-around: at least one side must have an >=80 cm passage to the wall
+    left_end = add(center, lat, -tv_w / 2.0)
+    right_end = add(center, lat, tv_w / 2.0)
+    side_gap = max(
+        first_boundary_hit(analysis.polygon, left_end, (-lat[0], -lat[1])),
+        first_boundary_hit(analysis.polygon, right_end, lat),
+    )
+    if side_gap < TV_FLOAT_SIDE_WALK:
+        return None
+    # open space behind (so it reads as a divider, not jammed against a wall)
+    back = add(center, f, tv_d / 2.0)
+    if first_boundary_hit(analysis.polygon, back, f) < TV_FLOAT_BACK_MIN:
+        return None
+    return ZoneData(
+        id="z-tv-float", category="tv_unit", polygon=poly, score=0.97, rotation_deg=rot,
+        anchor_label="faces_sofa", reason_codes=[R_FACES_SOFA, R_FLOATING_MEDIA],
+        kind="free", origin=center, fwd=(-f[0], -f[1]), lat=lat, fwd_len=tv_d, lat_len=tv_w,
+    )
+
+
 def _tv_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
     s = stats.get("tv_unit", {})
     depth = s.get("max_d", 48.0) + 8.0
@@ -279,7 +341,17 @@ def _tv_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Catego
         if facing and 250.0 <= d_wall <= 400.0:
             reasons.append(R_IDEAL_VIEWING_DIST)
         zones.append(_band_zone(analysis, cand, "tv_unit", i, score, reasons, depth))
-    return _rank(zones)
+    wall_zones = _rank(zones)
+
+    # Viewing-distance-aware: if the wall the sofa faces is too far to watch a TV from
+    # (a great-room), prefer a media console floating at a human distance - but keep the
+    # wall zones as fallback, and only float when the walk-around clearance check passes.
+    facing_wall_dist = first_boundary_hit(analysis.polygon, sofa_front, f)
+    if facing_wall_dist > TV_WALL_TOO_FAR:
+        float_zone = _floating_tv_zone(analysis, item, product, stats, blockers)
+        if float_zone is not None:
+            return [float_zone, *wall_zones]
+    return wall_zones
 
 
 def sub2(a: Vec, b: Vec) -> Vec:
@@ -323,6 +395,12 @@ def _free_zone_center(analysis: RoomAnalysis, category: str, size_w: float, size
     usable = largest_piece(analysis.usable_area)
     if usable is None:
         return []
+    # Never request a footprint larger than the open area itself. Real catalogs carry huge
+    # rugs (up to ~5x4 m); without this a giant rug would be selected and poke through the
+    # walls in a normal room. Large rooms (e.g. majlis) are unaffected - the cap doesn't bind.
+    minx, miny, maxx, maxy = usable.bounds
+    size_w = max(60.0, min(size_w, (maxx - minx) - 30.0))
+    size_d = max(60.0, min(size_d, (maxy - miny) - 30.0))
     c = usable.centroid
     rect = item_polygon(c.x, c.y, size_w, size_d, 0).intersection(usable)
     piece = largest_piece(rect)
@@ -682,10 +760,15 @@ def _bed_zones(
         win_ratio = _window_overlap_ratio(cand.wall, cand.lo, cand.hi)
         entry_norm = _entry_distance_norm(analysis, cand.piece)
         corridor_ratio = _corridor_overlap_ratio(analysis, cand.piece)
+        # A bed wants a SOLID wall for the headboard, not the longest wall. Once a wall is
+        # long enough to hold the bed, extra length barely matters - so the fit term
+        # saturates, and a window on the headboard wall is a strong penalty (designers
+        # avoid beds under windows). The user can still pick an under-window template.
+        fit = min(1.0, cand.extent / (min_w + 50.0))
         score = (
-            0.50 * (cand.extent / max_extent)
-            + 0.25 * (1.0 - 0.7 * win_ratio)
-            + 0.25 * entry_norm
+            0.28 * fit
+            + 0.45 * (1.0 - win_ratio)
+            + 0.18 * entry_norm
             - 0.15 * corridor_ratio
         )
         reasons = [R_HEADBOARD_TO_WALL]

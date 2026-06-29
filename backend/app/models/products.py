@@ -82,6 +82,7 @@ class Product(StrictModel):
     rating: float = Field(ge=0, le=5)
     attrs: dict[str, float] = Field(default_factory=dict)
     image_url: str = ""
+    two_d_icon: str = ""  # top-down icon URL for the 2D canvas (real-catalog products)
     is_walkable: bool = False
     shape: Literal["rect", "round"] = "rect"
     description: str = ""

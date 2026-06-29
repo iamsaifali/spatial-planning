@@ -9,7 +9,7 @@ import { newInstanceId, usePlannerStore } from "@/stores/plannerStore";
 import { usePrefsStore } from "@/stores/prefsStore";
 import { useProductStore } from "@/stores/productStore";
 import { useUiStore } from "@/stores/uiStore";
-import type { AssistLayoutResponse, PlacedItem, Pose, Product } from "@/types/api";
+import type { AssistLayoutResponse, AssistTemplate, PlacedItem, Pose, Product } from "@/types/api";
 
 function othersOf(instanceId: string): PlacedItem[] {
   return usePlannerStore.getState().items.filter((i) => i.instance_id !== instanceId);
@@ -228,30 +228,34 @@ export function previewLayout(proposal: AssistLayoutResponse): void {
   usePlannerStore.getState().setProposedItems(ghosts);
 }
 
-/** Ask the backend for a whole-room layout and preview it. Backend is the source of
- *  truth for geometry; this only renders the result. Returns the raw proposal (for the
- *  QA panel) or null on error/abort. */
-export async function requestLayout(): Promise<AssistLayoutResponse | null> {
+/** Ask the backend for layout templates and preview the recommended one. Backend is the
+ *  source of truth for geometry; this only renders. Returns the templates (for the picker)
+ *  or [] on error/abort. */
+export async function requestLayout(): Promise<AssistTemplate[]> {
   const planner = usePlannerStore.getState();
   const ui = useUiStore.getState();
   const { preferences } = usePrefsStore.getState();
   try {
-    const proposal = await api.assistLayout(planner.room, planner.items, preferences, {
+    const { templates } = await api.assistLayout(planner.room, planner.items, preferences, {
       // preferences.room_type drives the sequence/zones/filtering; pass it explicitly too
       room_type: preferences.room_type ?? "living_room",
     });
-    if (proposal.placements.length === 0) {
+    const rec = templates.find((t) => t.recommended) ?? templates[0];
+    if (!rec || rec.layout.placements.length === 0) {
       ui.toast("info", "No fitting layout found - try enlarging the room or easing preferences.");
-      return proposal;
+      return templates;
     }
-    previewLayout(proposal);
-    const n = proposal.placements.length;
-    ui.toast("success", `Suggested ${n} item${n > 1 ? "s" : ""} - review, then accept.`);
-    return proposal;
+    previewLayout(rec.layout);
+    const n = templates.length;
+    ui.toast(
+      "success",
+      n > 1 ? `${n} layouts - tap one to preview, then accept.` : "Suggested layout - review, then accept.",
+    );
+    return templates;
   } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") return null;
+    if (err instanceof DOMException && err.name === "AbortError") return [];
     if (err instanceof ApiError || err instanceof NetworkError) ui.toast("error", err.message);
-    return null;
+    return [];
   }
 }
 

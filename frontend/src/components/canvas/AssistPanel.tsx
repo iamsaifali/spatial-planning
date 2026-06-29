@@ -3,10 +3,10 @@
 import { Check, RotateCcw, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { acceptLayout, dismissLayout, requestLayout } from "@/lib/placement";
+import { acceptLayout, dismissLayout, previewLayout, requestLayout } from "@/lib/placement";
 import { usePlannerStore } from "@/stores/plannerStore";
 import { usePrefsStore } from "@/stores/prefsStore";
-import type { AssistLayoutResponse, Preferences, RoomType } from "@/types/api";
+import type { AssistLayoutResponse, AssistTemplate, Preferences, RoomType } from "@/types/api";
 
 /** Preference bundle applied when the user picks "Saudi Majlis" (mirrors the values
  *  the backend Majlis flow expects). Living Room clears these again. */
@@ -59,16 +59,27 @@ export function AssistPanel() {
   const setPreferences = usePrefsStore((s) => s.setPreferences);
 
   const [loading, setLoading] = useState(false);
-  const [proposal, setProposal] = useState<AssistLayoutResponse | null>(null);
+  const [templates, setTemplates] = useState<AssistTemplate[]>([]);
+  const [selected, setSelected] = useState(0);
 
   const run = async () => {
     setLoading(true);
     try {
-      setProposal(await requestLayout());
+      const ts = await requestLayout();
+      setTemplates(ts);
+      const rec = ts.findIndex((t) => t.recommended);
+      setSelected(rec >= 0 ? rec : 0);
     } finally {
       setLoading(false);
     }
   };
+
+  const selectTemplate = (i: number) => {
+    setSelected(i);
+    previewLayout(templates[i].layout); // re-stage that template's ghosts on the canvas
+  };
+
+  const proposal: AssistLayoutResponse | null = templates[selected]?.layout ?? null;
 
   // --- entry state: room-type selector + Assist button ---------------------------
   if (proposedCount === 0) {
@@ -106,12 +117,42 @@ export function AssistPanel() {
     );
   }
 
-  // --- proposal state: controls + QA/debug summary -------------------------------
+  // --- proposal state: template picker + controls + QA summary -------------------
   return (
-    <div className="pointer-events-none absolute left-1/2 top-3 z-20 flex w-[min(92vw,540px)] -translate-x-1/2 flex-col items-center gap-2">
+    <div className="pointer-events-none absolute left-1/2 top-3 z-20 flex w-[min(94vw,620px)] -translate-x-1/2 flex-col items-center gap-2">
+      {templates.length > 1 && (
+        <div className="panel-scroll pointer-events-auto flex w-full gap-2 overflow-x-auto rounded-2xl border border-line-strong bg-surface px-2 py-2 shadow-md">
+          {templates.map((t, i) => (
+            <button
+              key={t.label}
+              onClick={() => selectTemplate(i)}
+              aria-pressed={i === selected}
+              className={`flex min-w-[140px] shrink-0 flex-col items-start gap-0.5 rounded-xl border px-3 py-2 text-left transition-colors ${
+                i === selected
+                  ? "border-accent bg-accent/10"
+                  : "border-line bg-surface-2/40 hover:border-line-strong"
+              }`}
+            >
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-ink">
+                {t.label}
+                {t.recommended && (
+                  <span className="rounded-full bg-accent px-1.5 py-[1px] text-[9px] font-bold text-accent-ink">
+                    PICK
+                  </span>
+                )}
+              </span>
+              <span className="text-[11px] text-ink-soft">
+                {t.layout.totals.item_count} items · {t.layout.totals.currency}{" "}
+                {t.layout.totals.total_price.toLocaleString()}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-line-strong bg-surface px-3 py-2 shadow-md">
         <span className="px-1 text-sm font-medium text-ink">
-          {proposedCount} suggestion{proposedCount > 1 ? "s" : ""} · tap one or…
+          {templates.length > 1 ? "Pick a layout, then" : "Review, then"}
         </span>
         <Button variant="amber" size="sm" onClick={acceptLayout}>
           <Check className="h-4 w-4" aria-hidden />
@@ -126,7 +167,7 @@ export function AssistPanel() {
           size="sm"
           onClick={() => {
             dismissLayout();
-            setProposal(null);
+            setTemplates([]);
           }}
         >
           <X className="h-4 w-4" aria-hidden />

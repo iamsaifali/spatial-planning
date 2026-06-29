@@ -108,6 +108,7 @@ export interface Product {
   rating: number;
   attrs: Record<string, number>;
   image_url: string;
+  two_d_icon?: string; // top-down icon URL (real-catalog products); rendered on the canvas
   is_walkable: boolean;
   shape: "rect" | "round";
   description: string;
@@ -354,6 +355,16 @@ export interface AssistLayoutResponse {
   skipped: AssistSkip[];
   findings: Finding[];
   totals: AssistTotals;
+}
+
+export interface AssistTemplate {
+  label: string; // e.g. "Bed under the window"
+  recommended: boolean;
+  layout: AssistLayoutResponse;
+}
+
+export interface AssistLayoutOptions {
+  templates: AssistTemplate[];
 }
 
 // --- summary / commerce ---
