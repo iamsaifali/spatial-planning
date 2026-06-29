@@ -11,7 +11,7 @@ import { plannerTemporal, usePlannerStore } from "@/stores/plannerStore";
 import { useProductStore } from "@/stores/productStore";
 import { useUiStore } from "@/stores/uiStore";
 import type { PlacedItem, Product } from "@/types/api";
-import { FurnitureGlyph } from "./FurnitureShape";
+import { FurnitureSprite } from "./FurnitureShape";
 
 function snapAngle(deg: number, step = 15): number {
   return ((Math.round(deg / step) * step) % 360 + 360) % 360;
@@ -113,7 +113,7 @@ export function PlacedItemNode({
           opacity={0.07}
         />
       )}
-      <FurnitureGlyph product={product} fill={fill} />
+      <FurnitureSprite product={product} fill={fill} />
       {issueLevel && !selected && (
         <Circle
           x={w / 2 - px(4)}

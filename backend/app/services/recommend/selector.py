@@ -18,6 +18,12 @@ from app.services.spatial.zones import fits_zone
 
 PlacedProduct = tuple[PlacedItem, Product]
 
+# When no room_type is requested the recommender stays in the living-room world, so
+# that adding Majlis-only products to the shared catalog cannot leak a Majlis bench
+# into a generic living room. Majlis products are tagged room_types=["majlis"]; they
+# only surface when prefs.room_type == "majlis".
+DEFAULT_ROOM_TYPE = "living_room"
+
 
 @dataclass
 class Candidate:
@@ -70,6 +76,17 @@ def select_slots(
 
     if not products:
         return SlotResult(None, None, None, {"reason": "empty_category"})
+
+    # room_type is a STRONG filter (defaulting to living_room when unset), but it never
+    # eliminates all results: if no product in this category serves the requested room
+    # type, fall back to the full category list so the relaxation ladder still has
+    # candidates. region / luxury_tier are intentionally NOT hard-filtered here - they
+    # steer ranking via scoring.preference_bonus so global/standard items remain valid.
+    room_type = prefs.room_type or DEFAULT_ROOM_TYPE
+    scoped = [p for p in products if room_type in p.room_types]
+    if scoped:
+        products = scoped
+
     if not zones:
         return SlotResult(None, None, None, {"reason": "no_zones"})
 

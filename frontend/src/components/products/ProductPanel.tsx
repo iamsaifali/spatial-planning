@@ -2,6 +2,7 @@
 
 import { ArrowRight, Heart, PackageSearch, RotateCcw, SearchX } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -117,10 +118,10 @@ export function ProductPanelContent() {
   );
 }
 
+const BROWSE_PAGE_SIZE = 48;
+
 function AllProductsTab() {
-  const byId = useProductStore((s) => s.byId);
-  const loaded = useProductStore((s) => s.loaded);
-  const loadAll = useProductStore((s) => s.loadAll);
+  const remember = useProductStore((s) => s.remember);
   const currentStepKey = useGuideStore((s) => s.currentStepKey);
   const favoriteIds = useFavoritesStore((s) => s.ids);
 
@@ -129,9 +130,11 @@ function AllProductsTab() {
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
 
-  useEffect(() => {
-    void loadAll();
-  }, [loadAll]);
+  // the FULL category is fetched from the API, paginated ("Load more") - not the small
+  // in-memory recommendation set, so every product in the catalog is browsable. We tag
+  // the result with its query key and DERIVE `loading` (no setState in the effect body).
+  const [data, setData] = useState<{ key: string; items: Product[]; total: number; page: number } | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // follow the guided step's category as it changes (adjust during render)
   const [prevStep, setPrevStep] = useState(currentStepKey);
@@ -140,14 +143,53 @@ function AllProductsTab() {
     setCategory(currentStepKey);
   }
 
-  const products = useMemo(() => {
-    let list = Object.values(byId).filter((p) => p.category !== "custom");
-    if (onlyFavorites) list = list.filter((p) => favoriteIds.includes(p.id));
-    if (category !== "all") list = list.filter((p) => p.category === category);
-    if (style !== "all") list = list.filter((p) => p.style_tags.includes(style as Product["style_tags"][number]));
-    if (maxPrice) list = list.filter((p) => p.price <= maxPrice);
-    return list.sort((a, b) => b.rating - a.rating || a.price - b.price);
-  }, [byId, category, style, maxPrice, onlyFavorites, favoriteIds]);
+  const queryParams = useMemo(
+    () => ({
+      ...(category !== "all" ? { category } : {}),
+      ...(style !== "all" ? { style } : {}),
+      ...(maxPrice ? { max_price: maxPrice } : {}),
+      sort: "relevance",
+      page_size: BROWSE_PAGE_SIZE,
+    }),
+    [category, style, maxPrice],
+  );
+  const queryKey = JSON.stringify(queryParams);
+
+  useEffect(() => {
+    let alive = true;
+    const key = JSON.stringify(queryParams);
+    api
+      .products({ ...queryParams, page: 1 })
+      .then((res) => {
+        if (!alive) return;
+        remember(res.items);
+        setData({ key, items: res.items, total: res.total, page: 1 });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [queryParams, remember]);
+
+  const fresh = data && data.key === queryKey ? data : null; // null while (re)fetching
+  const loading = !fresh;
+  const items = fresh ? fresh.items : [];
+  const total = fresh ? fresh.total : 0;
+
+  const loadMore = async () => {
+    if (!fresh) return;
+    setLoadingMore(true);
+    try {
+      const next = fresh.page + 1;
+      const res = await api.products({ ...queryParams, page: next });
+      remember(res.items);
+      setData({ key: queryKey, items: [...fresh.items, ...res.items], total: res.total, page: next });
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const products = onlyFavorites ? items.filter((p) => favoriteIds.includes(p.id)) : items;
 
   const money = useMoney();
   const priceCaps = [100, 300, 600, 1200]; // base-currency (USD) steps
@@ -194,7 +236,7 @@ function AllProductsTab() {
       </div>
 
       <div className="panel-scroll flex-1 overflow-y-auto p-2.5">
-        {!loaded ? (
+        {loading ? (
           <div className="grid grid-cols-2 gap-2">
             <RecommendationSkeleton />
             <RecommendationSkeleton />
@@ -211,11 +253,25 @@ function AllProductsTab() {
             }
           />
         ) : (
-          <div className="grid grid-cols-2 gap-2">
-            {products.map((product) => (
-              <ProductCardSmall key={product.id} product={product} />
-            ))}
-          </div>
+          <>
+            <p className="mb-2 px-0.5 text-[11px] text-ink-faint">
+              {onlyFavorites
+                ? `${products.length} favourite${products.length === 1 ? "" : "s"}`
+                : `Showing ${items.length} of ${total}`}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {products.map((product) => (
+                <ProductCardSmall key={product.id} product={product} />
+              ))}
+            </div>
+            {!onlyFavorites && items.length < total && (
+              <div className="mt-3 flex justify-center">
+                <Button variant="secondary" size="sm" loading={loadingMore} onClick={loadMore}>
+                  Load more ({total - items.length} more)
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

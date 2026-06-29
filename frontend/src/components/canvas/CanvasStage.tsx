@@ -14,13 +14,14 @@ import {
   snapTo,
   wallLength,
 } from "@/lib/geometry";
-import { removeItem, validateItemDebounced } from "@/lib/placement";
+import { acceptOne, removeItem, validateItemDebounced } from "@/lib/placement";
 import { redo, undo, usePlannerStore } from "@/stores/plannerStore";
 import { useGuideStore } from "@/stores/guideStore";
 import { useProductStore } from "@/stores/productStore";
 import { useUiStore } from "@/stores/uiStore";
 import type { Point } from "@/types/api";
-import { AnalysisOverlay, GhostNode, WarningGeometry, ZonesOverlay } from "./Overlays";
+import { AssistPanel } from "./AssistPanel";
+import { AnalysisOverlay, GhostNode, ProposedItemNode, WarningGeometry, ZonesOverlay } from "./Overlays";
 import { PlacedItemNode } from "./PlacedItemNode";
 import { RoomShape } from "./RoomShape";
 
@@ -63,6 +64,7 @@ export default function CanvasStage() {
 
   const room = usePlannerStore((s) => s.room);
   const items = usePlannerStore((s) => s.items);
+  const proposedItems = usePlannerStore((s) => s.proposedItems);
   const replaceVertices = usePlannerStore((s) => s.replaceVertices);
   const addDoor = usePlannerStore((s) => s.addDoor);
   const addWindow = usePlannerStore((s) => s.addWindow);
@@ -450,7 +452,9 @@ export default function CanvasStage() {
           ))}
         </Layer>
 
-        <Layer>
+        {/* fade the existing room while the Draw Wall tool is active, so the canvas
+            reads as a fresh surface to draw a new room on (it's replaced on close) */}
+        <Layer opacity={tool === "wall" ? 0.2 : 1}>
           <RoomShape scale={scale} interactive={tool === "select"} />
         </Layer>
 
@@ -491,6 +495,28 @@ export default function CanvasStage() {
             })}
           {ghost && <GhostNode ghost={ghost} scale={scale} />}
         </Layer>
+
+        {/* Assist-with-AI proposed layout: tap a ghost to accept just that item.
+            Named "decor-layer" so pending ghosts are excluded from AI render
+            snapshots (snapshotCanvas hides decor-layer); naming doesn't affect
+            on-screen interactivity. */}
+        {proposedItems.length > 0 && (
+          <Layer name="decor-layer">
+            {proposedItems.map((g) => {
+              const product = productsById[g.product_id];
+              if (!product) return null;
+              return (
+                <ProposedItemNode
+                  key={g.instance_id}
+                  item={g}
+                  product={product}
+                  scale={scale}
+                  onAccept={() => acceptOne(g.instance_id)}
+                />
+              );
+            })}
+          </Layer>
+        )}
 
         {/* transient tool previews */}
         <Layer name="decor-layer" listening={false}>
@@ -543,6 +569,9 @@ export default function CanvasStage() {
           )}
         </Layer>
       </Stage>
+
+      {/* HTML overlay (renders above the canvas): Assist-with-AI button + controls */}
+      <AssistPanel />
     </div>
   );
 }

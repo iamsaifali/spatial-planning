@@ -52,6 +52,16 @@ R_CONVERSATION_ANGLE = "conversation_angle"
 R_CORNER_LIGHT = "corner_near_seating"
 R_REMAINING_WALL = "uses_remaining_wall"
 R_FLEXIBLE_SPOT = "flexible_spot"
+# Majlis-specific (perimeter seating)
+R_MAJLIS_PERIMETER_SEATING = "majlis_perimeter_seating"
+R_LONG_CLEAR_WALL = "long_clear_wall"
+R_KEEP_CENTER_OPEN = "keep_center_open"
+R_MAXIMIZE_SEATING = "maximize_seating"
+# Bedroom
+R_HEADBOARD_TO_WALL = "headboard_to_wall"
+# Composition (large rooms)
+R_SECONDARY_ZONE = "secondary_zone"
+R_FLOATING_MEDIA = "media_at_viewing_distance"
 
 CategoryStats = dict[str, dict[str, float]]
 PlacedProduct = tuple[PlacedItem, Product]
@@ -222,6 +232,67 @@ def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cate
     return _rank(zones)
 
 
+# Viewing geometry. A TV is comfortable ~2.5-4 m from the sofa; beyond ~4.4 m it is too
+# far to watch. When every facing wall is past that (a great-room), we place the media on
+# a console at a human viewing distance instead - but ONLY if there is a clear walk-around
+# (so circulation is never sacrificed); otherwise we keep the wall, far as it is.
+TV_VIEWING_DISTANCE = 330.0  # sofa-front -> TV-center target
+# Only float the media console when the facing wall is GENUINELY far (a great-room / open
+# plan, where a floating console reads as a zone divider). In a normal closed room - even
+# a large 6x5 m one - a wall-mounted TV at 5-5.6 m is fine and a floating console looks
+# marooned, so we keep it on the wall. (Raised from 4.4 m after real-room review.)
+TV_WALL_TOO_FAR = 600.0  # facing-wall distance beyond which we consider floating
+TV_FLOAT_SIDE_WALK = 80.0  # required walk-around gap beside a floating console
+TV_FLOAT_BACK_MIN = 90.0  # required open space behind it (the back zone / not jammed)
+
+
+def _floating_tv_zone(
+    analysis: RoomAnalysis, sofa_item: PlacedItem, sofa_product: Product,
+    stats: CategoryStats, blockers,
+) -> ZoneData | None:
+    """A media console floating at a human viewing distance, facing the sofa.
+
+    Returns a zone only if the console sits fully inside the room, clear of door keep-out
+    and other furniture, with a >=80 cm walk-around on a side and open space behind it.
+    Otherwise None (caller keeps the wall-mounted TV). This is the open-plan 'media as a
+    soft divider' pattern - the space behind becomes the next zone.
+    """
+    s = stats.get("tv_unit", {})
+    tv_w = s.get("max_w", 150.0)
+    tv_d = s.get("max_d", 48.0) + 4.0
+    f = front_vector(sofa_item.rotation_deg)
+    lat = (-f[1], f[0])
+    sofa_front = add((sofa_item.x, sofa_item.y), f, sofa_product.depth_cm / 2.0)
+    center = add(sofa_front, f, TV_VIEWING_DISTANCE)
+    rot = rotation_for_normal((-f[0], -f[1]))  # console faces back toward the sofa
+
+    poly = item_polygon(center[0], center[1], tv_w, tv_d, rot)
+    if poly.difference(analysis.polygon).area > 50.0:
+        return None  # would poke outside the room
+    if poly.intersection(analysis.keep_clear_union).area > 50.0:
+        return None  # would sit in a door swing / entry
+    if blockers is not None and not blockers.is_empty and poly.intersection(blockers).area > 50.0:
+        return None  # would collide with existing furniture
+    # walk-around: at least one side must have an >=80 cm passage to the wall
+    left_end = add(center, lat, -tv_w / 2.0)
+    right_end = add(center, lat, tv_w / 2.0)
+    side_gap = max(
+        first_boundary_hit(analysis.polygon, left_end, (-lat[0], -lat[1])),
+        first_boundary_hit(analysis.polygon, right_end, lat),
+    )
+    if side_gap < TV_FLOAT_SIDE_WALK:
+        return None
+    # open space behind (so it reads as a divider, not jammed against a wall)
+    back = add(center, f, tv_d / 2.0)
+    if first_boundary_hit(analysis.polygon, back, f) < TV_FLOAT_BACK_MIN:
+        return None
+    return ZoneData(
+        id="z-tv-float", category="tv_unit", polygon=poly, score=0.97, rotation_deg=rot,
+        anchor_label="faces_sofa", reason_codes=[R_FACES_SOFA, R_FLOATING_MEDIA],
+        kind="free", origin=center, fwd=(-f[0], -f[1]), lat=lat, fwd_len=tv_d, lat_len=tv_w,
+    )
+
+
 def _tv_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
     s = stats.get("tv_unit", {})
     depth = s.get("max_d", 48.0) + 8.0
@@ -270,7 +341,17 @@ def _tv_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Catego
         if facing and 250.0 <= d_wall <= 400.0:
             reasons.append(R_IDEAL_VIEWING_DIST)
         zones.append(_band_zone(analysis, cand, "tv_unit", i, score, reasons, depth))
-    return _rank(zones)
+    wall_zones = _rank(zones)
+
+    # Viewing-distance-aware: if the wall the sofa faces is too far to watch a TV from
+    # (a great-room), prefer a media console floating at a human distance - but keep the
+    # wall zones as fallback, and only float when the walk-around clearance check passes.
+    facing_wall_dist = first_boundary_hit(analysis.polygon, sofa_front, f)
+    if facing_wall_dist > TV_WALL_TOO_FAR:
+        float_zone = _floating_tv_zone(analysis, item, product, stats, blockers)
+        if float_zone is not None:
+            return [float_zone, *wall_zones]
+    return wall_zones
 
 
 def sub2(a: Vec, b: Vec) -> Vec:
@@ -314,6 +395,12 @@ def _free_zone_center(analysis: RoomAnalysis, category: str, size_w: float, size
     usable = largest_piece(analysis.usable_area)
     if usable is None:
         return []
+    # Never request a footprint larger than the open area itself. Real catalogs carry huge
+    # rugs (up to ~5x4 m); without this a giant rug would be selected and poke through the
+    # walls in a normal room. Large rooms (e.g. majlis) are unaffected - the cap doesn't bind.
+    minx, miny, maxx, maxy = usable.bounds
+    size_w = max(60.0, min(size_w, (maxx - minx) - 30.0))
+    size_d = max(60.0, min(size_d, (maxy - miny) - 30.0))
     c = usable.centroid
     rect = item_polygon(c.x, c.y, size_w, size_d, 0).intersection(usable)
     piece = largest_piece(rect)
@@ -325,6 +412,105 @@ def _free_zone_center(analysis: RoomAnalysis, category: str, size_w: float, size
             size_d, size_w, [R_FLEXIBLE_SPOT], "room_center", kind="free",
         )
     ]
+
+
+# Composition thresholds. Below the area threshold a room gets NO secondary zone, so
+# normal rooms (and the goldens) are byte-for-byte unchanged. Only genuinely large rooms
+# - where one seating group leaves an obvious empty area - compose a second cluster.
+SECONDARY_ZONE_MIN_AREA_CM2 = 260_000.0  # 26 m2 of room
+SECONDARY_ZONE_MIN_OPEN_CM2 = 55_000.0  # 5.5 m2 of contiguous open floor left over
+SECONDARY_ZONE_TWO_CHAIR_CM2 = 75_000.0  # open area above which we seat two chairs
+
+
+def _avg_dim(stats: CategoryStats, category: str, axis: str, fallback: float) -> float:
+    s = stats.get(category, {})
+    lo, hi = s.get(f"min_{axis}"), s.get(f"max_{axis}")
+    return (lo + hi) / 2.0 if lo is not None and hi is not None else fallback
+
+
+def secondary_nook_zones(
+    analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats
+) -> list[ZoneData]:
+    """Compose a secondary seating cluster for a LARGE room.
+
+    The primary recipe builds one seating group against a wall; in a big room that
+    leaves a large empty area. This finds the largest open region left over and lays out
+    a coherent reading/conversation nook there - a side table flanked by one or two
+    accent chairs that FACE the primary group (so the two zones read as one composed
+    room), plus a floor lamp. Returns 'free' zones; the interpreter selects products and
+    runs each through the validation gate. Empty list for normal rooms (room below the
+    area threshold, or no big-enough open region) - so smaller rooms are untouched.
+    """
+    if analysis.area_cm2 < SECONDARY_ZONE_MIN_AREA_CM2:
+        return []
+    # generous halo around existing furniture: keeps a composed nook clear of the primary
+    # group AND well-separated from any earlier nook (so multiple nooks don't bunch up).
+    free = analysis.usable_area.difference(_placed_blockers(placed, buffer_cm=48.0))
+
+    # Keep the primary sofa->focus sightline clear: carve the viewing lane (the strip the
+    # sofa looks down) out of the candidate area, so the secondary cluster always lands to
+    # the SIDE - never between the sofa and the TV.
+    sofa = _find_placed(placed, "sofa")
+    if sofa is not None:
+        item, prod = sofa
+        f = front_vector(item.rotation_deg)
+        lane_len = analysis.diag_cm
+        lane_center = (item.x + f[0] * lane_len / 2.0, item.y + f[1] * lane_len / 2.0)
+        lane = item_polygon(lane_center[0], lane_center[1], prod.width_cm + 70.0, lane_len, item.rotation_deg)
+        free = free.difference(lane)
+
+    region = largest_piece(free)
+    if region is None or region.area < SECONDARY_ZONE_MIN_OPEN_CM2:
+        return []
+
+    ctr = region.centroid
+    center = (ctr.x, ctr.y) if region.contains(ctr) else (region.representative_point().x, region.representative_point().y)
+    cx, cy = center
+
+    # Orient the pair along the open region's LONG axis, so two chairs facing each other
+    # across the table fit the space (and read as a deliberate vignette, not a far aim).
+    mrr_coords = list(region.minimum_rotated_rectangle.exterior.coords)
+    e1 = (mrr_coords[1][0] - mrr_coords[0][0], mrr_coords[1][1] - mrr_coords[0][1])
+    e2 = (mrr_coords[2][0] - mrr_coords[1][0], mrr_coords[2][1] - mrr_coords[1][1])
+    long_edge = e1 if (e1[0] ** 2 + e1[1] ** 2) >= (e2[0] ** 2 + e2[1] ** 2) else e2
+    u = unit(*long_edge)  # chair-pair axis (chairs sit at center +/- u*spread)
+    lat = (-u[1], u[0])  # perpendicular - the lamp sits off to this side
+
+    chair_w = _avg_dim(stats, "accent_chair", "w", 70.0)
+    chair_d = _avg_dim(stats, "accent_chair", "d", 72.0)
+    table_w = _avg_dim(stats, "side_table", "w", 50.0)
+    lamp_w = _avg_dim(stats, "lighting", "w", 40.0)
+
+    rot_a = rotation_for_normal(u)  # chair facing +u (toward the table)
+    rot_b = rotation_for_normal((-u[0], -u[1]))  # chair facing -u
+    spread = chair_d / 2.0 + table_w / 2.0 + 16.0  # table between the two facing chairs
+    two_chairs = region.area >= SECONDARY_ZONE_TWO_CHAIR_CM2
+
+    # (category, center, (w, d), rotation) - the interpreter places at center w/ rotation
+    slots: list[tuple[str, Vec, tuple[float, float], float]] = [
+        ("side_table", center, (table_w, table_w), rot_a),
+        ("accent_chair", add(center, u, -spread), (chair_w, chair_d), rot_a),
+    ]
+    if two_chairs:
+        slots.append(("accent_chair", add(center, u, spread), (chair_w, chair_d), rot_b))
+    # floor lamp beside the vignette (perpendicular to the pair axis)
+    slots.append(("lighting", add(center, lat, table_w / 2.0 + lamp_w / 2.0 + 34.0), (lamp_w, lamp_w), rot_a))
+
+    zones: list[ZoneData] = []
+    for i, (cat, (px, py), (w, d), rot) in enumerate(slots):
+        poly = largest_piece(
+            item_polygon(px, py, w, d, rot).intersection(analysis.polygon).difference(analysis.keep_clear_union)
+        )
+        if poly is None or poly.area < w * d * 0.5:
+            continue  # not enough clear floor here - drop this slot, keep the rest
+        zones.append(
+            ZoneData(
+                id=f"z2-{cat}-{i}", category=cat, polygon=poly, score=0.7, rotation_deg=rot,
+                anchor_label="secondary_zone", reason_codes=[R_SECONDARY_ZONE], kind="free",
+                origin=(px, py), fwd=u, lat=lat, fwd_len=d, lat_len=w,
+            )
+        )
+    return zones
 
 
 def _rug_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
@@ -547,6 +733,162 @@ def _decor_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cat
     )
 
 
+def _bed_zones(
+    analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats
+) -> list[ZoneData]:
+    """The bed against a clear wall, headboard to the wall (front faces the room).
+
+    Reuses the wall-band machinery (like _sofa_zones) but scores for a restful bedroom:
+    longest clear wall, away from windows, entry kept open. No focal/TV scoring.
+    """
+    s = stats.get("bed", {})
+    depth = s.get("max_d", 210.0) + 10.0
+    min_w = s.get("min_w", 140.0)
+    blockers = _placed_blockers(placed)
+
+    cands = _wall_band_candidates(analysis, depth, min_w * 0.95, use_solid=False, blockers=blockers)
+    tight = False
+    if not cands:
+        cands = _wall_band_candidates(analysis, depth, 110.0, use_solid=False, blockers=blockers)
+        tight = True
+    if not cands:
+        return []
+
+    max_extent = max(c.extent for c in cands)
+    zones: list[ZoneData] = []
+    for i, cand in enumerate(cands):
+        win_ratio = _window_overlap_ratio(cand.wall, cand.lo, cand.hi)
+        entry_norm = _entry_distance_norm(analysis, cand.piece)
+        corridor_ratio = _corridor_overlap_ratio(analysis, cand.piece)
+        # A bed wants a SOLID wall for the headboard, not the longest wall. Once a wall is
+        # long enough to hold the bed, extra length barely matters - so the fit term
+        # saturates, and a window on the headboard wall is a strong penalty (designers
+        # avoid beds under windows). The user can still pick an under-window template.
+        fit = min(1.0, cand.extent / (min_w + 50.0))
+        score = (
+            0.28 * fit
+            + 0.45 * (1.0 - win_ratio)
+            + 0.18 * entry_norm
+            - 0.15 * corridor_ratio
+        )
+        reasons = [R_HEADBOARD_TO_WALL]
+        if cand.wall.is_longest_clear:
+            reasons.append(R_LONGEST_CLEAR_WALL)
+        if corridor_ratio < 0.05:
+            reasons.append(R_KEEPS_ENTRY_OPEN)
+        if win_ratio > 0.2:
+            reasons.append(R_NEAR_WINDOW)
+        if tight:
+            reasons.append(R_TIGHT_SPACE)
+        zones.append(_band_zone(analysis, cand, "bed", i, score, reasons, depth))
+    return _rank(zones)
+
+
+def _bedside_zones(
+    analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats
+) -> list[ZoneData]:
+    """Nightstand spots flanking the bed at the headboard (left + right).
+
+    Returns up to two side zones; the mirror_pair count rule places one per zone that
+    fits. Door swing / entry / window strips are carved out, and the gate validates the
+    final pose - so a side blocked by a door or wall simply yields no zone there.
+    """
+    bed = _find_placed(placed, "bed")
+    if bed is None:
+        return []
+    item, product = bed
+    f = front_vector(item.rotation_deg)
+    w = width_axis(item.rotation_deg)
+    blockers = _placed_blockers(placed)
+
+    zones: list[ZoneData] = []
+    for idx, side in enumerate((-1.0, 1.0)):
+        origin = add((item.x, item.y), w, side * (product.width_cm / 2.0 + 4.0))
+        head = add(origin, f, -(product.depth_cm / 2.0 - 35.0))  # toward the headboard
+        rect = item_polygon(*add(head, w, side * 30.0), 60.0, 60.0, item.rotation_deg)
+        clipped = rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers)
+        piece = largest_piece(clipped)
+        if piece is None or piece.area < 1_200.0:
+            continue
+        zones.append(
+            _frame_zone(
+                "side_table", idx, piece, 0.85 if side < 0 else 0.84, item.rotation_deg,
+                head, (w[0] * side, w[1] * side), f, 60.0, 60.0,
+                [R_EASY_REACH], f"bed_{'left' if side < 0 else 'right'}", kind="side",
+            )
+        )
+    return _rank(zones, limit=2)
+
+
+def _majlis_sofa_zones(
+    analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats
+) -> list[ZoneData]:
+    """Perimeter seating for a Majlis: wall-band zones along the longest clear walls.
+
+    Unlike the living-room ``_sofa_zones`` (which picks the single best wall facing a
+    focal/TV wall), this returns ONE inward-facing band per wall - longest wall first -
+    so the orchestrator can line benches around 2-3 walls and leave the centre open.
+    Door swing / entry / window keep-out is inherited from ``_wall_band_candidates``
+    (which clips to ``keep_clear_union``) and enforced again by ``validate_item``.
+    """
+    s = stats.get("sofa", {})
+    depth = s.get("max_d", 105.0) + 10.0
+    blockers = _placed_blockers(placed)
+
+    cands = _wall_band_candidates(analysis, depth, 140.0, use_solid=False, blockers=blockers)
+    if not cands:
+        cands = _wall_band_candidates(analysis, depth, 90.0, use_solid=False, blockers=blockers)
+    if not cands:
+        return []
+
+    # one zone per wall: the longest clear band on that wall
+    best_per_wall: dict[int, _BandCandidate] = {}
+    for c in cands:
+        cur = best_per_wall.get(c.wall.index)
+        if cur is None or c.extent > cur.extent:
+            best_per_wall[c.wall.index] = c
+
+    max_extent = max(c.extent for c in best_per_wall.values())
+    zones: list[ZoneData] = []
+    for i, cand in enumerate(sorted(best_per_wall.values(), key=lambda c: -c.extent)):
+        win_ratio = _window_overlap_ratio(cand.wall, cand.lo, cand.hi)
+        corridor_ratio = _corridor_overlap_ratio(analysis, cand.piece)
+        score = (
+            0.60 * (cand.extent / max_extent)
+            + 0.20 * (1.0 - 0.5 * win_ratio)
+            - 0.20 * corridor_ratio
+        )
+        reasons = [R_MAJLIS_PERIMETER_SEATING, R_MAXIMIZE_SEATING, R_KEEP_CENTER_OPEN]
+        if cand.wall.is_longest_clear or cand.extent >= 0.9 * max_extent:
+            reasons.append(R_LONG_CLEAR_WALL)
+        if corridor_ratio < 0.05:
+            reasons.append(R_KEEPS_ENTRY_OPEN)
+        if win_ratio > 0.2:
+            reasons.append(R_NEAR_WINDOW)
+        zones.append(_band_zone(analysis, cand, "sofa", i, score, reasons, depth))
+    return _rank(zones, limit=4)
+
+
+def _majlis_zones(
+    category: str, analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats
+) -> list[ZoneData] | None:
+    """Majlis overrides for the centre-of-room categories and perimeter seating.
+
+    Returns None for categories with no Majlis-specific behaviour, so the caller
+    falls through to the standard per-category generator (side_table, lighting,
+    storage, decor, accent_chair keep their existing sofa-anchored / corner logic).
+    """
+    if category == "sofa":
+        return _majlis_sofa_zones(analysis, placed, stats)
+    if category == "rug":
+        s = stats.get("rug", {})
+        return _free_zone_center(analysis, "rug", s.get("max_w", 300.0), s.get("max_d", 240.0))
+    if category == "coffee_table":
+        # low table centred on the (centred) rug / room centre
+        return _free_zone_center(analysis, "coffee_table", 140.0, 120.0)
+    return None
+
+
 _GENERATORS = {
     "sofa": _sofa_zones,
     "tv_unit": _tv_zones,
@@ -565,7 +907,13 @@ def zones_for_category(
     analysis: RoomAnalysis,
     placed: list[PlacedProduct],
     stats: CategoryStats,
+    room_type: str | None = None,
 ) -> list[ZoneData]:
+    # room_type defaults to None -> existing living-room behaviour, unchanged.
+    if room_type == "majlis":
+        majlis = _majlis_zones(category, analysis, placed, stats)
+        if majlis is not None:
+            return majlis
     gen = _GENERATORS.get(category)
     return gen(analysis, placed, stats) if gen else []
 

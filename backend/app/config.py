@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -29,11 +30,24 @@ class Settings(BaseSettings):
 
     db_path: str = "var/zory.db"
     static_dir: str = "static"
-    catalog_path: str = "app/data/catalog.json"
+    # production default: the real store catalog (~5.6k products). Tests pin CATALOG_PATH
+    # to the small fixture catalog (app/data/catalog.json) so the golden layouts stay
+    # stable regardless of how the production catalog grows. See tests/conftest.py.
+    catalog_path: str = "app/data/catalog_real.json"
     analysis_cache_size: int = 256
     copy_cache_size: int = 512
 
     max_render_png_bytes: int = 4 * 1024 * 1024
+
+    # --- Assist planner mode (Recipe Architecture) ----------------------------
+    # recipe: DEFAULT - the recipe planner serves production. Proven byte-equivalent to
+    #         legacy across golden + broad equivalence tests; routes categories overrides
+    #         and unknown room types to legacy; surfaces recipe failures clearly.
+    # shadow: legacy is returned to the user while the recipe path runs, is compared, and
+    #         divergences are logged (recipe failures swallowed) - for re-validation.
+    # legacy: the original hardcoded planner only - the rollback path.
+    # Rollback at any time with ASSIST_PLANNER_MODE=legacy (or =shadow).
+    assist_planner_mode: Literal["legacy", "recipe", "shadow"] = "recipe"
 
     # --- scene geometry shared by the 2D canvas and the 3D view ---------------
     wall_thickness_cm: float = 12.0

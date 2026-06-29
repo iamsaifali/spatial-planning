@@ -61,9 +61,34 @@ export type Category =
   | "lighting"
   | "storage"
   | "decor"
+  | "bed"
   | "custom";
 
-export type StyleTag = "modern" | "scandinavian" | "industrial" | "boho" | "classic" | "minimal";
+export type StyleTag =
+  | "modern"
+  | "scandinavian"
+  | "industrial"
+  | "boho"
+  | "classic"
+  | "minimal"
+  // cultural vocabulary (Saudi / Majlis) - mirrors backend app/models/products.py
+  | "arabic"
+  | "saudi_traditional"
+  | "majlis"
+  | "modern_arabic"
+  | "luxury";
+
+export type RoomType = "living_room" | "majlis" | "bedroom";
+export type Region =
+  | "global"
+  | "gcc"
+  | "saudi_arabia"
+  | "levant"
+  | "south_asia"
+  | "east_asia"
+  | "europe";
+export type Formality = "casual" | "family" | "formal";
+export type LuxuryTier = "value" | "standard" | "premium" | "luxury";
 
 export interface Product {
   id: string;
@@ -83,9 +108,18 @@ export interface Product {
   rating: number;
   attrs: Record<string, number>;
   image_url: string;
+  two_d_icon?: string; // top-down icon URL (real-catalog products); rendered on the canvas
   is_walkable: boolean;
   shape: "rect" | "round";
   description: string;
+  // cultural / room-type taxonomy (optional on the client; always present from the API)
+  room_types?: RoomType[];
+  placement_type?: "wall_hug" | "perimeter" | "floor" | "center" | "freestanding";
+  seating_capacity?: number;
+  is_modular?: boolean;
+  formality?: Formality;
+  luxury_tier?: LuxuryTier;
+  region?: Region;
 }
 
 export interface Preferences {
@@ -94,6 +128,13 @@ export interface Preferences {
   total_budget: number | null;
   colors: string[];
   room_purpose: "family" | "entertaining" | "compact_living" | "work_lounge" | null;
+  // cultural / room-type aware fields (all optional; mirror backend Preferences)
+  room_type?: RoomType | null;
+  region?: Region | null;
+  seating_capacity?: number | null;
+  formality?: Formality | null;
+  luxury_tier?: LuxuryTier | null;
+  materials?: string[];
 }
 
 export const EMPTY_PREFERENCES: Preferences = {
@@ -102,6 +143,12 @@ export const EMPTY_PREFERENCES: Preferences = {
   total_budget: null,
   colors: [],
   room_purpose: null,
+  room_type: null,
+  region: null,
+  seating_capacity: null,
+  formality: null,
+  luxury_tier: null,
+  materials: [],
 };
 
 // --- analysis ---
@@ -273,6 +320,51 @@ export interface StepResponse {
   zones: Zone[];
   recommendations: Recommendation[];
   empty_slots: EmptySlot[];
+}
+
+// --- assist (whole-room AI-assisted layout) ---
+
+export interface AssistPlacement {
+  instance_id: string;
+  product_id: string;
+  product: Product; // full product so the canvas can render the ghost immediately
+  category: Category;
+  pose: Pose;
+  zone_id: string | null;
+  slot: Slot;
+  fit_facts: Record<string, number | string | boolean>;
+  reason_codes: string[];
+  rationale: string;
+  notices: string[];
+}
+
+export interface AssistSkip {
+  category: Category;
+  reason: string;
+}
+
+export interface AssistTotals {
+  item_count: number;
+  total_price: number; // base currency
+  currency: string;
+}
+
+export interface AssistLayoutResponse {
+  proposal_id: string;
+  placements: AssistPlacement[];
+  skipped: AssistSkip[];
+  findings: Finding[];
+  totals: AssistTotals;
+}
+
+export interface AssistTemplate {
+  label: string; // e.g. "Bed under the window"
+  recommended: boolean;
+  layout: AssistLayoutResponse;
+}
+
+export interface AssistLayoutOptions {
+  templates: AssistTemplate[];
 }
 
 // --- summary / commerce ---

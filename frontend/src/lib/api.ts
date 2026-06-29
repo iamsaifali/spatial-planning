@@ -6,6 +6,7 @@ import type {
   ApiErrorBody,
   AppConfigResponse,
   AssistantResponse,
+  AssistLayoutOptions,
   DesignCreateResponse,
   DesignResponse,
   HealthResponse,
@@ -109,6 +110,27 @@ export const api = {
   guideStep: (stepKey: string, room: Room, preferences: Preferences, placed_items: PlacedItem[]) =>
     latest(`guide/${stepKey}`, (s) =>
       post<StepResponse>(`/guide/step/${stepKey}`, { room, preferences, placed_items }, s),
+    ),
+
+  /** Whole-room deterministic auto-layout for "Assist with AI". No LLM picks coordinates. */
+  assistLayout: (
+    room: Room,
+    placed_items: PlacedItem[],
+    preferences: Preferences,
+    opts: { categories?: string[] | null; room_type?: string } = {},
+  ) =>
+    latest("assist/layout", (s) =>
+      post<AssistLayoutOptions>(
+        "/assist/layout",
+        {
+          room,
+          placed_items,
+          preferences,
+          categories: opts.categories ?? null,
+          room_type: opts.room_type ?? "living_room",
+        },
+        s,
+      ),
     ),
 
   suggestPlacement: (room: Room, placed_items: PlacedItem[], product_id: string, zone_id?: string | null) =>

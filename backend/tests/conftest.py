@@ -4,6 +4,10 @@ from fastapi.testclient import TestClient
 from app.config import get_settings
 from app.models.geometry import Door, Room, Window
 
+# Tests run against the small, fixed fixture catalog (NOT the large production catalog),
+# so golden layouts / counts stay stable as the real catalog grows.
+TEST_CATALOG = "app/data/catalog.json"
+
 
 @pytest.fixture()
 def rect_room() -> Room:
@@ -60,7 +64,7 @@ def catalog_repo():
 
     settings = get_settings()
     repo = CatalogRepository.load(
-        settings.resolve(settings.catalog_path), settings.resolve(settings.static_dir)
+        settings.resolve(TEST_CATALOG), settings.resolve(settings.static_dir)  # fixture catalog
     )
     set_repository(repo)
     return repo
@@ -70,6 +74,7 @@ def catalog_repo():
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("OPENAI_API_KEY", "")
+    monkeypatch.setenv("CATALOG_PATH", TEST_CATALOG)  # app under test uses the fixture catalog
     get_settings.cache_clear()
     from app.main import create_app
     from app.services.spatial.analyze import clear_cache

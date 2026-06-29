@@ -23,6 +23,10 @@ export function snapshotCanvas(): string | null {
   try {
     const dataUrl = stage.toDataURL({ pixelRatio: 2, mimeType: "image/png" });
     return dataUrl.split(",", 2)[1] ?? null;
+  } catch {
+    // a cross-origin image (e.g. a product icon) can taint the canvas; never crash the
+    // render flow - return null and let the caller render without the reference image
+    return null;
   } finally {
     for (const layer of hidden) layer.visible(true);
   }

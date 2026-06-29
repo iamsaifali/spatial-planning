@@ -51,6 +51,45 @@ ESSENTIAL_REASONS = {
 }
 
 
+# --- room-type step sequences (extension point) ---------------------------------
+# The "Assist with AI" orchestrator (services/recommend/orchestrator.py) asks for an
+# ordered category sequence by room_type, so room types plug in without touching the
+# orchestrator loop.
+LIVING_ROOM_SEQUENCE: list[str] = [s.category for s in STEPS]
+
+# Majlis maps onto the EXISTING categories (Majlis products were authored with
+# existing categories + taxonomy fields in Phase 3): seating first (placed along the
+# perimeter walls by the Majlis zone generator), then a centred rug + low table, then
+# accents. Note: NO tv_unit - a Majlis is not a TV-first room. accent_chair (floor
+# cushions / poufs) comes last as optional seating fill.
+MAJLIS_SEQUENCE: list[str] = [
+    "sofa",          # majlis benches along the walls
+    "rug",           # centred
+    "coffee_table",  # low table, centred on the rug
+    "side_table",
+    "lighting",
+    "storage",
+    "decor",
+    "accent_chair",  # floor cushions / poufs - optional fill
+]
+
+STEP_SEQUENCES: dict[str, list[str]] = {
+    "living_room": LIVING_ROOM_SEQUENCE,
+    "majlis": MAJLIS_SEQUENCE,
+}
+
+
+def sequence_for_room_type(room_type: str | None) -> list[str]:
+    """Ordered category sequence the auto-planner walks for a given room type.
+
+    Unknown / None room types fall back to the living-room sequence so new
+    front-end values never 500 the endpoint.
+    """
+    if room_type is None:
+        return LIVING_ROOM_SEQUENCE
+    return STEP_SEQUENCES.get(room_type, LIVING_ROOM_SEQUENCE)
+
+
 def require_step(key: str) -> Step:
     step = STEP_BY_KEY.get(key)
     if step is None:

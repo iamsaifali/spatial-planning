@@ -91,6 +91,7 @@ def create_app() -> FastAPI:
         )
 
     from app.routers import (
+        assist,
         assistant,
         checkout,
         config as config_router,
@@ -110,6 +111,7 @@ def create_app() -> FastAPI:
     app.include_router(rooms.router, prefix=api_prefix)
     app.include_router(guide.router, prefix=api_prefix)
     app.include_router(placement.router, prefix=api_prefix)
+    app.include_router(assist.router, prefix=api_prefix)
     app.include_router(products.router, prefix=api_prefix)
     app.include_router(summary.router, prefix=api_prefix)
     app.include_router(render.router, prefix=api_prefix)

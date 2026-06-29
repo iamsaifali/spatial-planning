@@ -173,8 +173,11 @@ def suggest_pose(
     product: Product,
     stats: CategoryStats,
     zone_id: str | None = None,
+    room_type: str | None = None,
 ) -> tuple[Pose, str | None, list[Pose]]:
-    zones = zones_for_category(product.category, analysis, placed, stats)
+    # room_type is threaded through so Majlis poses anchor to the same perimeter /
+    # centre zones the selector chose; defaults to None -> living-room behaviour.
+    zones = zones_for_category(product.category, analysis, placed, stats, room_type=room_type)
     chosen: ZoneData | None = None
     if zone_id is not None:
         chosen = next((z for z in zones if z.id == zone_id), None)

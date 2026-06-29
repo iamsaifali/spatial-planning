@@ -4,8 +4,49 @@
  *  Local origin = footprint center; width along +x, front faces +y.
  */
 
-import { Circle, Ellipse, Group, Line, Rect } from "react-konva";
+import { useEffect, useState } from "react";
+import { Circle, Ellipse, Group, Image as KonvaImage, Line, Rect } from "react-konva";
 import type { Product } from "@/types/api";
+
+/** Route an icon through our same-origin proxy so drawing it on the canvas doesn't taint
+ *  it (the bucket has no CORS) - which would otherwise break the AI-preview export. */
+function iconSrc(url: string): string {
+  return `/api/icon?u=${encodeURIComponent(url)}`;
+}
+
+/** Load an <img> for Konva (client-only). crossOrigin="anonymous" + the proxy's CORS
+ *  header keep the canvas clean/exportable. */
+function useHtmlImage(src?: string): HTMLImageElement | null {
+  // keyed by src so a stale load never shows on a changed/cleared src (and we never
+  // call setState synchronously in the effect - only in the async onload callback)
+  const [loaded, setLoaded] = useState<{ src: string; img: HTMLImageElement } | null>(null);
+  useEffect(() => {
+    if (!src) return;
+    const im = new window.Image();
+    im.crossOrigin = "anonymous";
+    let alive = true;
+    im.onload = () => {
+      if (alive) setLoaded({ src, img: im });
+    };
+    im.src = src;
+    return () => {
+      alive = false;
+    };
+  }, [src]);
+  return loaded && loaded.src === src ? loaded.img : null;
+}
+
+/** Render the product's real top-down icon as a "sticker" at its footprint; fall back to
+ *  the parametric glyph while the image loads or when the product has no icon. */
+export function FurnitureSprite({ product, fill }: { product: Product; fill: string }) {
+  const img = useHtmlImage(product.two_d_icon ? iconSrc(product.two_d_icon) : undefined);
+  if (product.two_d_icon && img) {
+    const w = product.width_cm;
+    const d = product.depth_cm;
+    return <KonvaImage image={img} x={-w / 2} y={-d / 2} width={w} height={d} listening={false} />;
+  }
+  return <FurnitureGlyph product={product} fill={fill} />;
+}
 
 function darken(hex: string, amount = 0.22): string {
   const n = parseInt(hex.slice(1), 16);
@@ -63,6 +104,38 @@ export function FurnitureGlyph({ product, fill }: { product: Product; fill: stri
         <Group>
           <Rect x={-w / 2} y={-d / 2} width={w} height={d} cornerRadius={6} fill={fill} stroke={stroke} strokeWidth={1.5} />
           <Rect x={-w / 2 + 6} y={-d / 2 + 6} width={w - 12} height={d - 12} cornerRadius={4} stroke={darken(fill, 0.12)} strokeWidth={1} />
+        </Group>
+      );
+    }
+    case "bed": {
+      const headboard = Math.min(d * 0.1, 16);
+      const pillowH = Math.min(d * 0.2, 38);
+      const pillows = w >= 150 ? 2 : 1;
+      const gap = 10;
+      const pillowW = (w - 24 - gap * (pillows - 1)) / pillows;
+      return (
+        <Group>
+          {/* mattress */}
+          <Rect x={-w / 2} y={-d / 2} width={w} height={d} cornerRadius={8} fill={fill} stroke={stroke} strokeWidth={1.5} />
+          {/* headboard along the back edge (-y, against the wall) */}
+          <Rect x={-w / 2} y={-d / 2} width={w} height={headboard} cornerRadius={6} fill={darken(fill, 0.16)} />
+          {/* duvet covering the lower ~55% */}
+          <Rect x={-w / 2 + 4} y={-d / 2 + d * 0.42} width={w - 8} height={d * 0.55} cornerRadius={6} fill={darken(fill, 0.06)} />
+          <Line points={[-w / 2 + 6, -d / 2 + d * 0.42, w / 2 - 6, -d / 2 + d * 0.42]} stroke={darken(fill, 0.12)} strokeWidth={1} />
+          {/* pillows near the headboard */}
+          {Array.from({ length: pillows }, (_, i) => (
+            <Rect
+              key={i}
+              x={-w / 2 + 12 + i * (pillowW + gap)}
+              y={-d / 2 + headboard + 6}
+              width={pillowW}
+              height={pillowH}
+              cornerRadius={7}
+              fill="#F4EEE2"
+              stroke={darken(fill, 0.1)}
+              strokeWidth={0.8}
+            />
+          ))}
         </Group>
       );
     }
