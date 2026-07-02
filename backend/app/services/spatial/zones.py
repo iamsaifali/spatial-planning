@@ -17,7 +17,7 @@ from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
 from app.models.geometry import PlacedItem, Pose
-from app.models.products import Product
+from app.models.products import Product, placement_group
 from app.services.spatial.core import RoomAnalysis, WallData, ZoneData
 from app.services.spatial.geometry_utils import (
     Vec,
@@ -69,7 +69,7 @@ PlacedProduct = tuple[PlacedItem, Product]
 
 def _find_placed(placed: list[PlacedProduct], category: str) -> PlacedProduct | None:
     for item, product in placed:
-        if product.category == category:
+        if placement_group(product.category) == category:
             return item, product
     return None
 
@@ -159,6 +159,8 @@ def _band_zone(
     score: float,
     reasons: list[str],
     depth: float,
+    float_cm: float = 0.0,
+    anchor_t: float | None = None,
 ) -> ZoneData:
     return ZoneData(
         id=f"z-{category}-{idx}",
@@ -172,6 +174,8 @@ def _band_zone(
         wall_index=cand.wall.index,
         seg=(cand.lo, cand.hi),
         band_depth=depth,
+        float_cm=float_cm,
+        anchor_t=anchor_t,
     )
 
 
@@ -217,6 +221,18 @@ def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cate
             + 0.20 * focal
             - 0.15 * corridor_ratio
         )
+        # Great-room: the wall the sofa FACES is too far to comfortably watch a wall-mounted
+        # TV from. Rather than floating the TV out to meet a wall-glued sofa, float the whole
+        # SEATING GROUP forward so it sits at a human viewing distance and the TV stays on the
+        # wall. The rug / coffee table / chairs anchor to the sofa's actual pose, so the whole
+        # conversation area moves with it. Normal rooms don't trigger this (float stays 0).
+        mid = (cand.lo + cand.hi) / 2.0
+        front_pt = add(cand.wall.point_at(mid), cand.wall.normal, SOFA_FRONT_CM)
+        facing_dist = first_boundary_hit(analysis.polygon, front_pt, cand.wall.normal)
+        float_cm = 0.0
+        if facing_dist > TV_WALL_TOO_FAR:
+            tv_front_depth = stats.get("tv_unit", {}).get("max_d", 48.0) + 8.0  # TV's reach off its wall
+            float_cm = max(0.0, facing_dist - tv_front_depth - TV_VIEWING_DISTANCE)
         reasons = []
         if cand.wall.is_longest_clear:
             reasons.append(R_LONGEST_CLEAR_WALL)
@@ -228,69 +244,18 @@ def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cate
             reasons.append(R_NEAR_WINDOW)
         if tight:
             reasons.append(R_TIGHT_SPACE)
-        zones.append(_band_zone(analysis, cand, "sofa", i, score, reasons, depth))
+        zones.append(_band_zone(analysis, cand, "sofa", i, score, reasons, depth, float_cm=float_cm))
     return _rank(zones)
 
 
-# Viewing geometry. A TV is comfortable ~2.5-4 m from the sofa; beyond ~4.4 m it is too
-# far to watch. When every facing wall is past that (a great-room), we place the media on
-# a console at a human viewing distance instead - but ONLY if there is a clear walk-around
-# (so circulation is never sacrificed); otherwise we keep the wall, far as it is.
-TV_VIEWING_DISTANCE = 330.0  # sofa-front -> TV-center target
-# Only float the media console when the facing wall is GENUINELY far (a great-room / open
-# plan, where a floating console reads as a zone divider). In a normal closed room - even
-# a large 6x5 m one - a wall-mounted TV at 5-5.6 m is fine and a floating console looks
-# marooned, so we keep it on the wall. (Raised from 4.4 m after real-room review.)
-TV_WALL_TOO_FAR = 600.0  # facing-wall distance beyond which we consider floating
-TV_FLOAT_SIDE_WALK = 80.0  # required walk-around gap beside a floating console
-TV_FLOAT_BACK_MIN = 90.0  # required open space behind it (the back zone / not jammed)
-
-
-def _floating_tv_zone(
-    analysis: RoomAnalysis, sofa_item: PlacedItem, sofa_product: Product,
-    stats: CategoryStats, blockers,
-) -> ZoneData | None:
-    """A media console floating at a human viewing distance, facing the sofa.
-
-    Returns a zone only if the console sits fully inside the room, clear of door keep-out
-    and other furniture, with a >=80 cm walk-around on a side and open space behind it.
-    Otherwise None (caller keeps the wall-mounted TV). This is the open-plan 'media as a
-    soft divider' pattern - the space behind becomes the next zone.
-    """
-    s = stats.get("tv_unit", {})
-    tv_w = s.get("max_w", 150.0)
-    tv_d = s.get("max_d", 48.0) + 4.0
-    f = front_vector(sofa_item.rotation_deg)
-    lat = (-f[1], f[0])
-    sofa_front = add((sofa_item.x, sofa_item.y), f, sofa_product.depth_cm / 2.0)
-    center = add(sofa_front, f, TV_VIEWING_DISTANCE)
-    rot = rotation_for_normal((-f[0], -f[1]))  # console faces back toward the sofa
-
-    poly = item_polygon(center[0], center[1], tv_w, tv_d, rot)
-    if poly.difference(analysis.polygon).area > 50.0:
-        return None  # would poke outside the room
-    if poly.intersection(analysis.keep_clear_union).area > 50.0:
-        return None  # would sit in a door swing / entry
-    if blockers is not None and not blockers.is_empty and poly.intersection(blockers).area > 50.0:
-        return None  # would collide with existing furniture
-    # walk-around: at least one side must have an >=80 cm passage to the wall
-    left_end = add(center, lat, -tv_w / 2.0)
-    right_end = add(center, lat, tv_w / 2.0)
-    side_gap = max(
-        first_boundary_hit(analysis.polygon, left_end, (-lat[0], -lat[1])),
-        first_boundary_hit(analysis.polygon, right_end, lat),
-    )
-    if side_gap < TV_FLOAT_SIDE_WALK:
-        return None
-    # open space behind (so it reads as a divider, not jammed against a wall)
-    back = add(center, f, tv_d / 2.0)
-    if first_boundary_hit(analysis.polygon, back, f) < TV_FLOAT_BACK_MIN:
-        return None
-    return ZoneData(
-        id="z-tv-float", category="tv_unit", polygon=poly, score=0.97, rotation_deg=rot,
-        anchor_label="faces_sofa", reason_codes=[R_FACES_SOFA, R_FLOATING_MEDIA],
-        kind="free", origin=center, fwd=(-f[0], -f[1]), lat=lat, fwd_len=tv_d, lat_len=tv_w,
-    )
+# Viewing geometry. A TV is comfortable ~2.5-4 m from the sofa. In a GREAT-ROOM the wall
+# the sofa faces is farther than this, so the SEATING GROUP floats forward to a human
+# viewing distance (see _sofa_zones) and the TV stays wall-mounted (rather than the TV
+# floating out to meet a wall-glued sofa).
+TV_VIEWING_DISTANCE = 330.0  # target gap: sofa front -> (wall-mounted) TV front
+TV_WALL_TOO_FAR = 450.0  # facing-wall distance beyond which the seating floats forward toward the TV
+SOFA_FRONT_CM = 95.0  # a typical sofa's front distance from its back wall (the exact sofa isn't chosen yet)
+STORAGE_MIN_AREA_CM2 = 150_000.0  # below ~15 m2, skip the storage console (a small room is too tight)
 
 
 def _tv_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
@@ -340,18 +305,13 @@ def _tv_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Catego
             reasons.append(R_FACES_SOFA)
         if facing and 250.0 <= d_wall <= 400.0:
             reasons.append(R_IDEAL_VIEWING_DIST)
-        zones.append(_band_zone(analysis, cand, "tv_unit", i, score, reasons, depth))
-    wall_zones = _rank(zones)
-
-    # Viewing-distance-aware: if the wall the sofa faces is too far to watch a TV from
-    # (a great-room), prefer a media console floating at a human distance - but keep the
-    # wall zones as fallback, and only float when the walk-around clearance check passes.
-    facing_wall_dist = first_boundary_hit(analysis.polygon, sofa_front, f)
-    if facing_wall_dist > TV_WALL_TOO_FAR:
-        float_zone = _floating_tv_zone(analysis, item, product, stats, blockers)
-        if float_zone is not None:
-            return [float_zone, *wall_zones]
-    return wall_zones
+        # centre the TV on the SOFA (project its centre onto this wall), not on the wall segment
+        # midpoint - so the TV sits directly in front of the sofa (a door eating one end of the
+        # wall no longer shoves it off to the side), clamped to the clear segment.
+        zones.append(_band_zone(analysis, cand, "tv_unit", i, score, reasons, depth, anchor_t=proj))
+    # The TV always stays wall-mounted. In a great-room the SEATING floats forward instead
+    # (see _sofa_zones), so the wall the sofa faces is now at a comfortable viewing distance.
+    return _rank(zones)
 
 
 def sub2(a: Vec, b: Vec) -> Vec:
@@ -617,24 +577,114 @@ def _accent_chair_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], sta
 
     item, product = sofa
     f = front_vector(item.rotation_deg)
-    seat_anchor = add((item.x, item.y), f, product.depth_cm / 2.0 + 60.0)
+    w = width_axis(item.rotation_deg)
     blockers = _placed_blockers(placed)
-    zones: list[ZoneData] = []
-    for idx, ang in enumerate((-55.0, 55.0)):
-        g = rotate_vec(f, ang)
-        center = add(seat_anchor, g, 170.0)
-        rotation = rotation_for_normal(unit(*sub2(seat_anchor, center)))
-        rect = item_polygon(center[0], center[1], 120.0, 120.0, rotation)
+    tv = _find_placed(placed, "tv_unit")
+
+    if tv is None:
+        # No TV (majlis comfort seating): original conversation-angle placement, unchanged.
+        seat_anchor = add((item.x, item.y), f, product.depth_cm / 2.0 + 60.0)
+        zones: list[ZoneData] = []
+        for idx, ang in enumerate((-55.0, 55.0)):
+            g = rotate_vec(f, ang)
+            center = add(seat_anchor, g, 170.0)
+            rotation = rotation_for_normal(unit(*sub2(seat_anchor, center)))
+            rect = item_polygon(center[0], center[1], 120.0, 120.0, rotation)
+            clipped = rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers)
+            piece = largest_piece(clipped)
+            if piece is None or piece.area < 4_000.0:
+                continue
+            corridor_pen = _corridor_overlap_ratio(analysis, piece)
+            zones.append(
+                _frame_zone(
+                    "accent_chair", idx, piece, 0.8 - 0.2 * corridor_pen, rotation,
+                    center, unit(*sub2(seat_anchor, center)), g, 110.0, 110.0,
+                    [R_CONVERSATION_ANGLE], "beside_seating", kind="free",
+                )
+            )
+        return _rank(zones, limit=2)
+
+    # Living room: tuck the chair against the SIDE wall, beside the sofa and clear of the TV
+    # (not drifting out in front of it), angled toward the conversation centre.
+    CHAIR_HALF = 42.0  # ~half an accent-chair footprint
+    coffee = _find_placed(placed, "coffee_table")
+    gc = (coffee[0].x, coffee[0].y) if coffee is not None else add((item.x, item.y), f, product.depth_cm / 2.0 + 80.0)
+    # steer a single chair to the side AWAY from a placed storage/console (balances the group)
+    storage = _find_placed(placed, "storage")
+    storage_side = 0.0
+    if storage is not None:
+        storage_side = 1.0 if dot(sub2((storage[0].x, storage[0].y), (item.x, item.y)), w) >= 0 else -1.0
+    # cap how far FORWARD (toward the TV) the chair may sit, so it stays clear of the TV
+    tv_front = add((tv[0].x, tv[0].y), front_vector(tv[0].rotation_deg), tv[1].depth_cm / 2.0)
+    max_fwd_extra = min(80.0, dot(sub2(tv_front, (item.x, item.y)), f) - product.depth_cm / 2.0 - CHAIR_HALF - 60.0)
+    zones = []
+    for idx, side in enumerate((-1.0, 1.0)):
+        wall_dist = first_boundary_hit(analysis.polygon, (item.x, item.y), (side * w[0], side * w[1]))
+        lat = wall_dist - CHAIR_HALF - 14.0
+        fwd = product.depth_cm / 2.0 + max(0.0, min(70.0, max_fwd_extra))
+        center = add(add((item.x, item.y), w, side * lat), f, fwd)
+        toward = unit(*sub2(gc, center))
+        rotation = rotation_for_normal(toward)
+        rect = item_polygon(center[0], center[1], 100.0, 100.0, rotation)
         clipped = rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers)
         piece = largest_piece(clipped)
-        if piece is None or piece.area < 4_000.0:
+        if piece is None or piece.area < 3_500.0:
             continue
         corridor_pen = _corridor_overlap_ratio(analysis, piece)
+        side_pen = 0.25 if (storage_side != 0.0 and side == storage_side) else 0.0
         zones.append(
             _frame_zone(
-                "accent_chair", idx, piece, 0.8 - 0.2 * corridor_pen, rotation,
-                center, unit(*sub2(seat_anchor, center)), g, 110.0, 110.0,
+                "accent_chair", idx, piece, 0.8 - 0.2 * corridor_pen - side_pen, rotation,
+                center, toward, w, 100.0, 100.0,
                 [R_CONVERSATION_ANGLE], "beside_seating", kind="free",
+            )
+        )
+    return _rank(zones, limit=2)
+
+
+def _l_return_sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
+    """A perpendicular RETURN sofa at one end of the primary, forming an L-sectional.
+
+    Fires only when the primary is the SOLE sofa AND there is genuinely clear room for the
+    return at its front corner - so small rooms yield nothing (and the caller falls back to
+    accent chairs). Returns the viable side(s) best-first (the more open side wins); empty
+    once a second sofa already exists (an L is a pair, never a U)."""
+    sofas = [(i, p) for i, p in placed if placement_group(p.category) == "sofa"]
+    if len(sofas) != 1:
+        return []
+    if analysis.area_cm2 < 280_000.0:  # only genuinely LARGE rooms (>= ~28 m2) get an L-return
+        return []
+    item, product = sofas[0]
+    f = front_vector(item.rotation_deg)  # primary faces the TV / conversation
+    w = width_axis(item.rotation_deg)
+    hw, hd = product.width_cm / 2.0, product.depth_cm / 2.0
+    ret_w, ret_d = product.width_cm, product.depth_cm  # a matching-pair return sofa
+    blockers = _placed_blockers(placed)
+    swings = list(analysis.swing_arcs.values())
+    zones: list[ZoneData] = []
+    for idx, s in enumerate((-1.0, 1.0)):
+        facing = (-s * w[0], -s * w[1])  # the return faces inward, across the L toward the primary
+        # Beside the primary's END (past its width, in the open flank) and forward to its front
+        # line: the return runs perpendicular along the sofa's facing axis, forming the L WITHOUT
+        # reaching into the centred rug/coffee that sit in the L's opening.
+        center = add(add((item.x, item.y), w, s * (hw + ret_d / 2.0 + 12.0)), f, hd + ret_w / 2.0)
+        rotation = rotation_for_normal(facing)
+        rect = item_polygon(center[0], center[1], ret_w, ret_d, rotation)
+        piece = largest_piece(
+            rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers)
+        )
+        if piece is None or piece.area < 0.9 * ret_w * ret_d:
+            continue  # not enough clear room for the return on this side (small room -> skip)
+        gap = piece.distance(analysis.polygon.exterior)  # prefer the more open side...
+        # ...and strongly prefer the end AWAY from the door, so the L opens into the room rather
+        # than wrapping the entry (a return beside the doorway blocks the walk-in).
+        door_far = min((piece.distance(sw) for sw in swings), default=250.0)
+        score = 0.75 + 0.08 * min(gap, 50.0) / 50.0 + 0.20 * min(door_far, 250.0) / 250.0
+        zones.append(
+            _frame_zone(
+                "sofa", idx, piece, score, rotation,
+                center, facing, f, ret_d, ret_w,
+                [R_ANCHORS_SEATING, R_CONVERSATION_ANGLE], "l_return_sofa", kind="free",
             )
         )
     return _rank(zones, limit=2)
@@ -705,6 +755,9 @@ def _lighting_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: 
 
 
 def _storage_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
+    # Skip storage (console/sideboard) in a SMALL room - it just crowds an already-tight layout.
+    if analysis.area_cm2 < STORAGE_MIN_AREA_CM2:
+        return []
     s = stats.get("storage", {})
     depth = s.get("max_d", 45.0) + 6.0
     min_w = min(s.get("min_w", 80.0), 80.0)
@@ -712,15 +765,20 @@ def _storage_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: C
     cands = _wall_band_candidates(analysis, depth, min_w, use_solid=True, blockers=blockers)
     if not cands:
         return []
+    # Never share the wall the TV is on: storage there sits beside/in front of the TV, in the
+    # sofa's sightline. Heavily penalise that wall so storage takes any other clear wall.
+    tv = _find_placed(placed, "tv_unit")
+    tv_wall = None
+    if tv is not None:
+        tv_f = front_vector(tv[0].rotation_deg)
+        tv_wall = max(range(len(analysis.walls)), key=lambda i: dot(analysis.walls[i].normal, tv_f))
     max_extent = max(c.extent for c in cands)
-    zones = [
-        _band_zone(
-            analysis, cand, "storage", i,
-            0.7 * (cand.extent / max_extent) + 0.3 * _entry_distance_norm(analysis, cand.piece),
-            [R_REMAINING_WALL], depth,
-        )
-        for i, cand in enumerate(cands)
-    ]
+    zones: list[ZoneData] = []
+    for i, cand in enumerate(cands):
+        score = 0.7 * (cand.extent / max_extent) + 0.3 * _entry_distance_norm(analysis, cand.piece)
+        if tv_wall is not None and cand.wall.index == tv_wall:
+            score -= 1.0  # storage on the TV wall would sit in front of the TV
+        zones.append(_band_zone(analysis, cand, "storage", i, score, [R_REMAINING_WALL], depth))
     return _rank(zones)
 
 
@@ -929,10 +987,12 @@ def anchor_pose(zone: ZoneData, product: Product, analysis: RoomAnalysis) -> Pos
         wall = analysis.walls[zone.wall_index]
         a, b = zone.seg
         half = product.width_cm / 2.0
-        mid = (a + b) / 2.0
+        # aim for anchor_t (e.g. the TV aligns to the sofa's centre) when set, else the segment
+        # centre; clamp so the product stays inside the clear segment.
+        mid = zone.anchor_t if zone.anchor_t is not None else (a + b) / 2.0
         if b - a > product.width_cm + 4.0:
             mid = min(max(mid, a + half + 2.0), b - half - 2.0)
-        center = add(wall.point_at(mid), wall.normal, product.depth_cm / 2.0 + 4.0)
+        center = add(wall.point_at(mid), wall.normal, product.depth_cm / 2.0 + 4.0 + zone.float_cm)
         return Pose(x=round(center[0], 1), y=round(center[1], 1), rotation_deg=zone.rotation_deg)
 
     if zone.kind == "frame" and zone.origin is not None and zone.fwd is not None:

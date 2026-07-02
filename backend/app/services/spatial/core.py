@@ -102,6 +102,8 @@ class ZoneData:
     wall_index: int | None = None
     seg: tuple[float, float] | None = None
     band_depth: float = 0.0
+    float_cm: float = 0.0  # wall_band: extra inward offset from the wall (floats the piece into the room)
+    anchor_t: float | None = None  # wall_band: target position along the wall (else segment centre)
     origin: Vec | None = None  # frame zones: center of near edge
     fwd: Vec | None = None  # frame zones: unit forward
     lat: Vec | None = None  # frame zones: unit lateral

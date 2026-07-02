@@ -4,7 +4,7 @@ import type Konva from "konva";
 import { useRef, useState } from "react";
 import { Circle, Group, Label, Line, Rect, Tag, Text } from "react-konva";
 import { rectInsidePolygon, rectsOverlap, type Rect as GRect } from "@/lib/geometry";
-import { productFill } from "@/lib/constants";
+import { categoryName, productFill } from "@/lib/constants";
 import { formatDims } from "@/lib/format";
 import { validateItemDebounced } from "@/lib/placement";
 import { plannerTemporal, usePlannerStore } from "@/stores/plannerStore";
@@ -182,7 +182,7 @@ export function PlacedItemNode({
           <Label x={0} y={d / 2 + px(12)} listening={false}>
             <Tag fill="#1C1917" cornerRadius={px(5)} pointerDirection="up" pointerHeight={px(5)} pointerWidth={px(8)} />
             <Text
-              text={`${product.name}  ·  ${formatDims(w, d)}`}
+              text={`${categoryName(product.category)}  ·  ${formatDims(w, d)}`}
               fontSize={px(11)}
               fontFamily="Inter, sans-serif"
               fill="#FAFAF8"

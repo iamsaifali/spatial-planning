@@ -5,7 +5,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from app.errors import PRODUCT_NOT_FOUND, UNKNOWN_PRODUCT, AppError
-from app.models.products import Product
+from app.models.products import Product, placement_group
 from app.services.catalog.backfill import backfill_product
 
 SORTS = {
@@ -19,9 +19,12 @@ SORTS = {
 class CatalogRepository:
     def __init__(self, products: list[Product]):
         self._products: dict[str, Product] = {p.id: p for p in products}
+        # Group by PLACEMENT ROLE, not the raw store category, so the engine (which asks for
+        # "sofa", "tv_unit", ... via in_category / stats) finds store items like "3-seater-sofa"
+        # or "tv-table". Identity for the 10 roles, so the legacy catalog is unaffected.
         self._by_category: dict[str, list[Product]] = defaultdict(list)
         for p in products:
-            self._by_category[p.category].append(p)
+            self._by_category[placement_group(p.category)].append(p)
 
         self._stats: dict[str, dict[str, float]] = {}
         self._terciles: dict[str, tuple[int, int]] = {}

@@ -4,7 +4,7 @@ import { ArrowRightLeft, MapPin, RotateCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { removeItem, validateItemDebounced } from "@/lib/placement";
-import { CATEGORY_LABELS } from "@/lib/constants";
+import { CATEGORY_LABELS, categoryName, placementRole } from "@/lib/constants";
 import { useGuideStore, type StepKey } from "@/stores/guideStore";
 import { usePlannerStore } from "@/stores/plannerStore";
 import { useProductStore } from "@/stores/productStore";
@@ -26,7 +26,10 @@ export function ItemActionsBar() {
   if (!item) return null;
   const product = byId[item.product_id];
   const name = item.custom?.name ?? product?.name ?? "Item";
-  const category = item.custom ? "custom" : product?.category;
+  // Products carry a real store category (e.g. "3-seater-sofa"); map to the placement role so
+  // the guide step / label lookups (which are keyed by the 10 roles) work.
+  const category = item.custom ? "custom" : product ? placementRole(product.category) : undefined;
+  const categoryLabel = category ? (CATEGORY_LABELS[category] ?? category) : "";
 
   const rotate = () => {
     usePlannerStore.getState().moveItem(item.instance_id, {
@@ -69,7 +72,7 @@ export function ItemActionsBar() {
   return (
     <div className="pointer-events-auto flex max-w-[calc(100vw-16px)] items-center gap-1 overflow-x-auto rounded-full border border-line bg-surface px-2 py-1.5 shadow-pop">
       <span className="max-w-36 truncate px-1.5 text-xs font-semibold" title={name}>
-        {name}
+        {product ? categoryName(product.category) : name}
       </span>
       <span className="h-4 w-px shrink-0 bg-line" aria-hidden />
       <ActionButton label="Rotate 90°" onClick={rotate}>
@@ -82,11 +85,11 @@ export function ItemActionsBar() {
           </ActionButton>
           {category && category !== "custom" && (
             <ActionButton
-              label={`Swap ${CATEGORY_LABELS[category].toLowerCase()}`}
+              label={`Swap ${categoryLabel.toLowerCase()}`}
               onClick={() => {
                 setCurrentStep(category as StepKey);
                 useUiStore.getState().setSheet("guideSheetOpen", false);
-                toast("info", `Pick a replacement from the ${CATEGORY_LABELS[category]} recommendations.`);
+                toast("info", `Pick a replacement from the ${categoryLabel} recommendations.`);
               }}
             >
               <ArrowRightLeft className="h-3.5 w-3.5" />

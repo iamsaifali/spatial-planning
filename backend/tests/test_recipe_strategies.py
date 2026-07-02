@@ -61,6 +61,10 @@ def _assert_roles_match_legacy(room_spec, room_type, repo):
     analysis = analyze_room(Room.model_validate(room_spec))
     stats = repo.category_stats()
     for role in get_recipe(room_type).roles:
+        # l_return is intentionally BEYOND the legacy planner (a big-room L-return sofa with no
+        # legacy dispatch equivalent), so it is exempt from the equivalence check.
+        if role.zone_strategy.name == "l_return":
+            continue
         category = role.categories[0]
         strat = resolve_strategy(role.zone_strategy.name)
         via_strategy = strat.resolver(category, room_type, analysis, [], stats, role.zone_strategy.params)

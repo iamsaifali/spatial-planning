@@ -18,7 +18,10 @@ LIVING_ROOM_RECIPE = Recipe(
     room_type="living_room",
     focal_strategy="longest_wall",
     room_goals=["conversation_focus"],
-    compose_secondary=True,  # large living rooms get a second seating vignette
+    # No secondary seating vignette: a large living room keeps ONE conversation group
+    # (the open floor behind the floated seating stays open) rather than sprouting a second
+    # cluster of chairs/table/lamp beside it.
+    compose_secondary=False,
     roles=[
         role("primary_seating", "sofa", "focal_wall",
              ["against_wall", "not_block_door"], essential=True),
@@ -31,13 +34,27 @@ LIVING_ROOM_RECIPE = Recipe(
         role("support_surface", "side_table", "beside_anchor",
              count=CountRule(mode="fill_available", per_area_m2=14, max=2),
              depends_on=["primary_seating"]),
-        role("secondary_seating", "accent_chair", "around_anchor",
+        # Secondary seating scales with the room: a BIG room gets a perpendicular RETURN sofa
+        # forming an L with the primary (until_target lets a second sofa of the same category
+        # place; the l_return strategy self-limits to one, and only when the room is large
+        # enough for it). A small/normal room gets nothing here and falls through to chairs.
+        role("secondary_seating", "sofa", "l_return",
+             ["not_block_door"],
+             count=CountRule(mode="until_target", metric="seating_capacity", source="pref_or_area_default"),
+             depends_on=["primary_seating", "focal_media"]),
+        # Storage goes BEFORE the accent chairs so the chairs can balance to the OPPOSITE side
+        # (and storage avoids the TV wall). depends on focal_media so the TV wall is known.
+        role("storage", "storage", "remaining_wall", ["not_block_door"],
+             depends_on=["primary_seating", "focal_media"]),
+        # Fallback conversation seating: a pair of accent chairs around the sofa. around_anchor
+        # skips these once an L-return sofa exists (a room gets the second sofa OR the chairs),
+        # and steers them to the side away from the storage.
+        role("companion_seating", "accent_chair", "around_anchor",
              count=CountRule(mode="fill_available", per_area_m2=16, max=2),
-             depends_on=["primary_seating"]),
+             depends_on=["primary_seating", "secondary_seating", "storage"]),
         role("ambient_light", "lighting", "corners",
              count=CountRule(mode="fill_available", per_area_m2=12, max=2),
              depends_on=["primary_seating"]),
-        role("storage", "storage", "remaining_wall", ["not_block_door"]),
         role("accent", "decor", "corners",
              count=CountRule(mode="fill_available", per_area_m2=8, max=4)),
     ],

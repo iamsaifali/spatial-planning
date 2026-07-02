@@ -90,9 +90,15 @@ def test_hard_predicates_map_to_real_finding_codes():
 # --- fidelity: recipe reproduces current behaviour ---------------------------------
 
 
-def test_living_room_recipe_matches_current_sequence():
-    assert get_recipe("living_room").category_sequence() == LIVING_ROOM_SEQUENCE
-    assert get_recipe("living_room").category_sequence() == sequence_for_room_type("living_room")
+def test_living_room_recipe_extends_current_sequence():
+    # The living-room recipe now EXTENDS the legacy planner: a big room adds an L-return sofa
+    # as secondary seating, and storage is placed before the accent chairs (so the chairs
+    # balance to the opposite side). Every legacy category is still covered, plus the extra
+    # 'sofa' for the L - but the strict order no longer holds (storage moved earlier).
+    seq = get_recipe("living_room").category_sequence()
+    assert set(LIVING_ROOM_SEQUENCE) <= set(seq)
+    assert set(sequence_for_room_type("living_room")) <= set(seq)
+    assert seq.count("sofa") == 2  # primary + the L-return
 
 
 def test_majlis_recipe_matches_current_sequence():
@@ -100,8 +106,9 @@ def test_majlis_recipe_matches_current_sequence():
     assert get_recipe("majlis").category_sequence() == sequence_for_room_type("majlis")
 
 
-def test_fidelity_assertion_passes_for_both():
-    assert_recipe_matches_current("living_room")
+def test_fidelity_assertion_passes_for_majlis():
+    # majlis still faithfully reproduces the legacy planner. living_room intentionally
+    # diverges now (it adds the big-room L-return sofa), so it is exempt from strict fidelity.
     assert_recipe_matches_current("majlis")
 
 

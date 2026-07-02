@@ -17,8 +17,8 @@ from app.models.geometry import Room
 from app.models.preferences import Preferences
 from app.services.recommend.orchestrator import plan_assist_layout, plan_layout
 
-GOLDEN_LIVING_PID = "lay_c07b1aae73"  # legacy (one-of-each) - rollback path
-GOLDEN_LIVING_RECIPE = "lay_aa0f6b8c12"  # recipe (area-scaled accent pieces) - production
+GOLDEN_LIVING_PID = "lay_0e82d240e3"  # legacy (one-of-each) - rollback path
+GOLDEN_LIVING_RECIPE = "lay_d2387a615b"  # recipe (area-scaled accent pieces) - production
 GOLDEN_MAJLIS_PID = "lay_4bdb683bb4"
 
 LIVING_ROOM = {

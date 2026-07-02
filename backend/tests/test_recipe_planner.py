@@ -47,8 +47,8 @@ MAJLIS_PREFS = Preferences(
 )
 
 # Golden values. Living: legacy (one-of-each) vs recipe (area-scaled accent pieces).
-GOLDEN_LIVING_PID = "lay_c07b1aae73"  # legacy planner
-GOLDEN_LIVING_RECIPE = "lay_aa0f6b8c12"  # recipe planner (area-scaled)
+GOLDEN_LIVING_PID = "lay_0e82d240e3"  # legacy planner
+GOLDEN_LIVING_RECIPE = "lay_d2387a615b"  # recipe planner (area-scaled)
 GOLDEN_MAJLIS_PID = "lay_4bdb683bb4"  # majlis (recipe == legacy)
 
 

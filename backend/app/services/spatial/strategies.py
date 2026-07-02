@@ -20,6 +20,7 @@ intact for equivalence comparison.
 from collections.abc import Callable
 from typing import Any
 
+from app.models.products import placement_group
 from app.services.spatial.core import RoomAnalysis, ZoneData
 from app.services.spatial.zones import (
     CategoryStats,
@@ -30,6 +31,7 @@ from app.services.spatial.zones import (
     _coffee_table_zones,
     _decor_zones,
     _free_zone_center,
+    _l_return_sofa_zones,
     _lighting_zones,
     _majlis_sofa_zones,
     _rug_zones,
@@ -97,9 +99,23 @@ def beside_anchor(category, room_type, analysis, placed, stats, params):
     return _fallback(category, room_type, analysis, placed, stats, params)
 
 
+def l_return(category, room_type, analysis, placed, stats, params):
+    """A perpendicular RETURN sofa forming an L with the primary (big living rooms). The
+    generator self-limits: it yields a zone only when the primary is the sole sofa AND the
+    return genuinely fits, so small rooms get nothing and only ONE return is ever added."""
+    if category == "sofa":
+        return _l_return_sofa_zones(analysis, placed, stats)
+    return _fallback(category, room_type, analysis, placed, stats, params)
+
+
 def around_anchor(category, room_type, analysis, placed, stats, params):
-    """Conversation seating arranged around the sofa (living-room accent chair)."""
+    """Conversation seating arranged around the sofa (living-room accent chair).
+
+    Skipped once a second sofa has formed an L: a big room gets the L-return sofa INSTEAD
+    of a pair of accent chairs, so we don't add both."""
     if category == "accent_chair":
+        if sum(1 for _i, p in placed if placement_group(p.category) == "sofa") >= 2:
+            return []
         return _accent_chair_zones(analysis, placed, stats)
     return _fallback(category, room_type, analysis, placed, stats, params)
 
@@ -164,6 +180,7 @@ SPATIAL_STRATEGIES: dict[str, ZoneStrategyFn] = {
     "opposite_anchor": opposite_anchor,
     "front_of_anchor": front_of_anchor,
     "beside_anchor": beside_anchor,
+    "l_return": l_return,
     "around_anchor": around_anchor,
     "corners": corners,
     "remaining_wall": remaining_wall,

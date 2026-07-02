@@ -13,8 +13,8 @@ from app.models.preferences import Preferences
 from app.services.recipe.equivalence import compare_layouts
 from app.services.recommend.orchestrator import plan_layout, plan_layout_from_recipe
 
-GOLDEN_LIVING_PID = "lay_c07b1aae73"  # legacy
-GOLDEN_LIVING_RECIPE = "lay_aa0f6b8c12"  # recipe (area-scaled)
+GOLDEN_LIVING_PID = "lay_0e82d240e3"  # legacy
+GOLDEN_LIVING_RECIPE = "lay_d2387a615b"  # recipe (area-scaled)
 GOLDEN_MAJLIS_PID = "lay_4bdb683bb4"
 
 LIVING_ROOM = {
@@ -211,18 +211,53 @@ def _secondary(resp):
     return [p for p in resp.placements if "secondary_zone" in (p.reason_codes or [])]
 
 
-def test_large_room_composes_a_secondary_zone(catalog_repo):
-    """A large living room composes a coherent secondary cluster; small rooms don't."""
-    big = plan_layout_from_recipe(_room(ROOMS["large"]), Preferences(styles=["modern"]), [])
-    cats = {p.category for p in _secondary(big)}
-    assert "accent_chair" in cats and "side_table" in cats  # a real seating vignette
-    assert not [f for f in big.findings if f.severity == "error"]  # still gate-clean
+def test_living_room_never_composes_a_secondary_zone(catalog_repo):
+    """A living room keeps ONE conversation group at any size - no secondary cluster
+    beside it (compose_secondary is off for living rooms)."""
+    for size in ("large", "medium", "small"):
+        resp = plan_layout_from_recipe(_room(ROOMS[size]), Preferences(styles=["modern"]), [])
+        assert not _secondary(resp), f"{size} living room should not compose a secondary zone"
+        assert not [f for f in resp.findings if f.severity == "error"]
+
+
+def test_large_bedroom_still_composes_a_secondary_zone(catalog_repo):
+    """The composition mechanism is intact: a large bedroom still gets its reading nook."""
+    big = plan_layout_from_recipe(
+        _room(ROOMS["large"]), Preferences(room_type="bedroom"), [], room_type="bedroom"
+    )
+    assert _secondary(big)  # a real secondary cluster
+    assert not [f for f in big.findings if f.severity == "error"]
     assert big.proposal_id == plan_layout_from_recipe(
+        _room(ROOMS["large"]), Preferences(room_type="bedroom"), [], room_type="bedroom"
+    ).proposal_id  # deterministic
+
+
+def test_large_room_adds_l_return_sofa_instead_of_chairs(catalog_repo):
+    """A LARGE living room's secondary seating is a second (L-return) sofa - and NOT the pair
+    of accent chairs. It's one or the other: the L replaces the chairs."""
+    resp = plan_layout_from_recipe(_room(ROOMS["large"]), Preferences(styles=["modern"]), [])
+    cats = [p.category for p in resp.placements]
+    assert cats.count("sofa") == 2  # primary + the perpendicular L-return
+    assert "accent_chair" not in cats  # chairs are replaced by the second sofa
+    assert not [f for f in resp.findings if f.severity == "error"]
+    assert resp.proposal_id == plan_layout_from_recipe(
         _room(ROOMS["large"]), Preferences(styles=["modern"]), []
     ).proposal_id  # deterministic
-    # normal-sized rooms are untouched (no composition below the threshold)
-    assert not _secondary(plan_layout_from_recipe(_room(ROOMS["medium"]), Preferences(styles=["modern"]), []))
-    assert not _secondary(plan_layout_from_recipe(_room(ROOMS["small"]), Preferences(styles=["modern"]), []))
+
+
+def test_normal_room_keeps_accent_chairs_not_a_second_sofa(catalog_repo):
+    """A normal room keeps a SINGLE sofa (the L-return only fires in a genuinely large room).
+    A medium room also gets an accent chair beside the sofa; a very small room may drop it for
+    lack of a clear spot beside the sofa (but never sprouts a second sofa)."""
+    med = plan_layout_from_recipe(_room(ROOMS["medium"]), Preferences(styles=["modern"]), [])
+    med_cats = [p.category for p in med.placements]
+    assert med_cats.count("sofa") == 1
+    assert "accent_chair" in med_cats  # medium keeps a chair beside the sofa
+    assert not [f for f in med.findings if f.severity == "error"]
+
+    small = plan_layout_from_recipe(_room(ROOMS["small"]), Preferences(styles=["modern"]), [])
+    assert [p.category for p in small.placements].count("sofa") == 1  # no L-return in a small room
+    assert not [f for f in small.findings if f.severity == "error"]
 
 
 def test_majlis_never_composes_secondary_zone(catalog_repo):
@@ -241,16 +276,26 @@ GREAT_ROOM = {
 }
 
 
-def test_great_room_floats_tv_at_viewing_distance(catalog_repo):
+def test_great_room_floats_seating_and_wall_mounts_tv(catalog_repo):
     import math
-    resp = plan_layout_from_recipe(_room(GREAT_ROOM), Preferences(styles=["modern"]), [])
+    from shapely.geometry import Point
+    from app.services.spatial.analyze import analyze_room
+
+    room = _room(GREAT_ROOM)
+    resp = plan_layout_from_recipe(room, Preferences(styles=["modern"]), [])
     tv = next((p for p in resp.placements if p.category == "tv_unit"), None)
     sofa = next((p for p in resp.placements if p.category == "sofa"), None)
     assert tv is not None and sofa is not None
-    # the media floats at a human viewing distance, not on the far wall
-    assert "media_at_viewing_distance" in (tv.reason_codes or [])
-    assert math.hypot(tv.pose.x - sofa.pose.x, tv.pose.y - sofa.pose.y) < 430
-    # and circulation is never sacrificed for it
+
+    exterior = analyze_room(room).polygon.exterior
+    # the TV stays WALL-MOUNTED (its centre sits within ~a TV depth of the wall)...
+    assert "media_at_viewing_distance" not in (tv.reason_codes or [])
+    assert Point(tv.pose.x, tv.pose.y).distance(exterior) < 70
+    # ...and the SEATING GROUP floats forward off its wall instead (not glued to it)
+    assert Point(sofa.pose.x, sofa.pose.y).distance(exterior) > 150
+    # at a comfortable viewing distance (centre-to-centre; front-to-front ~a step less),
+    # far closer than the ~660 a wall-glued sofa would give, and circulation is preserved
+    assert math.hypot(tv.pose.x - sofa.pose.x, tv.pose.y - sofa.pose.y) < 520
     assert not [f for f in resp.findings if f.severity == "error"]
     assert not [f for f in resp.findings if f.code == "BLOCKS_WALKWAY"]
 

@@ -32,7 +32,7 @@ from app.models.api import (
 )
 from app.models.geometry import PlacedItem, Pose, Room
 from app.models.preferences import Preferences
-from app.models.products import CATEGORY_LABELS
+from app.models.products import CATEGORY_LABELS, placement_group
 from app.models.validation import MUST_FIX_CODES, Finding
 from app.routers._common import PlacedProduct, resolve_placed, wall_label
 from app.services.catalog import CatalogRepository, get_repository
@@ -248,7 +248,7 @@ def plan_layout(
     # Working layout, seeded with whatever the user already placed/kept. Each new
     # placement is appended so later categories see (and avoid) earlier ones.
     working: list[PlacedProduct] = resolve_placed(placed_items)
-    have_categories = {product.category for _i, product in working}
+    have_categories = {placement_group(product.category) for _i, product in working}
 
     sequence = categories if categories is not None else sequence_for_room_type(effective_room_type)
 
@@ -635,7 +635,7 @@ def plan_layout_from_recipe(
         stats=repo.category_stats(),
         room_type=effective_room_type,
         working=working,
-        have_categories={product.category for _i, product in working},
+        have_categories={placement_group(product.category) for _i, product in working},
         zone_overrides=zone_overrides or {},
     )
 

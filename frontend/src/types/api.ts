@@ -52,6 +52,7 @@ export interface PlacedItem extends Pose {
 }
 
 export type Category =
+  // placement roles (used by the layout engine + guide steps)
   | "sofa"
   | "tv_unit"
   | "rug"
@@ -62,7 +63,33 @@ export type Category =
   | "storage"
   | "decor"
   | "bed"
-  | "custom";
+  | "custom"
+  // real multi-store categories (kept verbatim on products)
+  | "2-seater-sofa"
+  | "3-seater-sofa"
+  | "l-shape-sofa"
+  | "chaise-lounge"
+  | "chair"
+  | "office-chair"
+  | "tv-table"
+  | "center-table"
+  | "service-table"
+  | "carpet"
+  | "console"
+  | "shelve"
+  | "storage-box"
+  | "wardrobe"
+  | "dressing-table"
+  | "wall-lighting"
+  | "lampshade"
+  | "floor-stand"
+  | "art-canvas"
+  | "decorative-hanger"
+  | "flower-pot-and-plant"
+  | "flower"
+  | "vase"
+  | "statue-and-antique"
+  | "wall-clock";
 
 export type StyleTag =
   | "modern"

@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from app.models.geometry import PlacedItem
 from app.models.preferences import Preferences
-from app.models.products import Product
+from app.models.products import Product, preferred_store_category
 from app.models.recommend import (
     NOTICE_NO_FIT,
     NOTICE_OVER_BUDGET,
@@ -86,6 +86,15 @@ def select_slots(
     scoped = [p for p in products if room_type in p.room_types]
     if scoped:
         products = scoped
+
+    # Per-room category preference: narrow the role to the specific STORE category this room
+    # wants (e.g. living-room "sofa" -> "3-seater-sofa"). Falls back to the full role group when
+    # the catalog has none of the preferred store category, so it never eliminates all results.
+    pref_cat = preferred_store_category(room_type, category)
+    if pref_cat:
+        preferred = [p for p in products if p.category == pref_cat]
+        if preferred:
+            products = preferred
 
     if not zones:
         return SlotResult(None, None, None, {"reason": "no_zones"})

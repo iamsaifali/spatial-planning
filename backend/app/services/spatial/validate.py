@@ -4,7 +4,7 @@ from shapely.geometry import Point, Polygon
 from shapely.ops import unary_union
 
 from app.models.geometry import PlacedItem
-from app.models.products import CATEGORY_LABELS, Product
+from app.models.products import CATEGORY_LABELS, Product, placement_group
 from app.models.validation import (
     BLOCKS_DOOR_SWING,
     BLOCKS_WALKWAY,
@@ -242,10 +242,10 @@ def _pair_findings(
     others: list[tuple[PlacedItem, Product, Polygon]],
 ) -> list[Finding]:
     findings: list[Finding] = []
-    cat = product.category
+    cat = placement_group(product.category)  # placement role (handles store categories)
 
     for other_item, other_product, other_poly in others:
-        ocat = other_product.category
+        ocat = placement_group(other_product.category)
         pair = {cat, ocat}
         d = poly.distance(other_poly)
 
@@ -277,22 +277,32 @@ def _pair_findings(
                         other_instance_id=other_item.instance_id,
                     )
                 )
-        elif cat in SEATING and ocat in SEATING and 0.0 < d < 45.0:
-            findings.append(
-                Finding(
-                    code=CLEARANCE_TOO_TIGHT,
-                    severity="warning",
-                    message=f"Seats are only {d:.0f} cm apart; 45 cm or more avoids a cramped feel.",
-                    item_instance_id=item.instance_id,
-                    other_instance_id=other_item.instance_id,
+        elif pair == {"sofa"} and 0.0 < d < 45.0:
+            # Only two SOFAS need walking clearance between them; an accent chair nestles INTO
+            # the conversation group (beside a sofa) and may sit close. And two perpendicular
+            # sofas are an L-sectional corner - that adjacency is intended, not cramped.
+            l_corner = abs(dot(front_vector(item.rotation_deg), front_vector(other_item.rotation_deg))) < 0.4
+            if not l_corner:
+                findings.append(
+                    Finding(
+                        code=CLEARANCE_TOO_TIGHT,
+                        severity="warning",
+                        message=f"Seats are only {d:.0f} cm apart; 45 cm or more avoids a cramped feel.",
+                        item_instance_id=item.instance_id,
+                        other_instance_id=other_item.instance_id,
+                    )
                 )
-            )
         elif pair == {"sofa", "tv_unit"}:
             sofa_item = item if cat == "sofa" else other_item
             tv_item = other_item if cat == "sofa" else item
             f = front_vector(sofa_item.rotation_deg)
             to_tv = unit(*sub((tv_item.x, tv_item.y), (sofa_item.x, sofa_item.y)))
-            if dot(f, to_tv) > 0.5 and d < 200.0:
+            # require the sofa to genuinely FACE the TV (a perpendicular L-return sofa faces
+            # across the group, not the TV, so its short TV distance isn't a viewing problem).
+            # d is the floor GAP between the footprints (eye-to-screen is ~45 cm more), so a
+            # ~160 cm gap (~205 cm viewing) is the real "too close" point - a small room's
+            # naturally-shorter distance isn't flagged as a defect.
+            if dot(f, to_tv) > 0.7 and d < 160.0:
                 findings.append(
                     Finding(
                         code=TV_TOO_CLOSE,
@@ -309,7 +319,7 @@ def _pair_findings(
             (item, product, other_item, other_product, other_poly),
             (other_item, other_product, item, product, poly),
         ):
-            depth = FRONT_STRIP.get(strip_product.category)
+            depth = FRONT_STRIP.get(placement_group(strip_product.category))
             if depth is None or blocker_product.is_walkable:
                 continue
             strip = _front_strip_poly(strip_item, strip_product, depth)

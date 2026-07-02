@@ -1,11 +1,13 @@
-import type { Category, Room } from "@/types/api";
+import type { Room } from "@/types/api";
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
 export const API_V1 = `${API_BASE}/api/v1`;
 
-export const CATEGORY_LABELS: Record<Category, string> = {
+// Keyed by string (not Category): only the 10 placement-role keys are ever looked up here
+// (guide steps / tabs), while products may carry richer store categories that never index this.
+export const CATEGORY_LABELS: Record<string, string> = {
   sofa: "Sofa",
   tv_unit: "TV Unit",
   rug: "Rug",
@@ -20,7 +22,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
 };
 
 /** Plural category labels for the "All Sofas"-style tab (mockup parity). */
-export const CATEGORY_PLURALS: Record<Category, string> = {
+export const CATEGORY_PLURALS: Record<string, string> = {
   sofa: "Sofas",
   tv_unit: "TV Units",
   rug: "Rugs",
@@ -33,6 +35,44 @@ export const CATEGORY_PLURALS: Record<Category, string> = {
   bed: "Beds",
   custom: "Your Items",
 };
+
+/** Store category -> placement role (mirror of the backend PLACEMENT_GROUP). Products carry
+ *  real store categories (e.g. "3-seater-sofa"); the guide steps / labels use the 10 roles,
+ *  so map through this before any CATEGORY_LABELS lookup or setCurrentStep call. */
+export const PLACEMENT_GROUP: Record<string, string> = {
+  "2-seater-sofa": "sofa", "3-seater-sofa": "sofa", "l-shape-sofa": "sofa", "chaise-lounge": "sofa",
+  chair: "accent_chair", "office-chair": "accent_chair",
+  "tv-table": "tv_unit", "center-table": "coffee_table",
+  "side-table": "side_table", "service-table": "side_table", carpet: "rug",
+  console: "storage", shelve: "storage", "storage-box": "storage", wardrobe: "storage", "dressing-table": "storage",
+  "wall-lighting": "lighting", lampshade: "lighting", "floor-stand": "lighting",
+  "art-canvas": "decor", "decorative-hanger": "decor", "flower-pot-and-plant": "decor",
+  flower: "decor", vase: "decor", "statue-and-antique": "decor", "wall-clock": "decor",
+};
+
+/** The placement role for a (possibly store-specific) category. Identity for the 10 roles. */
+export function placementRole(category: string): string {
+  return PLACEMENT_GROUP[category] ?? category;
+}
+
+/** A human-readable name for any category (role or store), e.g. "3-seater-sofa" -> "3-Seater
+ *  Sofa", "tv-table" -> "TV Table", "console" -> "Console". Used for the selected-item chip. */
+const CATEGORY_DISPLAY_SPECIAL: Record<string, string> = {
+  "tv-table": "TV Table",
+  "2-seater-sofa": "2-Seater Sofa",
+  "3-seater-sofa": "3-Seater Sofa",
+  "l-shape-sofa": "L-Shape Sofa",
+};
+export function categoryName(category: string): string {
+  return (
+    CATEGORY_DISPLAY_SPECIAL[category] ??
+    CATEGORY_LABELS[category] ??
+    category
+      .split(/[-_]/)
+      .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+      .join(" ")
+  );
+}
 
 /** Reason-code phrases mirrored from the backend zone engine. */
 export const REASON_PHRASES: Record<string, string> = {
