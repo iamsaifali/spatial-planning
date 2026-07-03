@@ -4,7 +4,12 @@ from dataclasses import dataclass, field
 
 from app.models.geometry import PlacedItem
 from app.models.preferences import Preferences
-from app.models.products import Product, preferred_store_category
+from app.models.products import (
+    SMALL_MEDIUM_MAX_CM2,
+    Product,
+    placement_group,
+    preferred_store_category,
+)
 from app.models.recommend import (
     NOTICE_NO_FIT,
     NOTICE_OVER_BUDGET,
@@ -70,6 +75,7 @@ def select_slots(
     prefs: Preferences,
     placed: list[PlacedProduct],
     repo: CatalogRepository,
+    room_area_cm2: float | None = None,
 ) -> SlotResult:
     products = repo.in_category(category)
     hints: dict[str, float | str] = {}
@@ -91,10 +97,26 @@ def select_slots(
     # wants (e.g. living-room "sofa" -> "3-seater-sofa"). Falls back to the full role group when
     # the catalog has none of the preferred store category, so it never eliminates all results.
     pref_cat = preferred_store_category(room_type, category)
+    # a small/medium living room gets a 2-seater sofa instead of the default 3-seater
+    if pref_cat == "3-seater-sofa" and room_area_cm2 is not None and room_area_cm2 < SMALL_MEDIUM_MAX_CM2:
+        pref_cat = "2-seater-sofa"
     if pref_cat:
         preferred = [p for p in products if p.category == pref_cat]
         if preferred:
             products = preferred
+
+    # In a small/medium room keep the media unit PROPORTIONAL to the sofa: a 2.5m tv-table
+    # dwarfs a small-room 2-seater and wastes the wall. Cap tv candidates to the sofa's width
+    # so the selector's fill-the-zone scoring picks the largest that still fits the seating.
+    if category == "tv_unit" and room_area_cm2 is not None and room_area_cm2 < SMALL_MEDIUM_MAX_CM2:
+        sofa_w = max(
+            (pr.width_cm for it, pr in placed if placement_group(pr.category) == "sofa"),
+            default=0.0,
+        )
+        if sofa_w > 0.0:
+            capped = [p for p in products if p.width_cm <= sofa_w]
+            if capped:
+                products = capped
 
     if not zones:
         return SlotResult(None, None, None, {"reason": "no_zones"})

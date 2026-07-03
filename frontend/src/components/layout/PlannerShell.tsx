@@ -226,8 +226,9 @@ export function PlannerShell({ skipDraftRestore = false }: { skipDraftRestore?: 
           <main className="relative min-h-0 bg-bg" aria-label="Room canvas">
             <CanvasRoot />
 
-            {/* floating chrome */}
-            <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex flex-col items-center gap-2 px-3">
+            {/* floating chrome — sits BELOW the room-type / Assist bar (which is at top-3 z-20)
+                so a selection bar never overlaps it */}
+            <div className="pointer-events-none absolute inset-x-0 top-16 z-10 flex flex-col items-center gap-2 px-3">
               <OpeningEditor />
               <ItemActionsBar />
               <WarningPopover />

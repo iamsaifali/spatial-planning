@@ -96,6 +96,11 @@ def preferred_store_category(room_type: str, role: str) -> str | None:
     """The specific store category a given room type wants for a placement role, if any."""
     return ROOM_CATEGORY_PREFERENCE.get(room_type, {}).get(role)
 
+
+# Rooms below this floor area count as "small/medium": they get a 2-seater sofa (not a 3-seater)
+# and no storage console - both would crowd a tight room. Rooms at/above it are "large".
+SMALL_MEDIUM_MAX_CM2 = 240_000.0  # 24 m2
+
 StyleTag = Literal[
     "modern",
     "scandinavian",

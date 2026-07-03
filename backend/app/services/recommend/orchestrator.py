@@ -161,7 +161,7 @@ def _place_majlis_seating(
         used_walls.add(zone.wall_index)  # one bench per wall segment - no duplicates
 
         # pick the best Majlis bench that fits THIS wall band
-        result = select_slots("sofa", [zone], prefs, working, repo)
+        result = select_slots("sofa", [zone], prefs, working, repo, room_area_cm2=analysis.area_cm2)
         candidate = result.best
         if candidate is None:
             continue
@@ -272,7 +272,7 @@ def plan_layout(
             continue
 
         zones = zones_for_category(category, analysis, working, stats, room_type=effective_room_type)
-        result = select_slots(category, zones, preferences, working, repo)
+        result = select_slots(category, zones, preferences, working, repo, room_area_cm2=analysis.area_cm2)
         candidate = result.best
         if candidate is None:
             skipped.append(
@@ -399,7 +399,7 @@ def _execute_single(role: RoleDefinition, st: _PlanState) -> None:
 
     pinned = st.zone_overrides.get(role.role)
     zones = [pinned] if pinned is not None else _run_strategy(role, category, st)
-    result = select_slots(category, zones, st.preferences, st.working, st.repo)
+    result = select_slots(category, zones, st.preferences, st.working, st.repo, room_area_cm2=st.analysis.area_cm2)
     candidate = result.best
     if candidate is None:
         st.skipped.append(AssistSkip(category=category, reason=str(result.no_fit_hints.get("reason", "NO_FIT"))))
@@ -444,7 +444,7 @@ def _execute_until_target(role: RoleDefinition, st: _PlanState) -> None:
             break  # no more units (e.g. perimeter walls) available
         used.add(_unit_key(zone, rule.one_per))
 
-        result = select_slots(category, [zone], st.preferences, st.working, st.repo)
+        result = select_slots(category, [zone], st.preferences, st.working, st.repo, room_area_cm2=st.analysis.area_cm2)
         candidate = result.best
         if candidate is None:
             continue
@@ -480,7 +480,7 @@ def _execute_mirror_pair(role: RoleDefinition, st: _PlanState) -> None:
     zones = _run_strategy(role, category, st)  # up to two side zones (left, right)
     placed_any = False
     for zone in zones[: (role.count.max or 2)]:
-        result = select_slots(category, [zone], st.preferences, st.working, st.repo)
+        result = select_slots(category, [zone], st.preferences, st.working, st.repo, room_area_cm2=st.analysis.area_cm2)
         candidate = result.best
         if candidate is None:
             continue
@@ -524,7 +524,7 @@ def _execute_fill_available(role: RoleDefinition, st: _PlanState) -> None:
     for zone in zones:
         if placed >= cap:
             break
-        result = select_slots(category, [zone], st.preferences, st.working, st.repo)
+        result = select_slots(category, [zone], st.preferences, st.working, st.repo, room_area_cm2=st.analysis.area_cm2)
         candidate = result.best
         if candidate is None:
             continue
@@ -566,7 +566,7 @@ def _furnish_secondary_zone(st: _PlanState) -> None:
         placed_any = False
         for zone in zones:
             category = zone.category
-            result = select_slots(category, [zone], st.preferences, st.working, st.repo)
+            result = select_slots(category, [zone], st.preferences, st.working, st.repo, room_area_cm2=st.analysis.area_cm2)
             candidate = result.best
             if candidate is None:
                 continue
@@ -694,12 +694,13 @@ def _template_layout_score(resp: AssistLayoutResponse) -> float:
     recommend a sofa wall whose opposite wall can host the TV, instead of one where the TV
     gets pushed to a side wall. 0 for rooms without a sofa+TV (e.g. bedrooms), leaving
     their order unchanged."""
-    from app.services.spatial.geometry_utils import front_vector
+    from app.services.spatial.geometry_utils import front_vector, item_polygon
 
-    by_cat = {p.category: p for p in resp.placements}
-    sofa, tv = by_cat.get("sofa"), by_cat.get("tv_unit")
-    if sofa is None or tv is None:
+    sofas = [p for p in resp.placements if p.category == "sofa"]
+    tvs = [p for p in resp.placements if p.category == "tv_unit"]
+    if not sofas or not tvs:
         return 0.0
+    sofa, tv = sofas[0], tvs[0]  # sofas[0] is the PRIMARY (placed first); an L-return is 2nd
     f = front_vector(sofa.pose.rotation_deg)
     fx = sofa.pose.x + f[0] * sofa.product.depth_cm / 2.0
     fy = sofa.pose.y + f[1] * sofa.product.depth_cm / 2.0
@@ -711,7 +712,50 @@ def _template_layout_score(resp: AssistLayoutResponse) -> float:
         score += 1.0  # comfortable viewing distance
     elif d <= 480.0:
         score += 0.4
+    # the TV should sit CENTRED in front of the sofa, not shoved to one side
+    score -= min(1.5, abs(vy * f[0] - vx * f[1]) / 60.0)
+    # a big-room L-return should form a TIGHT adjacent L, not a second sofa floating in the
+    # middle of the room: reward a small gap between the two sofas, penalise a large one
+    if len(sofas) >= 2:
+        a = item_polygon(sofas[0].pose.x, sofas[0].pose.y, sofas[0].product.width_cm, sofas[0].product.depth_cm, sofas[0].pose.rotation_deg)
+        b = item_polygon(sofas[1].pose.x, sofas[1].pose.y, sofas[1].product.width_cm, sofas[1].product.depth_cm, sofas[1].pose.rotation_deg)
+        gap = a.distance(b)
+        score += 1.0 if gap < 35.0 else (0.4 if gap < 130.0 else -0.9)
+    # penalise ANY layout issue, so a template with warnings ranks below a clean one
+    _WARN = {"BLOCKS_WALKWAY": 3.0, "TV_TOO_CLOSE": 1.5, "FRONT_BLOCKED": 1.5,
+             "CLEARANCE_TOO_TIGHT": 0.8, "NARROWS_WALKWAY": 0.5, "DOMINATES_ROOM": 0.8,
+             "BLOCKS_WINDOW": 0.5}
+    for fnd in resp.findings:
+        score -= _WARN.get(fnd.code, 0.3 if fnd.severity == "warning" else 0.0)
     return score
+
+
+def _template_issues(resp: AssistLayoutResponse) -> bool:
+    """A template we should NOT surface at all: it has a layout warning, the TV isn't really in
+    front of the sofa, or a big-room second sofa FLOATS instead of forming an adjacent L."""
+    if any(fd.severity == "warning" for fd in resp.findings):
+        return True
+    from app.services.spatial.geometry_utils import front_vector, item_polygon
+
+    sofas = [p for p in resp.placements if p.category == "sofa"]
+    tvs = [p for p in resp.placements if p.category == "tv_unit"]
+    if sofas and tvs:
+        sofa, tv = sofas[0], tvs[0]
+        f = front_vector(sofa.pose.rotation_deg)
+        fx = sofa.pose.x + f[0] * sofa.product.depth_cm / 2.0
+        fy = sofa.pose.y + f[1] * sofa.product.depth_cm / 2.0
+        vx, vy = tv.pose.x - fx, tv.pose.y - fy
+        d = (vx * vx + vy * vy) ** 0.5 or 1.0
+        if (f[0] * vx + f[1] * vy) / d < 0.4:
+            return True  # TV not reasonably in front of the sofa
+        if abs(vy * f[0] - vx * f[1]) > sofa.product.width_cm / 2.0:
+            return True  # TV centre is past the sofa's EDGE (not aligned - e.g. pushed to a side wall)
+    if len(sofas) >= 2:
+        a = item_polygon(sofas[0].pose.x, sofas[0].pose.y, sofas[0].product.width_cm, sofas[0].product.depth_cm, sofas[0].pose.rotation_deg)
+        b = item_polygon(sofas[1].pose.x, sofas[1].pose.y, sofas[1].product.width_cm, sofas[1].product.depth_cm, sofas[1].pose.rotation_deg)
+        if a.distance(b) > 130.0:
+            return True  # floating, non-adjacent second sofa (not a clean L)
+    return False
 
 
 def _template_quality_ok(room: Room, zone: ZoneData, category: str) -> bool:
@@ -789,10 +833,15 @@ def plan_layout_variants(
     # rank the design-sound options by layout quality (a working sofa<->TV pair wins), so
     # the recommended template is the one that actually composes - stable on the original
     # best-first order for ties (and for bedrooms, which score 0 across the board).
-    good_rows.sort(key=lambda r: _template_layout_score(r[2]), reverse=True)
-    # only ever surface design-sound options; fall back to the single best weak one only
-    # when nothing better exists (e.g. a tiny room with one viable wall)
-    rows = good_rows[:max_variants] if good_rows else other_rows[:1]
+    # rank best-composition-first, then NEVER surface a template with real issues (a warning,
+    # the TV not in front of the sofa, or a floating non-adjacent L). Keep the single best if
+    # everything has issues, so the panel is never empty.
+    scored = sorted(
+        ((_template_layout_score(r[2]), r) for r in good_rows), key=lambda x: x[0], reverse=True
+    )
+    kept = [sr for sr in scored if not _template_issues(sr[1][2])]
+    pool = kept if kept else scored[:1]
+    rows = [r for _sc, r in pool[:max_variants]] if pool else other_rows[:1]
     if not rows:  # safety net: always return at least the natural layout
         return [(f"{piece} layout", plan_layout_from_recipe(room, prefs, placed_items, room_type))]
 

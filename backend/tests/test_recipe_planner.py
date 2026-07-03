@@ -47,9 +47,9 @@ MAJLIS_PREFS = Preferences(
 )
 
 # Golden values. Living: legacy (one-of-each) vs recipe (area-scaled accent pieces).
-GOLDEN_LIVING_PID = "lay_0e82d240e3"  # legacy planner
-GOLDEN_LIVING_RECIPE = "lay_d2387a615b"  # recipe planner (area-scaled)
-GOLDEN_MAJLIS_PID = "lay_4bdb683bb4"  # majlis (recipe == legacy)
+GOLDEN_LIVING_PID = "lay_f523e993b5"  # legacy planner
+GOLDEN_LIVING_RECIPE = "lay_ae4e01c56d"  # recipe planner (area-scaled)
+GOLDEN_MAJLIS_PID = "lay_bcabef51da"  # majlis (recipe == legacy)
 
 
 @contextlib.contextmanager

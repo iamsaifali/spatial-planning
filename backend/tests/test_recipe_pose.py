@@ -13,9 +13,9 @@ from app.models.preferences import Preferences
 from app.services.recipe.equivalence import compare_layouts
 from app.services.recommend.orchestrator import plan_layout, plan_layout_from_recipe
 
-GOLDEN_LIVING_PID = "lay_0e82d240e3"  # legacy
-GOLDEN_LIVING_RECIPE = "lay_d2387a615b"  # recipe (area-scaled)
-GOLDEN_MAJLIS_PID = "lay_4bdb683bb4"
+GOLDEN_LIVING_PID = "lay_f523e993b5"  # legacy
+GOLDEN_LIVING_RECIPE = "lay_ae4e01c56d"  # recipe (area-scaled)
+GOLDEN_MAJLIS_PID = "lay_bcabef51da"
 
 LIVING_ROOM = {
     "vertices": [[0, 0], [480, 0], [480, 360], [0, 360]],

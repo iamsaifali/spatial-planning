@@ -17,7 +17,7 @@ from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
 from app.models.geometry import PlacedItem, Pose
-from app.models.products import Product, placement_group
+from app.models.products import SMALL_MEDIUM_MAX_CM2, Product, placement_group
 from app.services.spatial.core import RoomAnalysis, WallData, ZoneData
 from app.services.spatial.geometry_utils import (
     Vec,
@@ -124,7 +124,16 @@ def _wall_band_candidates(
     min_len: float,
     use_solid: bool,
     blockers,
+    door_clearance: float = 0.0,
 ) -> list[_BandCandidate]:
+    # Optional extra keep-out around door swings: the band already stops AT a swing, but a piece
+    # placed flush to it reads as "touching the door". A positive door_clearance buffers each
+    # swing so the band ends this many cm SHORT of it, leaving breathing room (0 = old behaviour).
+    door_keepout = (
+        unary_union([sw.buffer(door_clearance) for sw in analysis.swing_arcs.values()])
+        if door_clearance > 0.0 and analysis.swing_arcs
+        else None
+    )
     out: list[_BandCandidate] = []
     for wall in analysis.walls:
         segs = wall.clear_solid if use_solid else wall.clear_floor
@@ -138,6 +147,8 @@ def _wall_band_candidates(
                 add(wall.point_at(a), wall.normal, 2.0 + depth),
             )
             clipped = band.intersection(analysis.polygon).difference(analysis.keep_clear_union)
+            if door_keepout is not None:
+                clipped = clipped.difference(door_keepout)
             if blockers is not None and not blockers.is_empty:
                 clipped = clipped.difference(blockers)
             for piece in pieces_of(clipped):
@@ -255,7 +266,7 @@ def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cate
 TV_VIEWING_DISTANCE = 330.0  # target gap: sofa front -> (wall-mounted) TV front
 TV_WALL_TOO_FAR = 450.0  # facing-wall distance beyond which the seating floats forward toward the TV
 SOFA_FRONT_CM = 95.0  # a typical sofa's front distance from its back wall (the exact sofa isn't chosen yet)
-STORAGE_MIN_AREA_CM2 = 150_000.0  # below ~15 m2, skip the storage console (a small room is too tight)
+TV_DOOR_CLEAR_CM = 25.0  # keep the TV unit this clear of a door swing on its wall (see _tv_zones)
 
 
 def _tv_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
@@ -265,7 +276,11 @@ def _tv_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Catego
     sofa = _find_placed(placed, "sofa")
     blockers = _placed_blockers(placed)
 
-    cands = _wall_band_candidates(analysis, depth, min_w * 0.95, use_solid=True, blockers=blockers)
+    # Keep the TV a clear margin off any door swing on its wall (a media unit flush to the door
+    # reads as overlapping it); fall back to no clearance only if that leaves no viable wall.
+    cands = _wall_band_candidates(analysis, depth, min_w * 0.95, use_solid=True, blockers=blockers, door_clearance=TV_DOOR_CLEAR_CM)
+    if not cands:
+        cands = _wall_band_candidates(analysis, depth, 90.0, use_solid=True, blockers=blockers, door_clearance=TV_DOOR_CLEAR_CM)
     if not cands:
         cands = _wall_band_candidates(analysis, depth, 90.0, use_solid=True, blockers=blockers)
     if not cands:
@@ -701,6 +716,11 @@ def _corner_spots(
     reasons: list[str] | None = None,
 ) -> list[ZoneData]:
     blockers = _placed_blockers(placed, buffer_cm=8.0)
+    swings = list(analysis.swing_arcs.values())
+    # Keep a free-standing accent a clear margin off any door swing: subtract a BUFFERED swing
+    # from each corner so a corner the door eats into shrinks below the fit threshold and is
+    # skipped, rather than cramming a plant/lamp into the doorway.
+    door_keepout = unary_union([sw.buffer(30.0) for sw in swings]) if swings else None
     n_v = len(analysis.room.vertices)
     spots: list[tuple[Vec, str]] = []
     for i in range(n_v):
@@ -721,6 +741,8 @@ def _corner_spots(
             continue
         rect = item_polygon(pt[0], pt[1], size, size, 0)
         clipped = rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers)
+        if door_keepout is not None:
+            clipped = clipped.difference(door_keepout)  # hold the accent clear of the door swing
         piece = largest_piece(clipped)
         if piece is None or piece.area < size * size * 0.35:
             continue
@@ -755,8 +777,8 @@ def _lighting_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: 
 
 
 def _storage_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
-    # Skip storage (console/sideboard) in a SMALL room - it just crowds an already-tight layout.
-    if analysis.area_cm2 < STORAGE_MIN_AREA_CM2:
+    # Skip storage (console/sideboard) in a small/medium room - it just crowds a tight layout.
+    if analysis.area_cm2 < SMALL_MEDIUM_MAX_CM2:
         return []
     s = stats.get("storage", {})
     depth = s.get("max_d", 45.0) + 6.0
@@ -765,19 +787,40 @@ def _storage_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: C
     cands = _wall_band_candidates(analysis, depth, min_w, use_solid=True, blockers=blockers)
     if not cands:
         return []
-    # Never share the wall the TV is on: storage there sits beside/in front of the TV, in the
-    # sofa's sightline. Heavily penalise that wall so storage takes any other clear wall.
+    # The TV wall: storage there sits beside/in front of the TV, in the sofa's sightline.
     tv = _find_placed(placed, "tv_unit")
     tv_wall = None
     if tv is not None:
         tv_f = front_vector(tv[0].rotation_deg)
         tv_wall = max(range(len(analysis.walls)), key=lambda i: dot(analysis.walls[i].normal, tv_f))
+    # The entry-door wall's length IS the room's main walkway; a console there blocks the path
+    # in/out even when it clears the swing itself.
+    door_walls = {d.wall_index for d in analysis.room.doors}
+    # A FLOATING sofa (e.g. an L-return) parked just in front of a wall leaves the strip AT the
+    # wall clear (so the band looks full-width) but blocks where the console would actually sit.
+    sofa_polys = [
+        item_polygon(it.x, it.y, pr.width_cm, pr.depth_cm, it.rotation_deg)
+        for it, pr in placed
+        if placement_group(pr.category) == "sofa"
+    ]
     max_extent = max(c.extent for c in cands)
+    # A console is OPTIONAL: only ever offer a wall that keeps EVERY path clear. Disqualify a
+    # wall that holds the TV, carries the entry door (its length is the walkway), has a sofa
+    # floating in front of it, or overlaps a corridor. If none survive - a fully-furnished room
+    # where every wall is taken - return nothing so the console is simply SKIPPED, rather than
+    # parked in a doorway or across a walkway.
     zones: list[ZoneData] = []
     for i, cand in enumerate(cands):
+        w = cand.wall
+        band = quad(
+            add(w.point_at(cand.lo), w.normal, 2.0), add(w.point_at(cand.hi), w.normal, 2.0),
+            add(w.point_at(cand.hi), w.normal, 2.0 + depth), add(w.point_at(cand.lo), w.normal, 2.0 + depth),
+        )
+        sofa_in_band = any(band.intersection(sp).area > 5_000.0 for sp in sofa_polys)
+        blocks_walkway = _corridor_overlap_ratio(analysis, cand.piece) > 0.05
+        if (tv_wall is not None and w.index == tv_wall) or w.index in door_walls or sofa_in_band or blocks_walkway:
+            continue  # not a clean wall - never place the console here
         score = 0.7 * (cand.extent / max_extent) + 0.3 * _entry_distance_norm(analysis, cand.piece)
-        if tv_wall is not None and cand.wall.index == tv_wall:
-            score -= 1.0  # storage on the TV wall would sit in front of the TV
         zones.append(_band_zone(analysis, cand, "storage", i, score, [R_REMAINING_WALL], depth))
     return _rank(zones)
 
