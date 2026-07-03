@@ -730,9 +730,10 @@ def _template_layout_score(resp: AssistLayoutResponse) -> float:
     return score
 
 
-def _template_issues(resp: AssistLayoutResponse) -> bool:
+def _template_issues(resp: AssistLayoutResponse, analysis: RoomAnalysis) -> bool:
     """A template we should NOT surface at all: it has a layout warning, the TV isn't really in
-    front of the sofa, or a big-room second sofa FLOATS instead of forming an adjacent L."""
+    front of the sofa, the TV is shoved onto a WINDOW wall (squeezed beside/below the window),
+    or a big-room second sofa FLOATS instead of forming an adjacent L."""
     if any(fd.severity == "warning" for fd in resp.findings):
         return True
     from app.services.spatial.geometry_utils import front_vector, item_polygon
@@ -746,10 +747,17 @@ def _template_issues(resp: AssistLayoutResponse) -> bool:
         fy = sofa.pose.y + f[1] * sofa.product.depth_cm / 2.0
         vx, vy = tv.pose.x - fx, tv.pose.y - fy
         d = (vx * vx + vy * vy) ** 0.5 or 1.0
+        lateral = abs(vy * f[0] - vx * f[1])
         if (f[0] * vx + f[1] * vy) / d < 0.4:
             return True  # TV not reasonably in front of the sofa
-        if abs(vy * f[0] - vx * f[1]) > sofa.product.width_cm / 2.0:
+        if lateral > sofa.product.width_cm / 2.0:
             return True  # TV centre is past the sofa's EDGE (not aligned - e.g. pushed to a side wall)
+        # TV backed onto a WINDOW wall and pushed off-centre by the window: the sofa faces a
+        # window and the TV is squeezed beside/below it. A wall without a window is far better.
+        tv_f = front_vector(tv.pose.rotation_deg)
+        tv_wall = max(analysis.walls, key=lambda w: w.normal[0] * tv_f[0] + w.normal[1] * tv_f[1])
+        if lateral > 60.0 and any(o.kind == "window" for o in tv_wall.openings):
+            return True
     if len(sofas) >= 2:
         a = item_polygon(sofas[0].pose.x, sofas[0].pose.y, sofas[0].product.width_cm, sofas[0].product.depth_cm, sofas[0].pose.rotation_deg)
         b = item_polygon(sofas[1].pose.x, sofas[1].pose.y, sofas[1].product.width_cm, sofas[1].product.depth_cm, sofas[1].pose.rotation_deg)
@@ -839,7 +847,7 @@ def plan_layout_variants(
     scored = sorted(
         ((_template_layout_score(r[2]), r) for r in good_rows), key=lambda x: x[0], reverse=True
     )
-    kept = [sr for sr in scored if not _template_issues(sr[1][2])]
+    kept = [sr for sr in scored if not _template_issues(sr[1][2], analysis)]
     pool = kept if kept else scored[:1]
     rows = [r for _sc, r in pool[:max_variants]] if pool else other_rows[:1]
     if not rows:  # safety net: always return at least the natural layout

@@ -634,6 +634,10 @@ def _accent_chair_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], sta
     max_fwd_extra = min(80.0, dot(sub2(tv_front, (item.x, item.y)), f) - product.depth_cm / 2.0 - CHAIR_HALF - 60.0)
     zones = []
     for idx, side in enumerate((-1.0, 1.0)):
+        # Never flank the sofa with a chair on the CONSOLE's side - it just crowds the console.
+        # The chair goes on the clear side instead (a room with a console gets one accent chair).
+        if storage_side != 0.0 and side == storage_side:
+            continue
         wall_dist = first_boundary_hit(analysis.polygon, (item.x, item.y), (side * w[0], side * w[1]))
         lat = wall_dist - CHAIR_HALF - 14.0
         fwd = product.depth_cm / 2.0 + max(0.0, min(70.0, max_fwd_extra))
@@ -646,10 +650,9 @@ def _accent_chair_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], sta
         if piece is None or piece.area < 3_500.0:
             continue
         corridor_pen = _corridor_overlap_ratio(analysis, piece)
-        side_pen = 0.25 if (storage_side != 0.0 and side == storage_side) else 0.0
         zones.append(
             _frame_zone(
-                "accent_chair", idx, piece, 0.8 - 0.2 * corridor_pen - side_pen, rotation,
+                "accent_chair", idx, piece, 0.8 - 0.2 * corridor_pen, rotation,
                 center, toward, w, 100.0, 100.0,
                 [R_CONVERSATION_ANGLE], "beside_seating", kind="free",
             )

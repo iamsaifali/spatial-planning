@@ -32,7 +32,7 @@ LIVING_ROOM_RECIPE = Recipe(
         role("focal_surface", "coffee_table", "front_of_anchor",
              ["min_clearance"], depends_on=["primary_seating", "floor_anchor"]),
         role("support_surface", "side_table", "beside_anchor",
-             count=CountRule(mode="fill_available", per_area_m2=14, max=2),
+             count=CountRule(mode="single"),  # a living room gets ONE side table, not a pair
              depends_on=["primary_seating"]),
         # Secondary seating scales with the room: a BIG room gets a perpendicular RETURN sofa
         # forming an L with the primary (until_target lets a second sofa of the same category
