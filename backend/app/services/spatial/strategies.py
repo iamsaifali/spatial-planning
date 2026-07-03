@@ -32,8 +32,10 @@ from app.services.spatial.zones import (
     _decor_zones,
     _free_zone_center,
     _l_return_sofa_zones,
+    _lamp_on_table_zones,
     _lighting_zones,
     _majlis_sofa_zones,
+    _reading_chair_zones,
     _rug_zones,
     _side_table_zones,
     _sofa_zones,
@@ -136,7 +138,22 @@ def corners(category, room_type, analysis, placed, stats, params):
 def remaining_wall(category, room_type, analysis, placed, stats, params):
     """A solid wall segment not used by other roles (storage / console)."""
     if category == "storage":
-        return _storage_zones(analysis, placed, stats)
+        return _storage_zones(analysis, placed, stats, room_type=room_type)
+    return _fallback(category, room_type, analysis, placed, stats, params)
+
+
+def reading_corner(category, room_type, analysis, placed, stats, params):
+    """A reading chair tucked into the empty, door-free corner OPPOSITE the bed (bedroom)."""
+    if category == "accent_chair":
+        return _reading_chair_zones(analysis, placed, stats)
+    return _fallback(category, room_type, analysis, placed, stats, params)
+
+
+def on_surface(category, room_type, analysis, placed, stats, params):
+    """A small item resting ON a placed surface - a table lamp on a nightstand. Yields a zone
+    only once its host (a side table) exists, so it depends on the bedside role running first."""
+    if category == "lighting":
+        return _lamp_on_table_zones(analysis, placed, stats)
     return _fallback(category, room_type, analysis, placed, stats, params)
 
 
@@ -161,7 +178,13 @@ def center_area(category, room_type, analysis, placed, stats, params):
     """
     cat_stats = stats.get(category, {})
     if category == "rug":
-        default_w, default_d = cat_stats.get("max_w", 300.0), cat_stats.get("max_d", 240.0)
+        if room_type == "bedroom":
+            # A bedroom rug is sized to the ROOM (leaving a comfortable border), not floor-filling
+            # like a majlis rug: request ~62% of the room so a small room gets a smaller carpet.
+            minx, miny, maxx, maxy = analysis.polygon.bounds
+            default_w, default_d = (maxx - minx) * 0.62, (maxy - miny) * 0.62
+        else:
+            default_w, default_d = cat_stats.get("max_w", 300.0), cat_stats.get("max_d", 240.0)
     else:
         default_w, default_d = 140.0, 120.0
     size_w = float(params.get("size_w", default_w))
@@ -184,6 +207,8 @@ SPATIAL_STRATEGIES: dict[str, ZoneStrategyFn] = {
     "around_anchor": around_anchor,
     "corners": corners,
     "remaining_wall": remaining_wall,
+    "reading_corner": reading_corner,
+    "on_surface": on_surface,
     "perimeter_walls": perimeter_walls,
     "center_area": center_area,
     "wall_band": wall_band,

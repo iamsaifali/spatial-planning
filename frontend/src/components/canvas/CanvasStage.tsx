@@ -21,7 +21,7 @@ import { useProductStore } from "@/stores/productStore";
 import { useUiStore } from "@/stores/uiStore";
 import type { Point } from "@/types/api";
 import { AssistPanel } from "./AssistPanel";
-import { AnalysisOverlay, GhostNode, ProposedItemNode, WarningGeometry, ZonesOverlay } from "./Overlays";
+import { AnalysisOverlay, GhostNode, ProposedItemNode, WarningGeometry } from "./Overlays";
 import { PlacedItemNode } from "./PlacedItemNode";
 import { RoomShape } from "./RoomShape";
 
@@ -72,9 +72,6 @@ export default function CanvasStage() {
   const productsById = useProductStore((s) => s.byId);
   const overlaysVisible = useGuideStore((s) => s.overlaysVisible);
   const analysis = useGuideStore((s) => s.analysis);
-  const currentStepKey = useGuideStore((s) => s.currentStepKey);
-  const stepCache = useGuideStore((s) => s.stepCache);
-  const guideFinished = useGuideStore((s) => s.guideFinished);
 
   // drawing state
   const [draftPoints, setDraftPoints] = useState<Point[]>([]);
@@ -87,13 +84,6 @@ export default function CanvasStage() {
   const [measure, setMeasure] = useState<{ a: Point; b: Point | null; frozen: boolean } | null>(null);
 
   const pinch = useRef<{ dist: number; center: { x: number; y: number } } | null>(null);
-
-  const zones = useMemo(() => {
-    const step = stepCache[currentStepKey]?.data;
-    if (step) return step.zones;
-    if (currentStepKey === "sofa" && analysis) return analysis.zones;
-    return [];
-  }, [stepCache, currentStepKey, analysis]);
 
   // --- sizing & view transforms ---------------------------------------------
 
@@ -459,14 +449,6 @@ export default function CanvasStage() {
         </Layer>
 
         <Layer name="decor-layer" listening={false}>
-          {tool === "select" && !guideFinished && (
-            <ZonesOverlay
-              zones={zones}
-              scale={scale}
-              // explain the spot only while the step's category is still unplaced
-              calloutVisible={!items.some((i) => productsById[i.product_id]?.category === currentStepKey)}
-            />
-          )}
           {overlaysVisible && analysis && <AnalysisOverlay analysis={analysis} scale={scale} />}
           {warningGeometry && <WarningGeometry polygon={warningGeometry} scale={scale} />}
         </Layer>

@@ -118,6 +118,17 @@ def select_slots(
             if capped:
                 products = capped
 
+    # A small/medium bedroom gets a COMPACT wardrobe, not one that spans the whole wall.
+    if (
+        category == "storage"
+        and room_type == "bedroom"
+        and room_area_cm2 is not None
+        and room_area_cm2 < SMALL_MEDIUM_MAX_CM2
+    ):
+        capped = [p for p in products if p.width_cm <= 200.0]
+        if capped:
+            products = capped
+
     if not zones:
         return SlotResult(None, None, None, {"reason": "no_zones"})
 

@@ -89,6 +89,13 @@ ROOM_CATEGORY_PREFERENCE: dict[str, dict[str, str]] = {
         "rug": "carpet",
         "accent_chair": "chair",
     },
+    "bedroom": {
+        "side_table": "side-table",  # nightstands flanking the bed
+        "storage": "wardrobe",
+        "rug": "carpet",
+        "accent_chair": "chair",  # a reading chair
+        "lighting": "lampshade",  # a table lamp that sits ON a nightstand
+    },
 }
 
 

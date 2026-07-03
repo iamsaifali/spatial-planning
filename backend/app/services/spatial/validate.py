@@ -100,8 +100,12 @@ def must_fix_only(
     if poly.difference(room_buffered).area > OOB_TOLERANCE_RATIO * poly.area:
         return False
     if not product.is_walkable:
+        cat = placement_group(product.category)
         for _i, p, op in other_polys:
             if p.is_walkable:
+                continue
+            # a table lamp rests ON a side table (nightstand) by design - not a collision
+            if {cat, placement_group(p.category)} == {"lighting", "side_table"}:
                 continue
             inter = poly.intersection(op)
             if not inter.is_empty and inter.area > OVERLAP_RATIO * min(poly.area, op.area):
@@ -145,8 +149,13 @@ def validate_item(
 
     # Overlaps
     if not product.is_walkable:
+        cat = placement_group(product.category)
         for other_item, other_product, other_poly in others:
             if other_product.is_walkable:
+                continue
+            # A table lamp legitimately rests ON a side table (nightstand) - the two share a
+            # footprint by design, so don't flag that pair as an overlap.
+            if {cat, placement_group(other_product.category)} == {"lighting", "side_table"}:
                 continue
             inter = poly.intersection(other_poly)
             if not inter.is_empty and inter.area > OVERLAP_RATIO * min(poly.area, other_poly.area):

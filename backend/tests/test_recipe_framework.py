@@ -145,10 +145,11 @@ def test_count_modes_per_recipe():
     # multi-instance signatures
     assert modes["majlis"]["perimeter_seating"] == "until_target"
     assert modes["bedroom"]["bedside_support"] == "mirror_pair"
-    # accent pieces scale with area in living_room + bedroom
+    # accent pieces scale with area in living_room
     assert modes["living_room"]["accent"] == "fill_available"
     assert modes["living_room"]["ambient_light"] == "fill_available"
-    assert modes["bedroom"]["accent"] == "fill_available"
+    # the bedroom keeps a single table lamp on a nightstand (on-surface)
+    assert modes["bedroom"]["bedside_lamp"] == "single"
     # essentials stay single
     assert modes["living_room"]["primary_seating"] == "single"
     assert modes["bedroom"]["primary_sleeping"] == "single"

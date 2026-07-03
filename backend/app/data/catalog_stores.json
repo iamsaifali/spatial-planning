@@ -1656,633 +1656,6 @@
     "seating_capacity": 0
   },
   {
-    "id": "ikea-95976",
-    "name": "FLEKKE Day-bed frame with 2 drawers, black-brown, 80x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 1960,
-    "mrp": 2310,
-    "width_cm": 91.0,
-    "depth_cm": 207.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Black",
-      "Brown"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/83855.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "FLEKKE Day-bed frame with 2 drawers, black-brown, 80x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-96120",
-    "name": "TONSTAD Bed frame with storage, off-white/Luröy, 90x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 2020,
-    "mrp": null,
-    "width_cm": 99.0,
-    "depth_cm": 209.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "White"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/bed-85128.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "TONSTAD Bed frame with storage, off-white/Luröy, 90x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-69360",
-    "name": "NEIDEN Bed frame, pine, 140x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 2260,
-    "mrp": null,
-    "width_cm": 140.0,
-    "depth_cm": 200.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Natural"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/84166.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "NEIDEN Bed frame, pine, 140x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-96081",
-    "name": "SLÄKT Bed frame with underbed and storage, white, 90x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 2630,
-    "mrp": null,
-    "width_cm": 189.0,
-    "depth_cm": 206.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "White"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/bed-86312.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "SLÄKT Bed frame with underbed and storage, white, 90x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-69391",
-    "name": "NEIDEN Bed frame, pine/Luröy, 140x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 2320,
-    "mrp": null,
-    "width_cm": 144.0,
-    "depth_cm": 205.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Natural"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/bed-86542.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "NEIDEN Bed frame, pine/Luröy, 140x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-96353",
-    "name": "NORDLI Bed frame w storage and headboard, white, 160x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 2770,
-    "mrp": null,
-    "width_cm": 200,
-    "depth_cm": 215,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "White"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/83859.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "NORDLI Bed frame w storage and headboard, white, 160x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-96915",
-    "name": "VIHALS Day-bed with storage/1 mattress, white/Åfjäll medium firm, 80x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 1930,
-    "mrp": null,
-    "width_cm": 90,
-    "depth_cm": 200.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "White"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/bed-85445.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "VIHALS Day-bed with storage/1 mattress, white/Åfjäll medium firm, 80x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-96112",
-    "name": "VITARNA Four-poster bed frame, white Luröy/Skådis black, 140x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 2310,
-    "mrp": 2730,
-    "width_cm": 142.0,
-    "depth_cm": 207.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "White",
-      "Black"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/bed-85125.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "VITARNA Four-poster bed frame, white Luröy/Skådis black, 140x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-69370",
-    "name": "KLEPPSTAD Bed frame, white/Vissle beige, 180x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 2620,
-    "mrp": null,
-    "width_cm": 186.0,
-    "depth_cm": 207.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Beige",
-      "White"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/84465.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "KLEPPSTAD Bed frame, white/Vissle beige, 180x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-96091",
-    "name": "GLADSTAD Upholstered bed frame, Kabusa light grey, 160x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 2520,
-    "mrp": 2970,
-    "width_cm": 167.0,
-    "depth_cm": 212.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Grey"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/bed-85118.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "GLADSTAD Upholstered bed frame, Kabusa light grey, 160x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-96344",
-    "name": "GLAMBERGET Bed frame with storage and mattress, pine/Åkrehamn firm, 90x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 1960,
-    "mrp": 2310,
-    "width_cm": 90,
-    "depth_cm": 211.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Natural"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/bed-85986.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "GLAMBERGET Bed frame with storage and mattress, pine/Åkrehamn firm, 90x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-119712",
-    "name": "MALM Ottoman bed, black-brown, 160x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 2560,
-    "mrp": null,
-    "width_cm": 175.0,
-    "depth_cm": 210.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Black",
-      "Brown"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/bed-86696.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "MALM Ottoman bed, black-brown, 160x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-120824",
-    "name": "TONSTAD Bed frame with storage, brown stained oak veneer/Lönset, 180x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 2540,
-    "mrp": null,
-    "width_cm": 180.0,
-    "depth_cm": 200.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Brown",
-      "Oak"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/bed-86700.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "TONSTAD Bed frame with storage, brown stained oak veneer/Lönset, 180x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-96084",
-    "name": "IDANÄS Bed frame, white, 180x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 2650,
-    "mrp": null,
-    "width_cm": 191.0,
-    "depth_cm": 207.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "White"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/bed-86730.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "IDANÄS Bed frame, white, 180x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-69369",
-    "name": "VEVELSTAD Bed frame, white, 140x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 2340,
-    "mrp": null,
-    "width_cm": 146.0,
-    "depth_cm": 207.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "White"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/84172.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "VEVELSTAD Bed frame, white, 140x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-69434",
-    "name": "VIHALS Day-bed frame, white, 80x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 1950,
-    "mrp": null,
-    "width_cm": 90,
-    "depth_cm": 206.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "White"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/84194.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "VIHALS Day-bed frame, white, 80x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-96420",
-    "name": "VITARNA Four-poster bed frame, white Luröy/Skådis white, 140x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 2340,
-    "mrp": null,
-    "width_cm": 146.0,
-    "depth_cm": 207.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "White"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/83860.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "VITARNA Four-poster bed frame, white Luröy/Skådis white, 140x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-96133",
-    "name": "MALM Bed frame, high, w 2 storage boxes, black-brown/Luröy, 90x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 2060,
-    "mrp": null,
-    "width_cm": 105.0,
-    "depth_cm": 209.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Black",
-      "Brown"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/bed-85135.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "MALM Bed frame, high, w 2 storage boxes, black-brown/Luröy, 90x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-120689",
-    "name": "VITVAL Bunk bed frame, white/light grey, 90x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 2000,
-    "mrp": null,
-    "width_cm": 97.0,
-    "depth_cm": 207.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Grey",
-      "White"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/bed-85666.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "VITVAL Bunk bed frame, white/light grey, 90x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
-    "id": "ikea-120061",
-    "name": "KURA Reversible bed, white/pine, 90x200 cm",
-    "brand": "IKEA",
-    "category": "bed",
-    "price": 2020,
-    "mrp": null,
-    "width_cm": 99.0,
-    "depth_cm": 209.0,
-    "height_cm": 45,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "White"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/bed-85661.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "KURA Reversible bed, white/pine, 90x200 cm — from Ikea.",
-    "room_types": [
-      "living_room",
-      "bedroom"
-    ],
-    "seating_capacity": 0
-  },
-  {
     "id": "ikea-69670",
     "name": "STOPP Anti-slip underlay, 67.5x200 cm",
     "brand": "IKEA",
@@ -3331,524 +2704,6 @@
       "living_room"
     ],
     "seating_capacity": 0
-  },
-  {
-    "id": "ikea-69874",
-    "name": "VIHALS / VIHALS Table and 4 chairs, white white/white Tibbleby beige-grey, 125x74 cm",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 1080,
-    "mrp": null,
-    "width_cm": 95,
-    "depth_cm": 74.0,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Beige",
-      "Grey",
-      "White"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-85108.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "VIHALS / VIHALS Table and 4 chairs, white white/white Tibbleby beige-grey, 125x74 cm — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
-  },
-  {
-    "id": "ikea-113902",
-    "name": "ASKHOLMEN Table+4 folding chairs, outdoor, dark brown, 143x75 cm",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 1080,
-    "mrp": null,
-    "width_cm": 95,
-    "depth_cm": 75.0,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Brown"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-85514.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "ASKHOLMEN Table+4 folding chairs, outdoor, dark brown, 143x75 cm — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
-  },
-  {
-    "id": "ikea-113789",
-    "name": "NÄMMARÖ 4-seat conversation set, outdoor, light brown stained",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 820,
-    "mrp": null,
-    "width_cm": 63.0,
-    "depth_cm": 63.0,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Brown"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-85604.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "NÄMMARÖ 4-seat conversation set, outdoor, light brown stained — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
-  },
-  {
-    "id": "ikea-113688",
-    "name": "FRYKSÅS Armchair with cushion, rattan/Risane natural",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 780,
-    "mrp": null,
-    "width_cm": 74.0,
-    "depth_cm": 47.0,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Natural"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-86658.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "FRYKSÅS Armchair with cushion, rattan/Risane natural — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
-  },
-  {
-    "id": "ikea-96207",
-    "name": "IDÅSEN Underframe sit/stand f table tp, el, dark grey, 146x70 cm",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 1040,
-    "mrp": null,
-    "width_cm": 95,
-    "depth_cm": 70.0,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Grey"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-86318.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "IDÅSEN Underframe sit/stand f table tp, el, dark grey, 146x70 cm — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
-  },
-  {
-    "id": "ikea-113627",
-    "name": "ASKHOLMEN Table for wall+1 fold chr, outdoor, dark brown, 70x44 cm",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 760,
-    "mrp": null,
-    "width_cm": 70.0,
-    "depth_cm": 45,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Brown"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-86656.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "ASKHOLMEN Table for wall+1 fold chr, outdoor, dark brown, 70x44 cm — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
-  },
-  {
-    "id": "ikea-112992",
-    "name": "TOSSBERG Chair, metal black/Gunnared dark grey",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 790,
-    "mrp": null,
-    "width_cm": 63.0,
-    "depth_cm": 57.0,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Grey",
-      "Black"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-86636.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "TOSSBERG Chair, metal black/Gunnared dark grey — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
-  },
-  {
-    "id": "ikea-112794",
-    "name": "ASKHOLMEN Table f wall+2 fold chairs, outdoor, dark brown, 70x44 cm",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 760,
-    "mrp": null,
-    "width_cm": 70.0,
-    "depth_cm": 45,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Brown"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-85501.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "ASKHOLMEN Table f wall+2 fold chairs, outdoor, dark brown, 70x44 cm — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
-  },
-  {
-    "id": "ikea-96210",
-    "name": "IDÅSEN Desk sit/stand, black/dark grey, 160x80 cm",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 1120,
-    "mrp": 1320,
-    "width_cm": 95,
-    "depth_cm": 80.0,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Grey",
-      "Black"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-85156.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "IDÅSEN Desk sit/stand, black/dark grey, 160x80 cm — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
-  },
-  {
-    "id": "ikea-96203",
-    "name": "TEGELÖN / TEGELÖN Table+6 chairs, outdoor, dark grey/black",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 750,
-    "mrp": null,
-    "width_cm": 56.0,
-    "depth_cm": 56.0,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Grey",
-      "Black"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-85715.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "TEGELÖN / TEGELÖN Table+6 chairs, outdoor, dark grey/black — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
-  },
-  {
-    "id": "ikea-96884",
-    "name": "KIVIK 1-seat sofa-bed, Tresund anthracite",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 1200,
-    "mrp": null,
-    "width_cm": 95,
-    "depth_cm": 90.0,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Anthracite"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-85807.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "KIVIK 1-seat sofa-bed, Tresund anthracite — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
-  },
-  {
-    "id": "ikea-96180",
-    "name": "DANDERYD / BERGMUND Table and 6 chairs, white/Gunnared medium grey, 180 cm",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 1200,
-    "mrp": null,
-    "width_cm": 95,
-    "depth_cm": 90.0,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Grey",
-      "White"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-85143.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "DANDERYD / BERGMUND Table and 6 chairs, white/Gunnared medium grey, 180 cm — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
-  },
-  {
-    "id": "ikea-96196",
-    "name": "TROTTEN/LIDKULLEN Table and sit/stand support, white/dark grey",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 670,
-    "mrp": null,
-    "width_cm": 46.0,
-    "depth_cm": 45,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Grey",
-      "White"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-86316.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "TROTTEN/LIDKULLEN Table and sit/stand support, white/dark grey — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
-  },
-  {
-    "id": "ikea-113209",
-    "name": "NÄMMARÖ / ENSHOLM Table and 2 chairs, outdoor light brown stained/green, 75 cm",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 890,
-    "mrp": null,
-    "width_cm": 75.0,
-    "depth_cm": 63.0,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Brown",
-      "Green"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-86645.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "NÄMMARÖ / ENSHOLM Table and 2 chairs, outdoor light brown stained/green, 75 cm — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
-  },
-  {
-    "id": "ikea-113759",
-    "name": "TEODORES Chair, white",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 780,
-    "mrp": null,
-    "width_cm": 78.0,
-    "depth_cm": 45,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "White"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-86662.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "TEODORES Chair, white — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
-  },
-  {
-    "id": "ikea-96212",
-    "name": "EKTORP Armchair, Kilanda light beige",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 710,
-    "mrp": null,
-    "width_cm": 57.0,
-    "depth_cm": 45,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "Beige"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-85158.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "EKTORP Armchair, Kilanda light beige — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
-  },
-  {
-    "id": "ikea-69853",
-    "name": "TROTTEN Underframe sit/stand f table top, white, 120/160 cm",
-    "brand": "IKEA",
-    "category": "chair",
-    "price": 1030,
-    "mrp": null,
-    "width_cm": 95,
-    "depth_cm": 68.0,
-    "height_cm": 90,
-    "style_tags": [
-      "scandinavian",
-      "modern"
-    ],
-    "colors": [
-      "White"
-    ],
-    "materials": [],
-    "in_stock": true,
-    "delivery_days": 7,
-    "rating": 4.3,
-    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/ikea/chair-86026.svg",
-    "is_walkable": false,
-    "shape": "rect",
-    "description": "TROTTEN Underframe sit/stand f table top, white, 120/160 cm — from Ikea.",
-    "room_types": [
-      "living_room"
-    ],
-    "seating_capacity": 1
   },
   {
     "id": "ikea-96223",
@@ -14550,5 +13405,1195 @@
       "bedroom"
     ],
     "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-120793",
+    "name": "Amazing with an amazing room (bed, salary, pillow, quilt) - Choose the size",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2670,
+    "mrp": null,
+    "width_cm": 200,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Natural"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-120793.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Amazing with an amazing room (bed, salary, pillow, quilt) - Choose the size — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-119490",
+    "name": "Classic hotel bedroom size - beige color",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2400,
+    "mrp": null,
+    "width_cm": 160.0,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-119490.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Classic hotel bedroom size - beige color — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-120270",
+    "name": "Classic hotel bedroom size - beige color",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2330,
+    "mrp": null,
+    "width_cm": 150.0,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-120270.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Classic hotel bedroom size - beige color — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-120778",
+    "name": "Classic hotel bedroom with a seller with multiple sizes",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2130,
+    "mrp": null,
+    "width_cm": 120.0,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Natural"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-120778.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Classic hotel bedroom with a seller with multiple sizes — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-120106",
+    "name": "Classic hotel bed size - gray color",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2540,
+    "mrp": null,
+    "width_cm": 180.0,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Grey"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-120106.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Classic hotel bed size - gray color — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-120082",
+    "name": "Classic hotel bed size - gray color",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2540,
+    "mrp": null,
+    "width_cm": 180.0,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Grey"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-120082.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Classic hotel bed size - gray color — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-120478",
+    "name": "A modern hotel bed with a vertical panel detailing multiple sizes",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2130,
+    "mrp": null,
+    "width_cm": 120.0,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Natural"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-120478.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "A modern hotel bed with a vertical panel detailing multiple sizes — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-26285",
+    "name": "Classic hotel bed",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2330,
+    "mrp": null,
+    "width_cm": 150.0,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Natural"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-26285.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Classic hotel bed — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-120484",
+    "name": "Luxurious wooden bed modern design - beige color - choose the size",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2400,
+    "mrp": null,
+    "width_cm": 160.0,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-120484.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Luxurious wooden bed modern design - beige color - choose the size — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-119966",
+    "name": "Luxurious wooden bed modern design - gray color - choose the size",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2400,
+    "mrp": null,
+    "width_cm": 160.0,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Grey"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-119966.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Luxurious wooden bed modern design - gray color - choose the size — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-119976",
+    "name": "A modern hotel bed with a vertical panel detailing multiple sizes",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2130,
+    "mrp": null,
+    "width_cm": 120.0,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Natural"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-119976.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "A modern hotel bed with a vertical panel detailing multiple sizes — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-120136",
+    "name": "Authenticity and settings (bed, salary, pillow, quilt) - Choose the size",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2670,
+    "mrp": null,
+    "width_cm": 200,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Natural"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-120136.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Authenticity and settings (bed, salary, pillow, quilt) - Choose the size — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-120262",
+    "name": "A modern hotel bed with a vertical panel detailing multiple sizes",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2130,
+    "mrp": null,
+    "width_cm": 120.0,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Natural"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-120262.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "A modern hotel bed with a vertical panel detailing multiple sizes — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-119578",
+    "name": "Smoothness Cap",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2670,
+    "mrp": null,
+    "width_cm": 200,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Natural"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-119578.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Smoothness Cap — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-26243",
+    "name": "Modern Luxury Hotel - Crown BED with great design and high quality Choose color and size",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2670,
+    "mrp": null,
+    "width_cm": 200,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Natural"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-26243.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Modern Luxury Hotel - Crown BED with great design and high quality Choose color and size — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-120497",
+    "name": "Chanel Super King - Gray",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2670,
+    "mrp": null,
+    "width_cm": 200,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Grey"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-120497.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Chanel Super King - Gray — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-119527",
+    "name": "Luxurious wooden velvet velvet modern design - pink color - Choose the size",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2400,
+    "mrp": null,
+    "width_cm": 160.0,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Pink"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-119527.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Luxurious wooden velvet velvet modern design - pink color - Choose the size — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-120411",
+    "name": "Classic hotel bedroom with a seller with multiple sizes",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2130,
+    "mrp": null,
+    "width_cm": 120.0,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Natural"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-120411.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Classic hotel bedroom with a seller with multiple sizes — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-119647",
+    "name": "Luxurious modern design bed - gray color",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2130,
+    "mrp": null,
+    "width_cm": 120.0,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Grey"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-119647.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Luxurious modern design bed - gray color — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-119815",
+    "name": "A modern hotel bed with a vertical panel detailing multiple sizes",
+    "brand": "Mesaky",
+    "category": "bed",
+    "price": 2130,
+    "mrp": null,
+    "width_cm": 120.0,
+    "depth_cm": 200.0,
+    "height_cm": 45,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Natural"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/bed-119815.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "A modern hotel bed with a vertical panel detailing multiple sizes — from Mesaky.",
+    "room_types": [
+      "living_room",
+      "bedroom"
+    ],
+    "seating_capacity": 0
+  },
+  {
+    "id": "mesaky-113390",
+    "name": "Modern Bocke Chair with wooden legs- white color",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 1160,
+    "mrp": null,
+    "width_cm": 90.0,
+    "depth_cm": 90.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "White"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-113390.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Modern Bocke Chair with wooden legs- white color — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-113565",
+    "name": "Side chair is a single gray sofa",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 960,
+    "mrp": null,
+    "width_cm": 80.0,
+    "depth_cm": 70.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Grey"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-113565.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Side chair is a single gray sofa — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-113270",
+    "name": "Bocke chair with modern arms - navy color",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 1160,
+    "mrp": null,
+    "width_cm": 90.0,
+    "depth_cm": 90.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Navy"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-113270.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Bocke chair with modern arms - navy color — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-113932",
+    "name": "Modern Bouquelian Chair - White color",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 930,
+    "mrp": null,
+    "width_cm": 75.0,
+    "depth_cm": 70.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "White"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-113932.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Modern Bouquelian Chair - White color — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-113019",
+    "name": "Single side chair with modern arms - beige color",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 1090,
+    "mrp": null,
+    "width_cm": 90.0,
+    "depth_cm": 80.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-113019.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Single side chair with modern arms - beige color — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-67394",
+    "name": "Modern arms chair - off white color",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 1160,
+    "mrp": null,
+    "width_cm": 90.0,
+    "depth_cm": 90.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "White"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-67394.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Modern arms chair - off white color — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-113431",
+    "name": "Side chair is a single blue sofa",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 980,
+    "mrp": 1160,
+    "width_cm": 90.0,
+    "depth_cm": 65.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Blue"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-113431.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Side chair is a single blue sofa — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-113608",
+    "name": "Modern Boucale Chair - beige color",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 970,
+    "mrp": null,
+    "width_cm": 77.0,
+    "depth_cm": 74.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-113608.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Modern Boucale Chair - beige color — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-112547",
+    "name": "Side chair is a white single sofa",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 770,
+    "mrp": 910,
+    "width_cm": 60.0,
+    "depth_cm": 55.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "White"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-112547.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Side chair is a white single sofa — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-112775",
+    "name": "Side chair single beige sofa",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 960,
+    "mrp": null,
+    "width_cm": 75.0,
+    "depth_cm": 75.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-112775.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Side chair single beige sofa — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-112556",
+    "name": "A single side chair with modern arms - green color",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 960,
+    "mrp": null,
+    "width_cm": 75.0,
+    "depth_cm": 75.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Green"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-112556.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "A single side chair with modern arms - green color — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-26219",
+    "name": "Side chair single beige sofa",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 1130,
+    "mrp": null,
+    "width_cm": 90.0,
+    "depth_cm": 85.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-26219.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Side chair single beige sofa — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-113185",
+    "name": "Side chair is a single gray sofa",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 1090,
+    "mrp": null,
+    "width_cm": 90.0,
+    "depth_cm": 80.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Grey"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-113185.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Side chair is a single gray sofa — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-112949",
+    "name": "Single side chair with modern arms - beige color",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 960,
+    "mrp": null,
+    "width_cm": 75.0,
+    "depth_cm": 75.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-112949.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Single side chair with modern arms - beige color — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-27420",
+    "name": "Modern design chair - white color",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 1240,
+    "mrp": null,
+    "width_cm": 95,
+    "depth_cm": 95,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "White"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-27420.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Modern design chair - white color — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-112914",
+    "name": "A single side chair with modern arms - gray color",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 1060,
+    "mrp": null,
+    "width_cm": 90.0,
+    "depth_cm": 76.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Grey"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-112914.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "A single side chair with modern arms - gray color — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-113657",
+    "name": "Single side chair with modern arms - beige color",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 900,
+    "mrp": null,
+    "width_cm": 75.0,
+    "depth_cm": 65.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Beige"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-113657.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Single side chair with modern arms - beige color — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-112144",
+    "name": "A single side chair with modern arms - gray color",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 1060,
+    "mrp": null,
+    "width_cm": 85.0,
+    "depth_cm": 80.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "Grey"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-112144.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "A single side chair with modern arms - gray color — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
+  },
+  {
+    "id": "mesaky-112243",
+    "name": "Side chair is a white single sofa",
+    "brand": "Mesaky",
+    "category": "chair",
+    "price": 1160,
+    "mrp": null,
+    "width_cm": 90.0,
+    "depth_cm": 90.0,
+    "height_cm": 90,
+    "style_tags": [
+      "modern",
+      "luxury"
+    ],
+    "colors": [
+      "White"
+    ],
+    "materials": [],
+    "in_stock": true,
+    "delivery_days": 7,
+    "rating": 4.3,
+    "two_d_icon": "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com/2D_icons/mesaky/prod/chair-112243.svg",
+    "is_walkable": false,
+    "shape": "rect",
+    "description": "Side chair is a white single sofa — from Mesaky.",
+    "room_types": [
+      "living_room"
+    ],
+    "seating_capacity": 1
   }
 ]

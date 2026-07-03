@@ -220,12 +220,14 @@ def test_living_room_never_composes_a_secondary_zone(catalog_repo):
         assert not [f for f in resp.findings if f.severity == "error"]
 
 
-def test_large_bedroom_still_composes_a_secondary_zone(catalog_repo):
-    """The composition mechanism is intact: a large bedroom still gets its reading nook."""
+def test_large_bedroom_stays_minimal_no_secondary_cluster(catalog_repo):
+    """A large bedroom stays minimal - NO extra chair-group/table/lamp cluster in the open area.
+    It keeps only the essentials (bed, nightstands, wardrobe, rug, ONE reading chair, ONE lamp)."""
     big = plan_layout_from_recipe(
         _room(ROOMS["large"]), Preferences(room_type="bedroom"), [], room_type="bedroom"
     )
-    assert _secondary(big)  # a real secondary cluster
+    assert not _secondary(big)  # no secondary cluster is composed
+    assert [p.category for p in big.placements].count("accent_chair") <= 1  # at most one chair, never a group
     assert not [f for f in big.findings if f.severity == "error"]
     assert big.proposal_id == plan_layout_from_recipe(
         _room(ROOMS["large"]), Preferences(room_type="bedroom"), [], room_type="bedroom"

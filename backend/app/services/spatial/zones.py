@@ -714,6 +714,8 @@ def _corner_spots(
     near: Vec | None = None,
     near_radius: float = 0.0,
     reasons: list[str] | None = None,
+    far_from: Vec | None = None,
+    face: Vec | None = None,
 ) -> list[ZoneData]:
     blockers = _placed_blockers(placed, buffer_cm=8.0)
     swings = list(analysis.swing_arcs.values())
@@ -749,9 +751,15 @@ def _corner_spots(
         score = 0.7
         if near is not None:
             score = 0.7 + 0.3 * (1.0 - min(1.0, dist(pt, near) / max(near_radius, 1.0)))
+        elif far_from is not None:
+            score = 0.7 + 0.3 * min(1.0, dist(pt, far_from) / 500.0)  # prefer the corner FARTHEST from the anchor
+        # a conversation piece (reading chair) turns to FACE an anchor (the bed); others sit square
+        rot = 0.0
+        if face is not None:
+            rot = math.degrees(math.atan2(-(face[0] - pt[0]), face[1] - pt[1]))
         zones.append(
             _frame_zone(
-                category, idx, piece, score, 0.0, pt, (0.0, 1.0), (1.0, 0.0),
+                category, idx, piece, score, rot, pt, (0.0, 1.0), (1.0, 0.0),
                 size, size, reasons or [R_FLEXIBLE_SPOT], label, kind="free",
             )
         )
@@ -776,9 +784,12 @@ def _lighting_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: 
     return zones
 
 
-def _storage_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
-    # Skip storage (console/sideboard) in a small/medium room - it just crowds a tight layout.
-    if analysis.area_cm2 < SMALL_MEDIUM_MAX_CM2:
+def _storage_zones(
+    analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats, room_type: str = "living_room"
+) -> list[ZoneData]:
+    # A living-room console is a nice-to-have, so skip it in a small/medium room (it just crowds
+    # a tight layout). A bedroom WARDROBE is essential, so never skip it on size alone.
+    if room_type != "bedroom" and analysis.area_cm2 < SMALL_MEDIUM_MAX_CM2:
         return []
     s = stats.get("storage", {})
     depth = s.get("max_d", 45.0) + 6.0
@@ -831,6 +842,40 @@ def _decor_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cat
     return _corner_spots(
         analysis, placed, "decor", 60.0, max_zones=4,
         near=near, near_radius=500.0 if near else 0.0, reasons=[R_FLEXIBLE_SPOT],
+    )
+
+
+def _lamp_on_table_zones(
+    analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats
+) -> list[ZoneData]:
+    """A table lamp resting ON a nightstand: one small free zone centred on the first placed
+    side table, sized to (most of) its top so only a small lamp fits - not a floor lamp. The
+    lamp shares the table's footprint; that overlap is expected and exempted in validation."""
+    table = _find_placed(placed, "side_table")
+    if table is None:
+        return []  # no nightstand to stand on -> no lamp
+    item, product = table
+    s = min(product.width_cm, product.depth_cm) * 0.8  # fits a small lamp base on the table top
+    poly = item_polygon(item.x, item.y, s, s, item.rotation_deg)
+    return [
+        _frame_zone(
+            "lighting", 0, poly, 0.9, item.rotation_deg,
+            (item.x, item.y), (0.0, 1.0), (1.0, 0.0), s, s,
+            [R_FLEXIBLE_SPOT], "on_nightstand", kind="free",
+        )
+    ]
+
+
+def _reading_chair_zones(
+    analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats
+) -> list[ZoneData]:
+    """A single reading chair in the corner FARTHEST from the bed that is clear and door-free.
+    Door corners shrink below the fit threshold via the swing buffer, and occupied corners are
+    excluded as blockers - so what remains is the empty, doorless corner opposite the bed."""
+    bed = _find_placed(placed, "bed")
+    far = (bed[0].x, bed[0].y) if bed is not None else None
+    return _corner_spots(
+        analysis, placed, "accent_chair", 70.0, max_zones=1, far_from=far, face=far, reasons=[R_FLEXIBLE_SPOT]
     )
 
 
@@ -901,6 +946,11 @@ def _bedside_zones(
     f = front_vector(item.rotation_deg)
     w = width_axis(item.rotation_deg)
     blockers = _placed_blockers(placed)
+    # A nightstand beside a headboard next to a door must keep clear of the swing, not just
+    # avoid a >5% overlap. Buffer the swing so a side with no clear room yields no zone (the
+    # bed then gets a single nightstand on the clear side, rather than one jammed in the door).
+    swings = list(analysis.swing_arcs.values())
+    door_keepout = unary_union([sw.buffer(20.0) for sw in swings]) if swings else None
 
     zones: list[ZoneData] = []
     for idx, side in enumerate((-1.0, 1.0)):
@@ -908,6 +958,8 @@ def _bedside_zones(
         head = add(origin, f, -(product.depth_cm / 2.0 - 35.0))  # toward the headboard
         rect = item_polygon(*add(head, w, side * 30.0), 60.0, 60.0, item.rotation_deg)
         clipped = rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers)
+        if door_keepout is not None:
+            clipped = clipped.difference(door_keepout)
         piece = largest_piece(clipped)
         if piece is None or piece.area < 1_200.0:
             continue
