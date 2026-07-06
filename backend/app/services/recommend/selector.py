@@ -97,9 +97,13 @@ def select_slots(
     # wants (e.g. living-room "sofa" -> "3-seater-sofa"). Falls back to the full role group when
     # the catalog has none of the preferred store category, so it never eliminates all results.
     pref_cat = preferred_store_category(room_type, category)
-    # a small/medium living room gets a 2-seater sofa instead of the default 3-seater
-    if pref_cat == "3-seater-sofa" and room_area_cm2 is not None and room_area_cm2 < SMALL_MEDIUM_MAX_CM2:
-        pref_cat = "2-seater-sofa"
+    # The default living-room sofa is a 3-seater, EXCEPT: a small/medium room gets a 2-seater,
+    # and the SECOND sofa (the L-return in a big room) is a 2-seater - not another 3-seater.
+    if pref_cat == "3-seater-sofa":
+        small_medium = room_area_cm2 is not None and room_area_cm2 < SMALL_MEDIUM_MAX_CM2
+        second_sofa = any(placement_group(pr.category) == "sofa" for _it, pr in placed)
+        if small_medium or second_sofa:
+            pref_cat = "2-seater-sofa"
     if pref_cat:
         preferred = [p for p in products if p.category == pref_cat]
         if preferred:

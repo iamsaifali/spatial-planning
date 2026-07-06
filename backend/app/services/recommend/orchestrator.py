@@ -848,6 +848,16 @@ def plan_layout_variants(
         ((_template_layout_score(r[2]), r) for r in good_rows), key=lambda x: x[0], reverse=True
     )
     kept = [sr for sr in scored if not _template_issues(sr[1][2], analysis)]
+    if not kept:
+        # Every design-sound wall has a real issue (e.g. the TV forced onto a window). Prefer a
+        # weaker wall that is at least ISSUE-FREE - a sofa under a window with the TV on a CLEAR
+        # wall beats a "better" wall whose TV is broken. Never surface a broken layout if a
+        # clean one exists anywhere.
+        kept = sorted(
+            ((_template_layout_score(r[2]), r) for r in other_rows if not _template_issues(r[2], analysis)),
+            key=lambda x: x[0],
+            reverse=True,
+        )
     pool = kept if kept else scored[:1]
     rows = [r for _sc, r in pool[:max_variants]] if pool else other_rows[:1]
     if not rows:  # safety net: always return at least the natural layout

@@ -225,12 +225,18 @@ def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cate
             focal_wall = analysis.walls[analysis.focal_wall_index]
             if dot(cand.wall.normal, focal_wall.normal) < -0.5:
                 focal = 1.0
+        # A sofa that FACES a window wall forces the TV onto that window (glare + an off-centre,
+        # unaligned TV). MASSIVE penalty: strongly prefer a wall whose OPPOSITE is solid so the
+        # TV lands on a clear wall - even if that means the sofa itself sits under a window.
+        faced = min(analysis.walls, key=lambda ww: dot(cand.wall.normal, ww.normal))
+        faces_window = any(o.kind == "window" for o in faced.openings)
         score = (
             0.40 * (cand.extent / max_extent)
             + 0.20 * (1.0 - 0.5 * win_ratio)
             + 0.20 * entry_norm
             + 0.20 * focal
             - 0.15 * corridor_ratio
+            - (0.7 if faces_window else 0.0)
         )
         # Great-room: the wall the sofa FACES is too far to comfortably watch a wall-mounted
         # TV from. Rather than floating the TV out to meet a wall-glued sofa, float the whole
