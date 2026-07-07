@@ -197,6 +197,36 @@ def _rank(zones: list[ZoneData], limit: int = 3) -> list[ZoneData]:
     return zones[:limit]
 
 
+def _trim_band_extent(cands, analysis, depth, obstacles, min_len):
+    """Trim each wall-band candidate's along-wall segment by the shadow of obstacles that clip a
+    CORNER of its band - a door swing, OR furniture on an ADJACENT wall. When only a corner is cut,
+    the band's near-wall edge stays continuous, so extent_along over-reports the run and a piece
+    centred on it pokes into the obstacle (the wardrobe into the door, the vanity into a nightstand).
+    Keep only the larger clear side of the notch. Returns the originals if nothing would survive."""
+    if obstacles is None or getattr(obstacles, "is_empty", True):
+        return cands
+    out = []
+    for c in cands:
+        lo, hi = c.lo, c.hi
+        band = quad(
+            add(c.wall.point_at(lo), c.wall.normal, 2.0),
+            add(c.wall.point_at(hi), c.wall.normal, 2.0),
+            add(c.wall.point_at(hi), c.wall.normal, 2.0 + depth),
+            add(c.wall.point_at(lo), c.wall.normal, 2.0 + depth),
+        )
+        shadow = obstacles.intersection(band)
+        if getattr(shadow, "area", 0.0) > 1.0:
+            try:
+                s_lo, s_hi = extent_along(shadow, c.wall.start, c.wall.dir)
+                left, right = (lo, min(hi, s_lo)), (max(lo, s_hi), hi)
+                lo, hi = left if (left[1] - left[0]) >= (right[1] - right[0]) else right
+            except Exception:
+                lo, hi = c.lo, c.hi
+        if hi - lo >= min_len:
+            out.append(_BandCandidate(wall=c.wall, lo=lo, hi=hi, piece=c.piece, extent=hi - lo))
+    return out or cands
+
+
 # --- per-category generators -------------------------------------------------
 
 
@@ -666,6 +696,27 @@ def _accent_chair_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], sta
     return _rank(zones, limit=2)
 
 
+def _return_sofa_zone_floor() -> tuple[float, float]:
+    """Minimum (width, depth) the L-return zone must reach to fit a REAL 2-seater, derived from the
+    CATALOG so it needs no per-style magic constant and self-adjusts to any catalog. The WIDTH floor is
+    the WIDEST of each style's NARROWEST 2-seater: whatever style narrows the pool, its slimmest 2-seater
+    still fits (e.g. Islamic's only 2-seaters are 170cm, so a 140cm 'Islamic' primary must not cap the
+    zone at 140). The DEPTH floor is the deepest 2-seater. Falls back to sane defaults when the catalog
+    has no tagged 2-seater-sofa rows (the fixture catalog), keeping the goldens unchanged."""
+    from app.models.style_metadata import STYLES
+    from app.services.catalog.repository import get_repository
+
+    twos = [p for p in get_repository().in_category("sofa") if p.category == "2-seater-sofa"]
+    if not twos:
+        return 170.0, 110.0  # fixture catalog has no store-category 2-seaters
+    per_style_min = [
+        min(p.width_cm for p in twos if st in p.styles) for st in STYLES if any(st in p.styles for p in twos)
+    ]
+    floor_w = max(per_style_min) if per_style_min else max(p.width_cm for p in twos)
+    floor_d = max(p.depth_cm for p in twos)
+    return floor_w, floor_d
+
+
 def _l_return_sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
     """A perpendicular RETURN sofa at one end of the primary, forming an L-sectional.
 
@@ -682,7 +733,14 @@ def _l_return_sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], st
     f = front_vector(item.rotation_deg)  # primary faces the TV / conversation
     w = width_axis(item.rotation_deg)
     hw, hd = product.width_cm / 2.0, product.depth_cm / 2.0
-    ret_w, ret_d = product.width_cm, product.depth_cm  # a matching-pair return sofa
+    # The return zone must fit a REAL 2-seater. Never let an abnormally narrow/shallow primary (e.g. a
+    # mislabeled 140x80cm "3-seater" a style/colour pick lands on) starve the zone so no standard
+    # 2-seater fits - that silently drops the L-return and falls back to a small-room accent chair.
+    # Floor BOTH width and depth at CATALOG-DERIVED 2-seater dimensions (see _return_sofa_zone_floor -
+    # no per-style magic constant; self-adjusts). No-op for a normal wide primary; rescues a small one.
+    floor_w, floor_d = _return_sofa_zone_floor()
+    ret_w = max(product.width_cm, floor_w)
+    ret_d = max(product.depth_cm, floor_d)
     blockers = _placed_blockers(placed)
     swings = list(analysis.swing_arcs.values())
     zones: list[ZoneData] = []
@@ -725,8 +783,9 @@ def _corner_spots(
     reasons: list[str] | None = None,
     far_from: Vec | None = None,
     face: Vec | None = None,
+    blocker_buffer: float = 8.0,
 ) -> list[ZoneData]:
-    blockers = _placed_blockers(placed, buffer_cm=8.0)
+    blockers = _placed_blockers(placed, buffer_cm=blocker_buffer)
     swings = list(analysis.swing_arcs.values())
     # Keep a free-standing accent a clear margin off any door swing: subtract a BUFFERED swing
     # from each corner so a corner the door eats into shrinks below the fit threshold and is
@@ -796,51 +855,125 @@ def _lighting_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: 
 def _storage_zones(
     analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats, room_type: str = "living_room"
 ) -> list[ZoneData]:
-    # A living-room console is a nice-to-have, so skip it in a small/medium room (it just crowds
-    # a tight layout). A bedroom WARDROBE is essential, so never skip it on size alone.
-    if room_type != "bedroom" and analysis.area_cm2 < SMALL_MEDIUM_MAX_CM2:
-        return []
+    # SEPARATE handling per storage TYPE - they want different walls:
+    #   console (living)     : a fully CLEAN wall (never behind the seating or across a path); optional.
+    #   wardrobe (bedroom 1st): any clear wall; part of the set, sized to the room, never skipped on size.
+    #   dressing-table (2nd) : a clean wall with room to SIT at it; may use the clear part of a door wall.
+    already_storage = any(placement_group(pr.category) == "storage" for _it, pr in placed)
+    target = ("dressing-table" if already_storage else "wardrobe") if room_type == "bedroom" else "console"
+
+    if target == "console" and analysis.area_cm2 < SMALL_MEDIUM_MAX_CM2:
+        return []  # a console just crowds a small/medium living room
     s = stats.get("storage", {})
     depth = s.get("max_d", 45.0) + 6.0
     min_w = min(s.get("min_w", 80.0), 80.0)
-    blockers = _placed_blockers(placed)
+    # Bedroom storage keeps a clear margin off the bed/other pieces (not the old 5cm); living console
+    # keeps the tight buffer (its goldens hold).
+    blockers = _placed_blockers(placed, buffer_cm=30.0 if room_type == "bedroom" else 5.0)
     cands = _wall_band_candidates(analysis, depth, min_w, use_solid=True, blockers=blockers)
     if not cands:
         return []
-    # The TV wall: storage there sits beside/in front of the TV, in the sofa's sightline.
+    # Trim a candidate's run where a door swing (bedroom: OR adjacent-wall furniture) clips its
+    # corner. Also done for a console in a TV room, so it can use the CLEAR part of a wall that also
+    # carries a door (e.g. behind a floated sofa whose back wall has the door in one corner) instead
+    # of losing the whole wall to the window wall. Keyed on the TV (not room_type) because a majlis
+    # has no TV - keeping the majlis golden and the legacy<->recipe equivalence intact.
+    has_tv = _find_placed(placed, "tv_unit") is not None
+    if room_type == "bedroom" or (target == "console" and has_tv):
+        obs = [blockers] if (room_type == "bedroom" and blockers is not None and not blockers.is_empty) else []
+        obs += [sw.buffer(TV_DOOR_CLEAR_CM) for sw in analysis.swing_arcs.values()]
+        if obs:
+            cands = _trim_band_extent(cands, analysis, depth, unary_union(obs), min_w)
+
     tv = _find_placed(placed, "tv_unit")
     tv_wall = None
     if tv is not None:
         tv_f = front_vector(tv[0].rotation_deg)
         tv_wall = max(range(len(analysis.walls)), key=lambda i: dot(analysis.walls[i].normal, tv_f))
-    # The entry-door wall's length IS the room's main walkway; a console there blocks the path
-    # in/out even when it clears the swing itself.
     door_walls = {d.wall_index for d in analysis.room.doors}
-    # A FLOATING sofa (e.g. an L-return) parked just in front of a wall leaves the strip AT the
-    # wall clear (so the band looks full-width) but blocks where the console would actually sit.
     sofa_polys = [
         item_polygon(it.x, it.y, pr.width_cm, pr.depth_cm, it.rotation_deg)
-        for it, pr in placed
-        if placement_group(pr.category) == "sofa"
+        for it, pr in placed if placement_group(pr.category) == "sofa"
     ]
+    furniture_polys = [
+        item_polygon(it.x, it.y, pr.width_cm, pr.depth_cm, it.rotation_deg)
+        for it, pr in placed if not pr.is_walkable
+    ]
+    storage_walls: set[int] = set()  # a 2nd storage piece should take a DIFFERENT wall
+    for it, pr in placed:
+        if placement_group(pr.category) == "storage":
+            sf = front_vector(it.rotation_deg)
+            storage_walls.add(max(range(len(analysis.walls)), key=lambda i: dot(analysis.walls[i].normal, sf)))
     max_extent = max(c.extent for c in cands)
-    # A console is OPTIONAL: only ever offer a wall that keeps EVERY path clear. Disqualify a
-    # wall that holds the TV, carries the entry door (its length is the walkway), has a sofa
-    # floating in front of it, or overlaps a corridor. If none survive - a fully-furnished room
-    # where every wall is taken - return nothing so the console is simply SKIPPED, rather than
-    # parked in a doorway or across a walkway.
+
+    def region(cand, extra):  # the band, extended `extra` cm forward - a clearance/approach test
+        w = cand.wall
+        return quad(
+            add(w.point_at(cand.lo), w.normal, 2.0), add(w.point_at(cand.hi), w.normal, 2.0),
+            add(w.point_at(cand.hi), w.normal, 2.0 + depth + extra),
+            add(w.point_at(cand.lo), w.normal, 2.0 + depth + extra),
+        )
+
     zones: list[ZoneData] = []
     for i, cand in enumerate(cands):
         w = cand.wall
-        band = quad(
-            add(w.point_at(cand.lo), w.normal, 2.0), add(w.point_at(cand.hi), w.normal, 2.0),
-            add(w.point_at(cand.hi), w.normal, 2.0 + depth), add(w.point_at(cand.lo), w.normal, 2.0 + depth),
-        )
-        sofa_in_band = any(band.intersection(sp).area > 5_000.0 for sp in sofa_polys)
         blocks_walkway = _corridor_overlap_ratio(analysis, cand.piece) > 0.05
-        if (tv_wall is not None and w.index == tv_wall) or w.index in door_walls or sofa_in_band or blocks_walkway:
-            continue  # not a clean wall - never place the console here
-        score = 0.7 * (cand.extent / max_extent) + 0.3 * _entry_distance_norm(analysis, cand.piece)
+        pen = 0.0
+        if target == "console":
+            # Not the TV/door wall, no walkway. Reject a sofa in the band OR jammed so close in front
+            # that the console becomes a 40cm SLIVER with no room to pass - but a sofa FLOATED well
+            # forward (great-room seating pulled toward the TV) leaves the wall behind it free, and a
+            # console behind a floated sofa is a good use of that dead space. So the "in front" test
+            # only reaches ~a console depth + a walkway (~90cm) ahead: a sofa nearer than that blocks
+            # the wall; one floated beyond it does not.
+            sofa_in_band = any(region(cand, 0.0).intersection(sp).area > 5_000.0 for sp in sofa_polys)
+            # In a TV room the sofa floats forward, so the "in front" test only reaches ~a console
+            # depth + walkway (90cm) - a console behind a FLOATED sofa is fine. A majlis (no TV) keeps
+            # the original wider reach (160cm) so its storage placement is byte-identical to legacy.
+            sofa_in_front = any(region(cand, 90.0 if has_tv else 160.0).intersection(sp).area > 8_000.0 for sp in sofa_polys)
+            # A TV-room console may use the CLEAR part of a door wall (its run is trimmed clear of the
+            # swing above) - e.g. behind a floated sofa whose back wall carries the door in one corner.
+            # A majlis (no TV) keeps a door wall off-limits. Keyed on has_tv (not room_type) so the
+            # legacy and recipe paths behave identically for majlis. TV wall / sofa in band / blocked
+            # walkway always disqualify.
+            on_door_wall = w.index in door_walls and not has_tv
+            if (tv_wall is not None and w.index == tv_wall) or on_door_wall or sofa_in_band or sofa_in_front or blocks_walkway:
+                continue
+        elif target == "dressing-table":
+            # USABLE vanity. First keep its run clear of NIGHTSTANDS - small items on the bed's
+            # adjacent wall whose corner the band-trim can miss: project each nearby nightstand onto
+            # this wall and carve out a keep-clear interval, keeping the larger clear side.
+            lo, hi = cand.lo, cand.hi
+            for it, pr in placed:
+                if placement_group(pr.category) != "side_table":
+                    continue
+                rel = sub2((it.x, it.y), w.start)
+                if not (0.0 < dot(rel, w.normal) < depth + 60.0):
+                    continue  # nightstand not near this wall's approach
+                proj = dot(rel, w.dir)
+                clr = max(pr.width_cm, pr.depth_cm) / 2.0 + 40.0 + 47.5  # nightstand + gap + vanity half
+                a, b = proj - clr, proj + clr
+                if b <= lo or a >= hi:
+                    continue
+                left, right = (lo, min(hi, a)), (max(lo, b), hi)
+                lo, hi = left if (left[1] - left[0]) >= (right[1] - right[0]) else right
+            if hi - lo < min_w:
+                lo, hi = cand.lo, cand.hi
+                pen += 0.7  # can't clear a nightstand on this wall - a last resort, not a skip
+            cand = _BandCandidate(wall=w, lo=lo, hi=hi, piece=cand.piece, extent=hi - lo)
+            # Prefer a wall with sitting room in front and off the walkway, but DON'T drop it - a
+            # vanity hugs the wall, so penalise instead, so it always lands on the BEST available wall
+            # (a clear one) rather than being skipped entirely.
+            if any(region(cand, 55.0).intersection(fp).area > 6_000.0 for fp in furniture_polys):
+                pen += 0.4
+            if blocks_walkway:
+                pen += 0.3
+        else:  # wardrobe: any clear wall (blockers + the corner trim already keep it off things)
+            if blocks_walkway:
+                continue
+        score = 0.7 * (cand.extent / max_extent) + 0.3 * _entry_distance_norm(analysis, cand.piece) - pen
+        if w.index in storage_walls:
+            score -= 0.5  # a wall already carrying storage - prefer a different one (fall back if forced)
         zones.append(_band_zone(analysis, cand, "storage", i, score, [R_REMAINING_WALL], depth))
     return _rank(zones)
 
@@ -848,9 +981,12 @@ def _storage_zones(
 def _decor_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
     sofa = _find_placed(placed, "sofa")
     near = (sofa[0].x, sofa[0].y) if sofa is not None else None
+    # Prefer corners near the seating, but consider EVERY corner (radius = room diagonal): in a
+    # big room the near corners are often taken by lamps, so a plant should still fill an empty
+    # far corner rather than being skipped.
     return _corner_spots(
         analysis, placed, "decor", 60.0, max_zones=4,
-        near=near, near_radius=500.0 if near else 0.0, reasons=[R_FLEXIBLE_SPOT],
+        near=near, near_radius=analysis.diag_cm if near else 0.0, reasons=[R_FLEXIBLE_SPOT],
     )
 
 
@@ -875,6 +1011,31 @@ def _lamp_on_table_zones(
     ]
 
 
+def _vases_on_console_zones(
+    analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats
+) -> list[ZoneData]:
+    """Two accents (vases) spaced along the TOP of the console (storage). They share the
+    console's footprint - that overlap is expected and exempted in validation."""
+    console = _find_placed(placed, "storage")
+    if console is None:
+        return []  # no console to stand on -> no vases
+    item, product = console
+    w = width_axis(item.rotation_deg)
+    s = min(product.depth_cm - 8.0, 42.0)  # a small vase footprint that sits on the console top
+    zones: list[ZoneData] = []
+    for idx, frac in enumerate((-0.28, 0.28)):  # spaced toward each end of the console
+        center = add((item.x, item.y), w, frac * product.width_cm)
+        poly = item_polygon(center[0], center[1], s, s, item.rotation_deg)
+        zones.append(
+            _frame_zone(
+                "decor", idx, poly, 0.9, item.rotation_deg,
+                center, (0.0, 1.0), (1.0, 0.0), s, s,
+                [R_FLEXIBLE_SPOT], f"on_console_{idx}", kind="free",
+            )
+        )
+    return zones
+
+
 def _reading_chair_zones(
     analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats
 ) -> list[ZoneData]:
@@ -883,8 +1044,12 @@ def _reading_chair_zones(
     excluded as blockers - so what remains is the empty, doorless corner opposite the bed."""
     bed = _find_placed(placed, "bed")
     far = (bed[0].x, bed[0].y) if bed is not None else None
+    # The chair is a NICE-TO-HAVE placed after the wardrobe + dressing table: it needs a genuinely
+    # clear corner (a wide 35cm clearance off any furniture), otherwise no zone is produced and the
+    # chair is simply skipped rather than crammed beside the vanity.
     return _corner_spots(
-        analysis, placed, "accent_chair", 70.0, max_zones=1, far_from=far, face=far, reasons=[R_FLEXIBLE_SPOT]
+        analysis, placed, "accent_chair", 70.0, max_zones=1, far_from=far, face=far,
+        reasons=[R_FLEXIBLE_SPOT], blocker_buffer=35.0,
     )
 
 

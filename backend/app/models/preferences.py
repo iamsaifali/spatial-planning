@@ -1,9 +1,10 @@
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from app.models.geometry import StrictModel
 from app.models.products import Formality, LuxuryTier, Region, RoomType, StyleTag
+from app.models.style_metadata import COLOR_FAMILIES, STYLES
 
 
 class Preferences(StrictModel):
@@ -26,3 +27,30 @@ class Preferences(StrictModel):
     formality: Formality | None = None
     luxury_tier: LuxuryTier | None = None
     materials: list[str] = Field(default_factory=list, max_length=8)
+
+    # --- rich style / colour preference (user-selected in the UI; drives metadata FILTERING of the
+    # real catalog, alongside the legacy `styles`/`colors` which still feed soft scoring) ---
+    # `style`: ONE rich style name from style_metadata.STYLES (e.g. "Modern", "Japandi").
+    # `color_families`: one or more palette families from style_metadata.COLOR_FAMILIES
+    # (e.g. "Warm Neutral", "Wood/Natural"); products are matched on their `main_family`.
+    style: str | None = None
+    # up to all 11 COLOR_FAMILIES (the "Pick your style" dialog lets you choose any). color_families is
+    # layout-inert - it only narrows product selection ("filter when available") - so a large set never
+    # destabilises the layout; it just widens the acceptable colours. Capping below 11 would 422 a valid
+    # UI selection and leave the canvas blank.
+    color_families: list[str] = Field(default_factory=list, max_length=11)
+
+    @field_validator("style")
+    @classmethod
+    def _known_style(cls, v: str | None) -> str | None:
+        if v is not None and v not in STYLES:
+            raise ValueError(f"unknown style {v!r}; expected one of style_metadata.STYLES")
+        return v
+
+    @field_validator("color_families")
+    @classmethod
+    def _known_families(cls, v: list[str]) -> list[str]:
+        unknown = [f for f in v if f not in COLOR_FAMILIES]
+        if unknown:
+            raise ValueError(f"unknown colour families {unknown}; expected style_metadata.COLOR_FAMILIES")
+        return v

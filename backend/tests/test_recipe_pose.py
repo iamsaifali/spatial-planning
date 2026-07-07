@@ -13,8 +13,8 @@ from app.models.preferences import Preferences
 from app.services.recipe.equivalence import compare_layouts
 from app.services.recommend.orchestrator import plan_layout, plan_layout_from_recipe
 
-GOLDEN_LIVING_PID = "lay_f523e993b5"  # legacy
-GOLDEN_LIVING_RECIPE = "lay_ae4e01c56d"  # recipe (area-scaled)
+GOLDEN_LIVING_PID = "lay_5f5d21801c"  # legacy
+GOLDEN_LIVING_RECIPE = "lay_5f5d21801c"  # recipe (area-scaled)
 GOLDEN_MAJLIS_PID = "lay_bcabef51da"
 
 LIVING_ROOM = {

@@ -162,6 +162,10 @@ export interface Preferences {
   formality?: Formality | null;
   luxury_tier?: LuxuryTier | null;
   materials?: string[];
+  // rich style/colour preference (drives real catalog FILTERING). `style` = one name from
+  // styleMetadata.STYLES; `color_families` = any of styleMetadata.COLOR_FAMILIES.
+  style?: string | null;
+  color_families?: string[];
 }
 
 export const EMPTY_PREFERENCES: Preferences = {
@@ -176,6 +180,8 @@ export const EMPTY_PREFERENCES: Preferences = {
   formality: null,
   luxury_tier: null,
   materials: [],
+  style: null,
+  color_families: [],
 };
 
 // --- analysis ---

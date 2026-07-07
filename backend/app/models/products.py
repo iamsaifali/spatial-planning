@@ -108,6 +108,62 @@ def preferred_store_category(room_type: str, role: str) -> str | None:
 # and no storage console - both would crowd a tight room. Rooms at/above it are "large".
 SMALL_MEDIUM_MAX_CM2 = 240_000.0  # 24 m2
 
+# "Measure the room, then shop to that size." Room-proportional MAX width (cm) per placement ROLE:
+# furniture scales with the room, so a small room gets a compact piece and a large room a bigger one
+# - INDEPENDENT of what (possibly oversized/mislabeled) products the catalog happens to contain.
+# Anchored at 15 m2 and 30 m2, linearly interpolated by floor area, clamped to [floor, ceil]. Only
+# the big wall-hugging roles need this (accents are naturally small). The selector filters candidates
+# to at/under this before scoring, so the max-fill spatial score then lands on a room-appropriate
+# piece instead of the biggest in the bucket - a dirty catalog can no longer oversize a room.
+ROLE_WIDTH_BY_AREA: dict[str, tuple[float, float, float, float]] = {
+    # role:          (@15 m2, @30 m2,  floor,  ceil)
+    "sofa":          (185.0,  290.0,  150.0,  330.0),
+    "tv_unit":       (170.0,  250.0,   90.0,  280.0),
+    "storage":       (190.0,  290.0,   60.0,  300.0),
+    "coffee_table":  (100.0,  150.0,   50.0,  160.0),
+    "bed":           (155.0,  205.0,  120.0,  210.0),
+}
+
+
+def expected_max_width(role: str, room_area_cm2: float | None) -> float | None:
+    """Room-proportional maximum width for a placement role, or None if unconstrained/unknown."""
+    if room_area_cm2 is None or role not in ROLE_WIDTH_BY_AREA:
+        return None
+    lo, hi, floor, ceil = ROLE_WIDTH_BY_AREA[role]
+    area_m2 = room_area_cm2 / 10_000.0
+    w = lo + (area_m2 - 15.0) / 15.0 * (hi - lo)
+    return max(floor, min(ceil, w))
+
+
+def size_bounds(
+    role: str, store_category: str | None, room_area_cm2: float | None
+) -> tuple[float, float, float, float] | None:
+    """Room-proportional (min_w, max_w, min_d, max_d) size ENVELOPE for a piece, or None if
+    unconstrained. Enforces a MAX (nothing oversized - a mislabeled 4-seater in a small room) and,
+    where it matters, a MIN + DEPTH bound (nothing UNDERsized - a single bed / doll-sized vanity in
+    a large room). Keyed on STORE category where the storage types diverge (console/wardrobe/vanity),
+    otherwise the placement ROLE. The selector filters candidates to this envelope before scoring."""
+    if room_area_cm2 is None:
+        return None
+    t = (room_area_cm2 / 10_000.0 - 15.0) / 15.0  # 0 at 15 m2, 1 at 30 m2 (extrapolates, then clamps)
+    inf = float("inf")
+
+    def cl(lo: float, hi: float, floor: float, ceil: float) -> float:
+        return max(floor, min(ceil, lo + t * (hi - lo)))
+
+    if role == "bed":
+        # width = headboard (scales with room: a large room needs at least a queen, at most a king);
+        # depth = length (a bed is always ~2 m long, regardless of room size).
+        return (cl(90.0, 150.0, 90.0, 150.0), cl(155.0, 210.0, 155.0, 215.0), 185.0, 215.0)
+    if store_category == "dressing-table":
+        return (80.0, 140.0, 0.0, inf)   # a vanity you SIT at - not a 220cm sideboard
+    if store_category == "console":
+        return (100.0, 220.0, 0.0, inf)  # a media console / sideboard
+    if store_category == "wardrobe":
+        return (100.0, cl(190.0, 300.0, 150.0, 300.0), 0.0, inf)  # scales up with the room
+    mw = expected_max_width(role, room_area_cm2)
+    return (0.0, mw, 0.0, inf) if mw is not None else None
+
 StyleTag = Literal[
     "modern",
     "scandinavian",
@@ -184,6 +240,14 @@ class Product(StrictModel):
     room_types: list[RoomType] = Field(default_factory=lambda: ["living_room"])
     placement_type: PlacementType = "wall_hug"
     seating_capacity: int = Field(default=0, ge=0, le=20)  # seats this single SKU provides
+
+    # --- style / colour metadata (additive; used by preference-based matching). Free-form
+    # strings (validated against app.models.style_metadata upstream, not by a Literal here) so
+    # the vocabulary can grow without a schema migration. Fixture rows omit them -> empty. ---
+    styles: list[str] = Field(default_factory=list)  # e.g. ["Modern", "Minimalist"]
+    main_color: str = ""  # named dominant colour, e.g. "Beige"
+    secondary_colors: list[str] = Field(default_factory=list)  # named accents
+    main_family: str = ""  # palette family of main_color, e.g. "Warm Neutral"
     is_modular: bool = False  # can be chained along a wall (e.g. majlis benches)
     formality: Formality = "family"
     luxury_tier: LuxuryTier = "standard"

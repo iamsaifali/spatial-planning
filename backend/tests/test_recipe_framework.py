@@ -145,8 +145,9 @@ def test_count_modes_per_recipe():
     # multi-instance signatures
     assert modes["majlis"]["perimeter_seating"] == "until_target"
     assert modes["bedroom"]["bedside_support"] == "mirror_pair"
-    # accent pieces scale with area in living_room
-    assert modes["living_room"]["accent"] == "fill_available"
+    # the corner plant is a SINGLE piece (one flower-pot-and-plant per living room, any size);
+    # lamps still scale with area
+    assert modes["living_room"]["accent"] == "single"
     assert modes["living_room"]["ambient_light"] == "fill_available"
     # the bedroom keeps a single table lamp on a nightstand (on-surface)
     assert modes["bedroom"]["bedside_lamp"] == "single"

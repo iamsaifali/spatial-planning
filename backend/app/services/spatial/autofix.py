@@ -133,8 +133,40 @@ def settle_pose(
         cand = item_polygon(p.x, p.y, product.width_cm, product.depth_cm, p.rotation_deg)
         return must_fix_only(analysis, other_polys, product, cand, room_buffered)
 
+    WALL_GAP = 2.0  # keep every item this far off the wall - matches the wall-band offset, so nothing
+    #                 renders flush against (or crossing) a drawn wall. An item further in is untouched.
+
+    def wall_clearance(p: Pose) -> float:
+        ip = item_polygon(p.x, p.y, product.width_cm, product.depth_cm, p.rotation_deg)
+        minx, miny, maxx, maxy = ip.bounds
+        rminx, rminy, rmaxx, rmaxy = analysis.polygon.bounds
+        return min(minx - rminx, miny - rminy, rmaxx - maxx, rmaxy - maxy)  # <0 = crosses a wall
+
+    def settle_inside(p: Pose) -> Pose:
+        # Hard guarantee: an item must NEVER cross a wall, and never sit flush against one either
+        # (the frontend draws wall thickness over a flush item). Nudge any item within WALL_GAP of a
+        # wall (or outside) inward to that gap; items already comfortably inside are left as-is.
+        if wall_clearance(p) >= WALL_GAP - 0.1:
+            return p
+        ip = item_polygon(p.x, p.y, product.width_cm, product.depth_cm, p.rotation_deg)
+        minx, miny, maxx, maxy = ip.bounds
+        rminx, rminy, rmaxx, rmaxy = analysis.polygon.bounds
+        dx = (rmaxx - WALL_GAP - maxx) if (rmaxx - maxx) < WALL_GAP else ((rminx + WALL_GAP - minx) if (minx - rminx) < WALL_GAP else 0.0)
+        dy = (rmaxy - WALL_GAP - maxy) if (rmaxy - maxy) < WALL_GAP else ((rminy + WALL_GAP - miny) if (miny - rminy) < WALL_GAP else 0.0)
+        moved = Pose(x=round(p.x + dx, 1), y=round(p.y + dy, 1), rotation_deg=p.rotation_deg)
+        if valid(moved):
+            return moved
+        # the straight nudge overlaps a neighbour: spiral from it for a spot that is BOTH off the wall
+        # and overlap-free; failing that, keep it inside anyway (a small overlap beats crossing a wall).
+        probe2 = PlacedItem(instance_id=instance_id, product_id=product.id, x=moved.x, y=moved.y, rotation_deg=moved.rotation_deg)
+        for c in _spiral_candidates(probe2):
+            cp = Pose(x=round(c.x, 1), y=round(c.y, 1), rotation_deg=c.rotation_deg)
+            if wall_clearance(cp) >= WALL_GAP - 0.1 and valid(cp):
+                return cp
+        return moved
+
     if valid(pose):
-        return pose
+        return settle_inside(pose)
     probe = PlacedItem(
         instance_id=instance_id, product_id=product.id,
         x=pose.x, y=pose.y, rotation_deg=pose.rotation_deg,
@@ -143,8 +175,8 @@ def settle_pose(
         if dist((candidate.x, candidate.y), (pose.x, pose.y)) > 80.0:
             continue
         if valid(candidate):
-            return Pose(x=round(candidate.x, 1), y=round(candidate.y, 1), rotation_deg=candidate.rotation_deg)
-    return pose
+            return settle_inside(Pose(x=round(candidate.x, 1), y=round(candidate.y, 1), rotation_deg=candidate.rotation_deg))
+    return settle_inside(pose)
 
 
 def find_better_placement(

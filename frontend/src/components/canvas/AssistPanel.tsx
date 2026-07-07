@@ -3,6 +3,7 @@
 import { Check, RotateCcw, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { StylePrefsDialog } from "./StylePrefsDialog";
 import { acceptLayout, dismissLayout, previewLayout, requestLayout } from "@/lib/placement";
 import { usePlannerStore } from "@/stores/plannerStore";
 import { usePrefsStore } from "@/stores/prefsStore";
@@ -59,6 +60,7 @@ export function AssistPanel() {
   const setPreferences = usePrefsStore((s) => s.setPreferences);
 
   const [loading, setLoading] = useState(false);
+  const [prefsOpen, setPrefsOpen] = useState(false);
   const [templates, setTemplates] = useState<AssistTemplate[]>([]);
   const [selected, setSelected] = useState(0);
 
@@ -85,6 +87,7 @@ export function AssistPanel() {
   if (proposedCount === 0) {
     const isMajlis = roomType === "majlis";
     return (
+      <>
       <div className="pointer-events-none absolute left-1/2 top-3 z-20 -translate-x-1/2">
         <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-line-strong bg-surface px-2 py-1.5 shadow-md">
           <RoomTypeToggle value={roomType} onChange={applyRoomType} />
@@ -108,12 +111,21 @@ export function AssistPanel() {
               />
             </label>
           )}
-          <Button variant="primary" size="sm" loading={loading} onClick={run}>
+          <Button variant="primary" size="sm" loading={loading} onClick={() => setPrefsOpen(true)}>
             {!loading && <Sparkles className="h-4 w-4" aria-hidden />}
             Assist with AI
           </Button>
         </div>
       </div>
+      <StylePrefsDialog
+        open={prefsOpen}
+        onClose={() => setPrefsOpen(false)}
+        onConfirm={() => {
+          setPrefsOpen(false);
+          void run();
+        }}
+      />
+      </>
     );
   }
 

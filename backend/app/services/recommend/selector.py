@@ -9,6 +9,7 @@ from app.models.products import (
     Product,
     placement_group,
     preferred_store_category,
+    size_bounds,
 )
 from app.models.recommend import (
     NOTICE_NO_FIT,
@@ -111,6 +112,35 @@ def select_slots(
         preferred = [p for p in products if p.category == pref_cat]
         if preferred:
             products = preferred
+
+    # "Measure the room, then shop to that size": keep candidates within the room-proportional size
+    # ENVELOPE - a MAX so nothing is oversized (a mislabeled 4-seater in a small room), plus, where
+    # it matters, a MIN + DEPTH bound so nothing is UNDERsized (a single bed / doll-sized vanity in a
+    # large room). Per store category where the storage types diverge (console/wardrobe/vanity). Keep
+    # all if the envelope would empty the pool - never eliminate every candidate.
+    bounds = size_bounds(category, pref_cat, room_area_cm2)
+    if bounds is not None:
+        mnw, mxw, mnd, mxd = bounds
+        within = [p for p in products if mnw <= p.width_cm <= mxw and mnd <= p.depth_cm <= mxd]
+        if within:
+            products = within
+
+    # Style / colour PREFERENCE filtering ("filter when available"): narrow to products matching BOTH
+    # the chosen style and a chosen colour family when such products exist; otherwise honour whichever
+    # preference CAN be met - and when they conflict (no product is both), COLOUR wins. Colour is the
+    # visually load-bearing choice, so a "Warm Neutral" request must never render a black piece just
+    # because the only same-style products happen to be black (e.g. every Islamic-tagged sofa is
+    # Monochrome). A preference never empties the pool (fall back to the wider set). Fixture rows carry
+    # no style/main_family, so this is a no-op on the test catalog (goldens unaffected).
+    styled = [p for p in products if prefs.style in p.styles] if prefs.style else None
+    colored = [p for p in products if p.main_family in prefs.color_families] if prefs.color_families else None
+    both = [p for p in styled if p.main_family in prefs.color_families] if (styled and colored) else None
+    if both:
+        products = both
+    elif colored:
+        products = colored  # colour beats style when they conflict
+    elif styled:
+        products = styled
 
     # In a small/medium room keep the media unit PROPORTIONAL to the sofa: a 2.5m tv-table
     # dwarfs a small-room 2-seater and wastes the wall. Cap tv candidates to the sofa's width

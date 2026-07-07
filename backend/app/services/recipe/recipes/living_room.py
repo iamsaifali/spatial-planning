@@ -55,8 +55,10 @@ LIVING_ROOM_RECIPE = Recipe(
         role("ambient_light", "lighting", "corners",
              count=CountRule(mode="fill_available", per_area_m2=12, max=2),
              depends_on=["primary_seating"]),
+        # Exactly ONE corner flower-pot-and-plant, even in a large room - several identical plants
+        # scattered in every corner reads as repetitive clutter, not decor.
         role("accent", "decor", "corners",
-             count=CountRule(mode="fill_available", per_area_m2=8, max=4)),
+             count=CountRule(mode="single")),
         # Two vases resting ON the console top (on_surface). Its own decor role, so it runs
         # alongside the corner decor (allow_duplicate) and pins to the "vase" store category.
         role("console_accent", "decor", "on_surface",

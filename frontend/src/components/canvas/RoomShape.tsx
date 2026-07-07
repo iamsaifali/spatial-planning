@@ -265,9 +265,10 @@ export function RoomShape({ scale, interactive }: { scale: number; interactive: 
 
   return (
     <Group>
-      {/* floor */}
-      <Line points={flat} closed fill="#F3EDE3" listening={false} />
-      {/* walls */}
+      {/* walls FIRST (a stroke centred on the room polygon), then the floor ON TOP so it covers the
+          wall's INWARD half - the wall then reads as drawn OUTWARD and the room polygon is the true
+          inner wall face. Without this the 6cm inward half of the wall paints over furniture placed
+          against the wall (a plant/TV unit looks like it crosses the wall). */}
       <Line
         points={flat}
         closed
@@ -276,6 +277,8 @@ export function RoomShape({ scale, interactive }: { scale: number; interactive: 
         lineJoin="miter"
         listening={false}
       />
+      {/* floor */}
+      <Line points={flat} closed fill="#F3EDE3" listening={false} />
 
       {!draft &&
         room.doors.map((door) => (

@@ -32,7 +32,7 @@ from app.models.api import (
 )
 from app.models.geometry import PlacedItem, Pose, Room
 from app.models.preferences import Preferences
-from app.models.products import CATEGORY_LABELS, placement_group
+from app.models.products import CATEGORY_LABELS, expected_max_width, placement_group
 from app.models.validation import MUST_FIX_CODES, Finding
 from app.routers._common import PlacedProduct, resolve_placed, wall_label
 from app.services.catalog import CatalogRepository, get_repository
@@ -733,6 +733,13 @@ def _template_layout_score(resp: AssistLayoutResponse) -> float:
     return score
 
 
+# The TV must sit SQUARELY in front of the primary sofa: its centre aligned with the sofa's centre.
+# A window that nudges the TV off-centre (to clear the glass) must NOT pass - such a template is
+# rejected so a wall where the TV *can* centre on the sofa is surfaced instead. Small absolute slack
+# only (rounding / a few cm of zone drift), NOT the sofa's half-width.
+_TV_SOFA_CENTER_TOL_CM = 30.0
+
+
 def _template_issues(resp: AssistLayoutResponse, analysis: RoomAnalysis) -> bool:
     """A template we should NOT surface at all: it has a layout warning, the TV isn't really in
     front of the sofa, the TV is shoved onto a WINDOW wall (squeezed beside/below the window),
@@ -753,14 +760,23 @@ def _template_issues(resp: AssistLayoutResponse, analysis: RoomAnalysis) -> bool
         lateral = abs(vy * f[0] - vx * f[1])
         if (f[0] * vx + f[1] * vy) / d < 0.4:
             return True  # TV not reasonably in front of the sofa
-        if lateral > sofa.product.width_cm / 2.0:
-            return True  # TV centre is past the sofa's EDGE (not aligned - e.g. pushed to a side wall)
+        if lateral > _TV_SOFA_CENTER_TOL_CM:
+            return True  # TV centre not aligned with the sofa centre (pushed off by a window / side wall)
         # TV backed onto a WINDOW wall and pushed off-centre by the window: the sofa faces a
         # window and the TV is squeezed beside/below it. A wall without a window is far better.
         tv_f = front_vector(tv.pose.rotation_deg)
         tv_wall = max(analysis.walls, key=lambda w: w.normal[0] * tv_f[0] + w.normal[1] * tv_f[1])
         if lateral > 60.0 and any(o.kind == "window" for o in tv_wall.openings):
             return True
+        # A sofa facing across the room's LONGER dimension (sofa on a SHORT wall) leaves a long,
+        # half-empty, lopsided room and a far TV. In a clearly rectangular room prefer the sofa on a
+        # LONG wall, facing across the SHORT span (the balanced, front-facing arrangement).
+        minx, miny, maxx, maxy = analysis.polygon.bounds
+        rw, rh = maxx - minx, maxy - miny
+        if abs(rw - rh) > 60.0:
+            long_axis = (1.0, 0.0) if rw >= rh else (0.0, 1.0)
+            if abs(f[0] * long_axis[0] + f[1] * long_axis[1]) > 0.7:
+                return True  # sofa faces down the long axis -> lopsided, far TV
     if len(sofas) >= 2:
         a = item_polygon(sofas[0].pose.x, sofas[0].pose.y, sofas[0].product.width_cm, sofas[0].product.depth_cm, sofas[0].pose.rotation_deg)
         b = item_polygon(sofas[1].pose.x, sofas[1].pose.y, sofas[1].product.width_cm, sofas[1].product.depth_cm, sofas[1].pose.rotation_deg)
@@ -774,6 +790,14 @@ def _template_issues(resp: AssistLayoutResponse, analysis: RoomAnalysis) -> bool
         bpoly = item_polygon(b.pose.x, b.pose.y, b.product.width_cm, b.product.depth_cm, b.pose.rotation_deg)
         if min(bpoly.distance(arc) for arc in analysis.swing_arcs.values()) < 30.0:
             return True  # bed crammed against the door swing
+    # "Does this look right?" size backstop: reject a template that still contains a piece clearly
+    # bigger than the room warrants for its role - a safety net for the selection size-cap's
+    # last-resort fallback (or any future path that skips it). 1.2x the room-proportional max, so
+    # only a CLEARLY-oversized piece drops; a slightly-large one is tolerated.
+    for p in resp.placements:
+        cap = expected_max_width(placement_group(p.category), analysis.area_cm2)
+        if cap is not None and p.product.width_cm > cap * 1.2:
+            return True  # a piece too big for the room slipped through
     return False
 
 
@@ -790,6 +814,29 @@ def _template_quality_ok(room: Room, zone: ZoneData, category: str) -> bool:
     if category == "bed":
         return not on_door and not on_window
     return not on_door  # sofa under a window is fine; on the door wall is not
+
+
+def _tv_in_front(resp: AssistLayoutResponse, analysis: RoomAnalysis) -> bool:
+    """True only if the TV genuinely sits IN FRONT of the PRIMARY sofa: inside the forward cone
+    (facing >= 0.4) AND laterally within the sofa's own width (not shoved diagonally onto a side
+    wall). This mirrors the facing+lateral test in _template_issues, so the last-resort fallback
+    never surfaces a 'TV off to the side' layout - a TV diagonally in front (facing ~0.6) but past
+    the sofa's edge reads as misaligned and must be dropped. The primary is the WIDEST sofa (the
+    3-seater); a big-room L-return 2-seater must not be mistaken for it."""
+    from app.services.spatial.geometry_utils import front_vector
+    sofas = [p for p in resp.placements if p.category == "sofa"]
+    tvs = [p for p in resp.placements if p.category == "tv_unit"]
+    if not sofas or not tvs:
+        return False  # no sofa+TV pair -> not a valid front-facing living room
+    sofa = max(sofas, key=lambda p: p.product.width_cm)
+    tv = tvs[0]
+    f = front_vector(sofa.pose.rotation_deg)
+    fx = sofa.pose.x + f[0] * sofa.product.depth_cm / 2.0
+    fy = sofa.pose.y + f[1] * sofa.product.depth_cm / 2.0
+    vx, vy = tv.pose.x - fx, tv.pose.y - fy
+    d = (vx * vx + vy * vy) ** 0.5 or 1.0
+    lateral = abs(vy * f[0] - vx * f[1])
+    return (f[0] * vx + f[1] * vy) / d >= 0.4 and lateral <= _TV_SOFA_CENTER_TOL_CM
 
 
 def plan_layout_variants(
@@ -812,6 +859,14 @@ def plan_layout_variants(
     if recipe is not None and effective_room_type != "living_room" and prefs.room_type is None:
         prefs = prefs.model_copy(update={"room_type": effective_room_type})
 
+    # Decouple ARRANGEMENT from PALETTE. Generate + rank the wall variants with the style/colour
+    # preference STRIPPED, so a rare palette can't swap in odd-sized products that perturb the ranking
+    # and flip which wall wins (a Bold/Vibrant rug must never change the sofa wall). The chosen
+    # arrangement is thus palette-independent; the palette is re-applied to each surfaced template
+    # below (same wall, matching-colour products of comparable size). "Layout first, products second".
+    has_palette = bool(preferences.style) or bool(preferences.color_families)
+    layout_prefs = prefs.model_copy(update={"style": None, "color_families": []}) if has_palette else prefs
+
     primary = _primary_role(recipe) if recipe is not None else None
     if primary is None:  # no single anchor -> one honest layout
         return [("Suggested layout", plan_layout_from_recipe(room, prefs, placed_items, room_type))]
@@ -833,11 +888,12 @@ def plan_layout_variants(
 
     piece = CATEGORY_LABELS.get(primary.categories[0], primary.categories[0].replace("_", " ").title())
     category = primary.categories[0]
-    good_rows: list[tuple[str, str, AssistLayoutResponse]] = []  # design-sound options
-    other_rows: list[tuple[str, str, AssistLayoutResponse]] = []  # weak fallbacks
+    # rows carry their wall zone `z` so the palette can be re-applied on that exact wall afterwards.
+    good_rows: list[tuple[str, str, AssistLayoutResponse, ZoneData]] = []  # design-sound options
+    other_rows: list[tuple[str, str, AssistLayoutResponse, ZoneData]] = []  # weak fallbacks
     seen_ids: set[str] = set()
     for z in distinct[: max_variants + 3]:  # pool extra so we can drop weak walls
-        resp = plan_layout_from_recipe(room, prefs, placed_items, room_type, zone_overrides={primary.role: z})
+        resp = plan_layout_from_recipe(room, layout_prefs, placed_items, room_type, zone_overrides={primary.role: z})
         if category not in {p.category for p in resp.placements}:
             continue  # primary couldn't be placed on this wall - drop the template
         if any(f.severity == "error" for f in resp.findings):
@@ -847,7 +903,7 @@ def plan_layout_variants(
         seen_ids.add(resp.proposal_id)
         label, side = _anchor_label(analysis, room, z, piece)
         bucket = good_rows if _template_quality_ok(room, z, category) else other_rows
-        bucket.append((label, side, resp))
+        bucket.append((label, side, resp, z))
 
     # rank the design-sound options by layout quality (a working sofa<->TV pair wins), so
     # the recommended template is the one that actually composes - stable on the original
@@ -869,15 +925,40 @@ def plan_layout_variants(
             key=lambda x: x[0],
             reverse=True,
         )
-    pool = kept if kept else scored[:1]
-    rows = [r for _sc, r in pool[:max_variants]] if pool else other_rows[:1]
-    if not rows:  # safety net: always return at least the natural layout
+    if kept:
+        pool = kept
+    else:
+        # No issue-free template anywhere. Honour "a misaligned template must NEVER render": among
+        # ALL flawed options keep only those where the TV is genuinely IN FRONT of the primary sofa
+        # (best layout-score first). A flawed-but-aligned template (e.g. TV forced onto a window
+        # wall) always beats one where the TV isn't in front of the sofa at all.
+        pool = sorted(
+            ((_template_layout_score(r[2]), r) for r in (good_rows + other_rows) if _tv_in_front(r[2], analysis)),
+            key=lambda x: x[0], reverse=True,
+        )
+    rows = [r for _sc, r in pool[:max_variants]]
+    if not rows:  # every option is broken/misaligned - fall back to the single natural layout
         return [(f"{piece} layout", plan_layout_from_recipe(room, prefs, placed_items, room_type))]
+
+    # Re-apply the palette: re-plan each surfaced template with the FULL preferences pinned to its
+    # already-chosen wall, so the products match the style/colour while the ARRANGEMENT stays exactly
+    # what the palette-independent ranking picked. Keep the palette layout only if it still places the
+    # primary on that wall with no error (else keep the neutral one - a rare palette never breaks it).
+    if has_palette:
+        repainted: list[tuple[str, str, AssistLayoutResponse, ZoneData]] = []
+        for label, side, resp, z in rows:
+            palette_resp = plan_layout_from_recipe(room, prefs, placed_items, room_type, zone_overrides={primary.role: z})
+            if category in {p.category for p in palette_resp.placements} and not any(
+                fd.severity == "error" for fd in palette_resp.findings
+            ):
+                resp = palette_resp
+            repainted.append((label, side, resp, z))
+        rows = repainted
 
     # unique, readable labels (disambiguate collisions by side)
     out: list[tuple[str, AssistLayoutResponse]] = []
     used: set[str] = set()
-    for label, side, resp in rows:
+    for label, side, resp, _z in rows:
         name = label if label not in used else f"{label} ({side})"
         n = 2
         while name in used:
