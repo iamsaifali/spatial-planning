@@ -34,6 +34,7 @@ from app.services.spatial.zones import (
     _l_return_sofa_zones,
     _lamp_on_table_zones,
     _lighting_zones,
+    _vases_on_console_zones,
     _majlis_sofa_zones,
     _reading_chair_zones,
     _rug_zones,
@@ -154,6 +155,8 @@ def on_surface(category, room_type, analysis, placed, stats, params):
     only once its host (a side table) exists, so it depends on the bedside role running first."""
     if category == "lighting":
         return _lamp_on_table_zones(analysis, placed, stats)
+    if category == "decor":
+        return _vases_on_console_zones(analysis, placed, stats)
     return _fallback(category, room_type, analysis, placed, stats, params)
 
 

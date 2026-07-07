@@ -71,6 +71,10 @@ class RoleDefinition(StrictModel):
     depends_on: list[str] = Field(default_factory=list)  # role ids this anchors to (graph edges)
     scoring: dict[str, float] = Field(default_factory=dict)  # weight nudges, applied later
     essential: bool = False  # if true and it can't be placed, the room is "incomplete"
+    store_category: str | None = None  # pin this role to a specific STORE category (e.g. "vase"),
+    # overriding the room's default preference for the placement group
+    allow_duplicate: bool = False  # place even if this placement group is already present
+    # (lets a 2nd decor role - e.g. vases on the console - run alongside the corner decor)
 
 
 class Recipe(StrictModel):

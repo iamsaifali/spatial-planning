@@ -509,7 +509,7 @@ def _execute_fill_available(role: RoleDefinition, st: _PlanState) -> None:
     Each placement is gated, so it never blocks a door or overflows the room.
     """
     category = role.categories[0]
-    if category in st.have_categories:
+    if category in st.have_categories and not role.allow_duplicate:
         st.skipped.append(AssistSkip(category=category, reason="ALREADY_PRESENT"))
         return
 
@@ -524,7 +524,10 @@ def _execute_fill_available(role: RoleDefinition, st: _PlanState) -> None:
     for zone in zones:
         if placed >= cap:
             break
-        result = select_slots(category, [zone], st.preferences, st.working, st.repo, room_area_cm2=st.analysis.area_cm2)
+        result = select_slots(
+            category, [zone], st.preferences, st.working, st.repo,
+            room_area_cm2=st.analysis.area_cm2, store_category=role.store_category,
+        )
         candidate = result.best
         if candidate is None:
             continue
@@ -763,6 +766,14 @@ def _template_issues(resp: AssistLayoutResponse, analysis: RoomAnalysis) -> bool
         b = item_polygon(sofas[1].pose.x, sofas[1].pose.y, sofas[1].product.width_cm, sofas[1].product.depth_cm, sofas[1].pose.rotation_deg)
         if a.distance(b) > 130.0:
             return True  # floating, non-adjacent second sofa (not a clean L)
+    # A bed jammed against a door swing (not_block_door only stops a >5% overlap, not "too close"):
+    # you can't open the door or walk past. Require real clearance, else reject the template.
+    beds = [p for p in resp.placements if p.category == "bed"]
+    if beds and analysis.swing_arcs:
+        b = beds[0]
+        bpoly = item_polygon(b.pose.x, b.pose.y, b.product.width_cm, b.product.depth_cm, b.pose.rotation_deg)
+        if min(bpoly.distance(arc) for arc in analysis.swing_arcs.values()) < 30.0:
+            return True  # bed crammed against the door swing
     return False
 
 

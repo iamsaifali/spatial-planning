@@ -40,6 +40,9 @@ OVERLAP_RATIO = 0.02
 SWING_RATIO = 0.05
 SEATING = {"sofa", "accent_chair"}
 FRONT_STRIP = {"tv_unit": 80.0, "storage": 60.0}
+# Placement-role pairs where one accent legitimately rests ON the other's surface, so their
+# footprint overlap is expected (not a collision): a lamp on a nightstand, a vase on a console.
+_ON_SURFACE_PAIRS = ({"lighting", "side_table"}, {"decor", "storage"})
 
 
 def build_poly(item: PlacedItem, product: Product) -> Polygon:
@@ -104,8 +107,8 @@ def must_fix_only(
         for _i, p, op in other_polys:
             if p.is_walkable:
                 continue
-            # a table lamp rests ON a side table (nightstand) by design - not a collision
-            if {cat, placement_group(p.category)} == {"lighting", "side_table"}:
+            # an accent rests ON a surface by design (lamp on nightstand, vase on console)
+            if {cat, placement_group(p.category)} in _ON_SURFACE_PAIRS:
                 continue
             inter = poly.intersection(op)
             if not inter.is_empty and inter.area > OVERLAP_RATIO * min(poly.area, op.area):
@@ -153,9 +156,9 @@ def validate_item(
         for other_item, other_product, other_poly in others:
             if other_product.is_walkable:
                 continue
-            # A table lamp legitimately rests ON a side table (nightstand) - the two share a
-            # footprint by design, so don't flag that pair as an overlap.
-            if {cat, placement_group(other_product.category)} == {"lighting", "side_table"}:
+            # An accent legitimately rests ON a surface - a lamp on a nightstand, a vase on a
+            # console - so the two share a footprint by design; don't flag that pair as overlap.
+            if {cat, placement_group(other_product.category)} in _ON_SURFACE_PAIRS:
                 continue
             inter = poly.intersection(other_poly)
             if not inter.is_empty and inter.area > OVERLAP_RATIO * min(poly.area, other_poly.area):

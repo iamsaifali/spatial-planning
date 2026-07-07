@@ -25,6 +25,8 @@ def role(
     depends_on: Sequence[str] = (),
     essential: bool = False,
     scoring: dict[str, float] | None = None,
+    store_category: str | None = None,
+    allow_duplicate: bool = False,
 ) -> RoleDefinition:
     """Readable constructor for a single-category role."""
     return RoleDefinition(
@@ -36,4 +38,6 @@ def role(
         depends_on=list(depends_on),
         essential=essential,
         scoring=scoring or {},
+        store_category=store_category,
+        allow_duplicate=allow_duplicate,
     )

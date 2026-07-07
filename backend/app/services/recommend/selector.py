@@ -76,6 +76,7 @@ def select_slots(
     placed: list[PlacedProduct],
     repo: CatalogRepository,
     room_area_cm2: float | None = None,
+    store_category: str | None = None,
 ) -> SlotResult:
     products = repo.in_category(category)
     hints: dict[str, float | str] = {}
@@ -96,7 +97,9 @@ def select_slots(
     # Per-room category preference: narrow the role to the specific STORE category this room
     # wants (e.g. living-room "sofa" -> "3-seater-sofa"). Falls back to the full role group when
     # the catalog has none of the preferred store category, so it never eliminates all results.
-    pref_cat = preferred_store_category(room_type, category)
+    # An explicit per-role store category (e.g. a role that wants "vase" specifically) overrides
+    # the room's default preference for the placement group.
+    pref_cat = store_category or preferred_store_category(room_type, category)
     # The default living-room sofa is a 3-seater, EXCEPT: a small/medium room gets a 2-seater,
     # and the SECOND sofa (the L-return in a big room) is a 2-seater - not another 3-seater.
     if pref_cat == "3-seater-sofa":
@@ -122,14 +125,24 @@ def select_slots(
             if capped:
                 products = capped
 
-    # A small/medium bedroom gets a COMPACT wardrobe, not one that spans the whole wall.
+    # A dressing table must be a real vanity you can sit at, not a tiny 40cm stool. Require a
+    # usable minimum width, so a too-short wall segment yields NO vanity (it moves to a longer
+    # wall, or is skipped) rather than rendering a doll-sized table in a big room.
+    if store_category == "dressing-table":
+        real = [p for p in products if p.width_cm >= 80.0]
+        if real:
+            products = real
+
+    # A small/medium bedroom gets COMPACT storage sized to the space: a wardrobe that doesn't span
+    # the whole wall, and a modest dressing table (not the full-width vanity a big room can carry).
     if (
         category == "storage"
         and room_type == "bedroom"
         and room_area_cm2 is not None
         and room_area_cm2 < SMALL_MEDIUM_MAX_CM2
     ):
-        capped = [p for p in products if p.width_cm <= 200.0]
+        cap = 95.0 if store_category == "dressing-table" else 200.0
+        capped = [p for p in products if p.width_cm <= cap]
         if capped:
             products = capped
 

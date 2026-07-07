@@ -57,5 +57,10 @@ LIVING_ROOM_RECIPE = Recipe(
              depends_on=["primary_seating"]),
         role("accent", "decor", "corners",
              count=CountRule(mode="fill_available", per_area_m2=8, max=4)),
+        # Two vases resting ON the console top (on_surface). Its own decor role, so it runs
+        # alongside the corner decor (allow_duplicate) and pins to the "vase" store category.
+        role("console_accent", "decor", "on_surface",
+             count=CountRule(mode="fill_available", per_area_m2=6, max=2),
+             depends_on=["storage", "accent"], store_category="vase", allow_duplicate=True),
     ],
 )
