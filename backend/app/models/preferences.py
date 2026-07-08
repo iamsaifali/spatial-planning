@@ -40,6 +40,11 @@ class Preferences(StrictModel):
     # UI selection and leave the canvas blank.
     color_families: list[str] = Field(default_factory=list, max_length=11)
 
+    # INTERNAL (set by the planner, not the UI): force a COMPACT (2-seater) primary sofa + accent chair
+    # instead of a 3-seater. The planner re-plans with this on when a 3-seater primary couldn't get its
+    # L-return (narrow room / windows on both long walls), so a room never ends up a lone 3-seater.
+    compact_seating: bool = False
+
     @field_validator("style")
     @classmethod
     def _known_style(cls, v: str | None) -> str | None:

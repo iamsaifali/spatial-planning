@@ -14,7 +14,7 @@ from app.services.recipe.equivalence import compare_layouts
 from app.services.recommend.orchestrator import plan_layout, plan_layout_from_recipe
 
 GOLDEN_LIVING_PID = "lay_5f5d21801c"  # legacy
-GOLDEN_LIVING_RECIPE = "lay_5f5d21801c"  # recipe (area-scaled)
+GOLDEN_LIVING_RECIPE = "lay_cb5c145123"  # recipe (area-scaled); side_table now placed after accent_chair (depends_on) - identical poses, list reorder only
 GOLDEN_MAJLIS_PID = "lay_bcabef51da"
 
 LIVING_ROOM = {

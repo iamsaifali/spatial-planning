@@ -45,6 +45,24 @@ FRONT_STRIP = {"tv_unit": 80.0, "storage": 60.0}
 _ON_SURFACE_PAIRS = ({"lighting", "side_table"}, {"decor", "storage"})
 
 
+# Decor/lighting types that genuinely REST ON a surface (a vase/flower on a console, a lampshade on a
+# nightstand) - their shared footprint is by design. A FLOOR-standing accent (a flower-pot-and-plant, a
+# floor-stand) sharing a footprint with a surface is a real collision, not an on-surface rest.
+_ON_SURFACE_ACCENT_CATS = {"vase", "flower", "lampshade", "statue-and-antique"}
+
+
+def _is_on_surface_rest(a: Product, b: Product) -> bool:
+    """True only when the (a,b) pair is a tabletop accent genuinely resting on a surface - so its
+    overlap is exempt. Requires the placement groups to be an on-surface pair AND the accent side to be
+    a real tabletop TYPE. A floor plant (flower-pot-and-plant) grazing or centred on a console is NOT a
+    rest and must still be flagged/fixed as an overlap."""
+    ga, gb = placement_group(a.category), placement_group(b.category)
+    if {ga, gb} not in _ON_SURFACE_PAIRS:
+        return False
+    accent = a if ga in ("decor", "lighting") else b
+    return accent.category in _ON_SURFACE_ACCENT_CATS
+
+
 def build_poly(item: PlacedItem, product: Product) -> Polygon:
     return item_polygon(item.x, item.y, product.width_cm, product.depth_cm, item.rotation_deg)
 
@@ -107,8 +125,9 @@ def must_fix_only(
         for _i, p, op in other_polys:
             if p.is_walkable:
                 continue
-            # an accent rests ON a surface by design (lamp on nightstand, vase on console)
-            if {cat, placement_group(p.category)} in _ON_SURFACE_PAIRS:
+            # an accent rests ON a surface by design (lamp on nightstand, vase on console) - but only a
+            # real tabletop accent; a floor plant grazing a console is a genuine collision.
+            if _is_on_surface_rest(product, p):
                 continue
             inter = poly.intersection(op)
             if not inter.is_empty and inter.area > OVERLAP_RATIO * min(poly.area, op.area):
@@ -156,9 +175,11 @@ def validate_item(
         for other_item, other_product, other_poly in others:
             if other_product.is_walkable:
                 continue
-            # An accent legitimately rests ON a surface - a lamp on a nightstand, a vase on a
-            # console - so the two share a footprint by design; don't flag that pair as overlap.
-            if {cat, placement_group(other_product.category)} in _ON_SURFACE_PAIRS:
+            # An accent legitimately rests ON a surface - a vase on a console, a lampshade on a
+            # nightstand - so the two share a footprint by design; don't flag that pair. But only a
+            # real tabletop accent: a floor plant (flower-pot-and-plant) sharing a console footprint is
+            # a genuine collision, so it stays flagged and gets moved/skipped.
+            if _is_on_surface_rest(product, other_product):
                 continue
             inter = poly.intersection(other_poly)
             if not inter.is_empty and inter.area > OVERLAP_RATIO * min(poly.area, other_poly.area):

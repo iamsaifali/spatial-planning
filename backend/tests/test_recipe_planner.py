@@ -48,7 +48,7 @@ MAJLIS_PREFS = Preferences(
 
 # Golden values. Living: legacy (one-of-each) vs recipe (area-scaled accent pieces).
 GOLDEN_LIVING_PID = "lay_5f5d21801c"  # legacy planner
-GOLDEN_LIVING_RECIPE = "lay_5f5d21801c"  # recipe planner (area-scaled)
+GOLDEN_LIVING_RECIPE = "lay_cb5c145123"  # recipe planner (area-scaled); side_table placed after accent_chair (depends_on) - identical poses, list reorder only
 GOLDEN_MAJLIS_PID = "lay_bcabef51da"  # majlis (recipe == legacy)
 
 

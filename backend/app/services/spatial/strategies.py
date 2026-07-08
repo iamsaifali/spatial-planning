@@ -114,10 +114,14 @@ def l_return(category, room_type, analysis, placed, stats, params):
 def around_anchor(category, room_type, analysis, placed, stats, params):
     """Conversation seating arranged around the sofa (living-room accent chair).
 
-    Skipped once a second sofa has formed an L: a big room gets the L-return sofa INSTEAD
-    of a pair of accent chairs, so we don't add both."""
+    The accent chair is the companion for a 2-SEATER primary only. It is skipped when (a) a second
+    sofa already formed an L (the L-return IS the companion seating - never both), OR (b) the primary
+    is a 3-SEATER: a big sofa pairs with an L-return, never a lone chair (that combo reads as
+    unbalanced). So if a 3-seater's L-return didn't fit the room shape it stays a clean single sofa
+    rather than sprouting a mismatched chair."""
     if category == "accent_chair":
-        if sum(1 for _i, p in placed if placement_group(p.category) == "sofa") >= 2:
+        sofas = [p for _i, p in placed if placement_group(p.category) == "sofa"]
+        if len(sofas) >= 2 or any(p.category == "3-seater-sofa" for p in sofas):
             return []
         return _accent_chair_zones(analysis, placed, stats)
     return _fallback(category, room_type, analysis, placed, stats, params)

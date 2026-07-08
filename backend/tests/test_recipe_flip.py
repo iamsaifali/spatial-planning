@@ -18,7 +18,7 @@ from app.models.preferences import Preferences
 from app.services.recommend.orchestrator import plan_assist_layout, plan_layout
 
 GOLDEN_LIVING_PID = "lay_5f5d21801c"  # legacy (one-of-each) - rollback path
-GOLDEN_LIVING_RECIPE = "lay_5f5d21801c"  # recipe (area-scaled accent pieces) - production
+GOLDEN_LIVING_RECIPE = "lay_cb5c145123"  # recipe (area-scaled accent pieces) - production; side_table placed after accent_chair (depends_on) - identical poses, list reorder only
 GOLDEN_MAJLIS_PID = "lay_bcabef51da"
 
 LIVING_ROOM = {

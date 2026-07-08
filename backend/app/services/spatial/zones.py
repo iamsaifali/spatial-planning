@@ -599,9 +599,19 @@ def _side_table_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats
     if sofa is None:
         return _corner_spots(analysis, placed, "side_table", 70.0, max_zones=2)
 
-    item, product = sofa
+    # The primary sofa is the WIDEST placed sofa (an L-return sofa is narrower/secondary).
+    sofas = [(i, p) for i, p in placed if placement_group(p.category) == "sofa"]
+    item, product = max(sofas, key=lambda ip: ip[1].width_cm) if sofas else sofa
     f = front_vector(item.rotation_deg)
     w = width_axis(item.rotation_deg)
+    # Steer the single side table to the side that hosts the SECONDARY seating (the L-return
+    # sofa, or an accent chair), so it serves both seats. If no companion seat is placed yet,
+    # keep the neutral default (left slightly preferred).
+    secondary = next((ip for ip in sofas if ip[0] is not item), None) or _find_placed(placed, "accent_chair")
+    target_side = 0.0
+    if secondary is not None:
+        sec_item = secondary[0]
+        target_side = 1.0 if dot(sub2((sec_item.x, sec_item.y), (item.x, item.y)), w) >= 0 else -1.0
     blockers = _placed_blockers(placed)
     zones: list[ZoneData] = []
     for idx, side in enumerate((-1.0, 1.0)):
@@ -611,9 +621,15 @@ def _side_table_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats
         piece = largest_piece(clipped)
         if piece is None or piece.area < 1_500.0:
             continue
+        if target_side != 0.0:
+            # Strongly prefer the companion-seat side; the other side stays only as a fallback
+            # for when that side can't fit the table.
+            score = 0.95 if side == target_side else 0.45
+        else:
+            score = 0.85 if side < 0 else 0.84
         zones.append(
             _frame_zone(
-                "side_table", idx, piece, 0.85 if side < 0 else 0.84, item.rotation_deg,
+                "side_table", idx, piece, score, item.rotation_deg,
                 origin, (w[0] * side, w[1] * side), f, 80.0, 80.0,
                 [R_EASY_REACH], f"sofa_{'left' if side < 0 else 'right'}", kind="side",
             )
@@ -630,6 +646,10 @@ def _accent_chair_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], sta
     f = front_vector(item.rotation_deg)
     w = width_axis(item.rotation_deg)
     blockers = _placed_blockers(placed)
+    # Keep the chair a clear margin off any door swing (like corner accents do). A chair in/beside the
+    # doorway is a bad template; carving the buffered swing out of every candidate makes such a spot
+    # shrink below the fit threshold, so the chair lands elsewhere or is skipped - never in the door.
+    door_keepout = unary_union([sw.buffer(45.0) for sw in analysis.swing_arcs.values()])
     tv = _find_placed(placed, "tv_unit")
 
     if tv is None:
@@ -641,7 +661,7 @@ def _accent_chair_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], sta
             center = add(seat_anchor, g, 170.0)
             rotation = rotation_for_normal(unit(*sub2(seat_anchor, center)))
             rect = item_polygon(center[0], center[1], 120.0, 120.0, rotation)
-            clipped = rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers)
+            clipped = rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers).difference(door_keepout)
             piece = largest_piece(clipped)
             if piece is None or piece.area < 4_000.0:
                 continue
@@ -681,7 +701,7 @@ def _accent_chair_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], sta
         toward = unit(*sub2(gc, center))
         rotation = rotation_for_normal(toward)
         rect = item_polygon(center[0], center[1], 100.0, 100.0, rotation)
-        clipped = rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers)
+        clipped = rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers).difference(door_keepout)
         piece = largest_piece(clipped)
         if piece is None or piece.area < 3_500.0:
             continue
@@ -727,7 +747,7 @@ def _l_return_sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], st
     sofas = [(i, p) for i, p in placed if placement_group(p.category) == "sofa"]
     if len(sofas) != 1:
         return []
-    if analysis.area_cm2 < 280_000.0:  # only genuinely LARGE rooms (>= ~28 m2) get an L-return
+    if analysis.area_cm2 < SMALL_MEDIUM_MAX_CM2:  # match the 3-seater threshold (24 m2): a room big
         return []
     item, product = sofas[0]
     f = front_vector(item.rotation_deg)  # primary faces the TV / conversation
@@ -895,6 +915,41 @@ def _storage_zones(
         item_polygon(it.x, it.y, pr.width_cm, pr.depth_cm, it.rotation_deg)
         for it, pr in placed if placement_group(pr.category) == "sofa"
     ]
+    # Living-room console: it must never SHARE A WALL with a sofa that HUGS that wall (a cramped
+    # side-by-side) - not just be clear of it in its own segment. But a sofa FLOATED forward
+    # (great-room seating pulled toward the TV) leaves its back wall FREE, and a console tucked
+    # behind it is a good use of that dead space (see the sofa_in_front 90cm-reach test below). So a
+    # sofa OWNS (excludes) its back wall only when it sits within ~55cm of it; a floated sofa does not.
+    sofa_walls: set[int] = set()
+    for it, pr in placed:
+        if placement_group(pr.category) != "sofa":
+            continue
+        sf = front_vector(it.rotation_deg)
+        back = max(range(len(analysis.walls)), key=lambda i: dot(analysis.walls[i].normal, sf))
+        c = item_polygon(it.x, it.y, pr.width_cm, pr.depth_cm, it.rotation_deg).centroid
+        back_gap = dot(sub2((c.x, c.y), analysis.walls[back].start), analysis.walls[back].normal) - pr.depth_cm / 2.0
+        if back_gap <= 55.0:
+            sofa_walls.add(back)  # a hugging sofa owns its back wall; a floated one leaves it free
+    # Among the clean walls that remain, PREFER the wall BEHIND the primary sofa. When the primary
+    # HUGS its wall that wall is excluded above, so this bonus fires only for a FLOATED primary -
+    # tucking the console into the dead space behind the seating - else it falls through to the
+    # clearest-wall ranking as before.
+    # Behind a floated primary is only good when there is REAL room to stand at and use the console -
+    # a console tucked into a ~75cm gap leaves ~24cm of access, too cramped to open/reach. So require
+    # the primary's back edge to clear the wall by a console depth + a standing zone (~106cm) before
+    # treating its back wall as a usable "behind" spot; otherwise the console takes a secondary clean
+    # wall (or is skipped).
+    USABLE_BEHIND = depth + 55.0
+    primary_sofa = _find_placed(placed, "sofa")
+    behind_wall = None
+    behind_usable = False
+    if primary_sofa is not None:
+        psf = front_vector(primary_sofa[0].rotation_deg)
+        behind_wall = max(range(len(analysis.walls)), key=lambda i: dot(analysis.walls[i].normal, psf))
+        pit, ppr = primary_sofa
+        pc = item_polygon(pit.x, pit.y, ppr.width_cm, ppr.depth_cm, pit.rotation_deg).centroid
+        primary_back_gap = dot(sub2((pc.x, pc.y), analysis.walls[behind_wall].start), analysis.walls[behind_wall].normal) - ppr.depth_cm / 2.0
+        behind_usable = primary_back_gap >= USABLE_BEHIND
     furniture_polys = [
         item_polygon(it.x, it.y, pr.width_cm, pr.depth_cm, it.rotation_deg)
         for it, pr in placed if not pr.is_walkable
@@ -927,17 +982,43 @@ def _storage_zones(
             # only reaches ~a console depth + a walkway (~90cm) ahead: a sofa nearer than that blocks
             # the wall; one floated beyond it does not.
             sofa_in_band = any(region(cand, 0.0).intersection(sp).area > 5_000.0 for sp in sofa_polys)
-            # In a TV room the sofa floats forward, so the "in front" test only reaches ~a console
-            # depth + walkway (90cm) - a console behind a FLOATED sofa is fine. A majlis (no TV) keeps
-            # the original wider reach (160cm) so its storage placement is byte-identical to legacy.
-            sofa_in_front = any(region(cand, 90.0 if has_tv else 160.0).intersection(sp).area > 8_000.0 for sp in sofa_polys)
+            # A sofa blocks this wall for a console UNLESS it is floated forward far enough to leave a
+            # USABLE console behind it. Per sofa (covers the primary AND the L-return): if it backs onto
+            # THIS wall and clears the standing zone (back_gap >= USABLE_BEHIND ~ console depth + 55cm)
+            # it's exempt - the console tucks into that usable dead space; if it backs onto this wall but
+            # is closer than that AND sits in front of the console's span, it blocks (too cramped to
+            # use). A sofa NOT backing onto this wall blocks only when jammed close in front (the legacy
+            # region+area reach). has_tv gates majlis to the original behaviour (byte-identical) - a
+            # majlis sofa never floats, so it always takes the legacy reach test below.
+            sofa_in_front = False
+            for it2, pr2 in placed:
+                if placement_group(pr2.category) != "sofa":
+                    continue
+                sp2 = item_polygon(it2.x, it2.y, pr2.width_cm, pr2.depth_cm, it2.rotation_deg)
+                if has_tv:
+                    sf2 = front_vector(it2.rotation_deg)
+                    sbw2 = max(range(len(analysis.walls)), key=lambda k: dot(analysis.walls[k].normal, sf2))
+                    if sbw2 == w.index:  # this sofa backs onto the console's wall
+                        bg2 = dot(sub2((it2.x, it2.y), analysis.walls[w.index].start), analysis.walls[w.index].normal) - pr2.depth_cm / 2.0
+                        if bg2 >= USABLE_BEHIND:
+                            continue  # usable dead space behind a well-floated sofa
+                        if region(cand, USABLE_BEHIND).intersection(sp2).area > 2_000.0:
+                            sofa_in_front = True
+                            break
+                        continue  # cramped but off to the side (not in the console's span) - no block
+                if region(cand, 90.0 if has_tv else 160.0).intersection(sp2).area > 8_000.0:
+                    sofa_in_front = True
+                    break
             # A TV-room console may use the CLEAR part of a door wall (its run is trimmed clear of the
             # swing above) - e.g. behind a floated sofa whose back wall carries the door in one corner.
             # A majlis (no TV) keeps a door wall off-limits. Keyed on has_tv (not room_type) so the
             # legacy and recipe paths behave identically for majlis. TV wall / sofa in band / blocked
             # walkway always disqualify.
             on_door_wall = w.index in door_walls and not has_tv
-            if (tv_wall is not None and w.index == tv_wall) or on_door_wall or sofa_in_band or sofa_in_front or blocks_walkway:
+            # Living-room only (keyed on has_tv, like the other console rules): a majlis salon keeps
+            # its legacy placement byte-identical, so this wall-level sofa exclusion must not touch it.
+            shares_sofa_wall = has_tv and w.index in sofa_walls
+            if (tv_wall is not None and w.index == tv_wall) or on_door_wall or shares_sofa_wall or sofa_in_band or sofa_in_front or blocks_walkway:
                 continue
         elif target == "dressing-table":
             # USABLE vanity. First keep its run clear of NIGHTSTANDS - small items on the bed's
@@ -972,6 +1053,8 @@ def _storage_zones(
             if blocks_walkway:
                 continue
         score = 0.7 * (cand.extent / max_extent) + 0.3 * _entry_distance_norm(analysis, cand.piece) - pen
+        if target == "console" and has_tv and behind_usable and w.index == behind_wall:
+            score += 0.5  # tuck the console behind a FLOATED primary sofa (only if usable room behind)
         if w.index in storage_walls:
             score -= 0.5  # a wall already carrying storage - prefer a different one (fall back if forced)
         zones.append(_band_zone(analysis, cand, "storage", i, score, [R_REMAINING_WALL], depth))

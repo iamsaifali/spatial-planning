@@ -650,7 +650,23 @@ def plan_layout_from_recipe(
     if recipe.compose_secondary:
         _furnish_secondary_zone(st)
 
-    return _finalize_response(st.analysis, st.placements, st.skipped, st.working)
+    resp = _finalize_response(st.analysis, st.placements, st.skipped, st.working)
+
+    # Never a LONE 3-seater (nor a 3-seater + lone chair): a 3-seater primary that couldn't get its
+    # L-return (a narrow room, or windows on both long walls) re-plans ONCE with a COMPACT 2-seater
+    # primary - which pairs with an accent chair (or a 2-seater L-return where the slimmer piece fits).
+    # A room thus always resolves to (3-seater + L-return) or (2-seater + chair), never a lone sofa.
+    if effective_room_type == "living_room" and not preferences.compact_seating:
+        sofas = [p for p in resp.placements if p.category == "sofa"]
+        if len(sofas) == 1 and sofas[0].product.category == "3-seater-sofa":
+            return plan_layout_from_recipe(
+                room,
+                preferences.model_copy(update={"compact_seating": True}),
+                placed_items,
+                room_type,
+                zone_overrides,
+            )
+    return resp
 
 
 def _primary_role(recipe: Recipe) -> RoleDefinition | None:
@@ -691,12 +707,14 @@ def _anchor_label(analysis: RoomAnalysis, room: Room, zone: ZoneData, piece: str
     return f"{piece} on the {side} wall", side
 
 
-def _template_layout_score(resp: AssistLayoutResponse) -> float:
+def _template_layout_score(resp: AssistLayoutResponse, analysis: RoomAnalysis) -> float:
     """A design-quality score used to rank/recommend templates. Today it rewards a working
     sofa<->TV pair (the TV actually faces the sofa, at a comfortable distance) - so we
     recommend a sofa wall whose opposite wall can host the TV, instead of one where the TV
-    gets pushed to a side wall. 0 for rooms without a sofa+TV (e.g. bedrooms), leaving
-    their order unchanged."""
+    gets pushed to a side wall - and, in a clearly rectangular room, a sofa on a LONG wall
+    facing ACROSS the SHORTER span (a comfortable viewing distance) over one on a SHORT wall
+    facing down the long axis. 0 for rooms without a sofa+TV (e.g. bedrooms), leaving their
+    order unchanged."""
     from app.services.spatial.geometry_utils import front_vector, item_polygon
 
     sofas = [p for p in resp.placements if p.category == "sofa"]
@@ -705,6 +723,19 @@ def _template_layout_score(resp: AssistLayoutResponse) -> float:
         return 0.0
     sofa, tv = sofas[0], tvs[0]  # sofas[0] is the PRIMARY (placed first); an L-return is 2nd
     f = front_vector(sofa.pose.rotation_deg)
+    # Viewing-distance / room-shape preference: in a clearly rectangular room a sofa facing
+    # ACROSS the SHORTER span sits on a LONG wall a comfortable distance from its TV on the
+    # opposite wall; one facing DOWN the LONGER span pushes the TV far away and leaves a
+    # lopsided, half-empty room. Penalise facing along the long axis so a long-wall template
+    # outranks a short-wall one (near-square rooms fail the guard, so are unaffected).
+    minx, miny, maxx, maxy = analysis.polygon.bounds
+    rw, rh = maxx - minx, maxy - miny
+    if abs(rw - rh) > 60.0:
+        long_axis = (1.0, 0.0) if rw >= rh else (0.0, 1.0)
+        along_long = abs(f[0] * long_axis[0] + f[1] * long_axis[1])
+        score_long_axis_penalty = 2.0 * along_long
+    else:
+        score_long_axis_penalty = 0.0
     fx = sofa.pose.x + f[0] * sofa.product.depth_cm / 2.0
     fy = sofa.pose.y + f[1] * sofa.product.depth_cm / 2.0
     vx, vy = tv.pose.x - fx, tv.pose.y - fy
@@ -730,6 +761,7 @@ def _template_layout_score(resp: AssistLayoutResponse) -> float:
              "BLOCKS_WINDOW": 0.5}
     for fnd in resp.findings:
         score -= _WARN.get(fnd.code, 0.3 if fnd.severity == "warning" else 0.0)
+    score -= score_long_axis_penalty
     return score
 
 
@@ -912,7 +944,7 @@ def plan_layout_variants(
     # the TV not in front of the sofa, or a floating non-adjacent L). Keep the single best if
     # everything has issues, so the panel is never empty.
     scored = sorted(
-        ((_template_layout_score(r[2]), r) for r in good_rows), key=lambda x: x[0], reverse=True
+        ((_template_layout_score(r[2], analysis), r) for r in good_rows), key=lambda x: x[0], reverse=True
     )
     kept = [sr for sr in scored if not _template_issues(sr[1][2], analysis)]
     if not kept:
@@ -921,7 +953,7 @@ def plan_layout_variants(
         # wall beats a "better" wall whose TV is broken. Never surface a broken layout if a
         # clean one exists anywhere.
         kept = sorted(
-            ((_template_layout_score(r[2]), r) for r in other_rows if not _template_issues(r[2], analysis)),
+            ((_template_layout_score(r[2], analysis), r) for r in other_rows if not _template_issues(r[2], analysis)),
             key=lambda x: x[0],
             reverse=True,
         )
@@ -933,7 +965,7 @@ def plan_layout_variants(
         # (best layout-score first). A flawed-but-aligned template (e.g. TV forced onto a window
         # wall) always beats one where the TV isn't in front of the sofa at all.
         pool = sorted(
-            ((_template_layout_score(r[2]), r) for r in (good_rows + other_rows) if _tv_in_front(r[2], analysis)),
+            ((_template_layout_score(r[2], analysis), r) for r in (good_rows + other_rows) if _tv_in_front(r[2], analysis)),
             key=lambda x: x[0], reverse=True,
         )
     rows = [r for _sc, r in pool[:max_variants]]

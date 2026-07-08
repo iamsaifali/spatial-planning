@@ -31,9 +31,6 @@ LIVING_ROOM_RECIPE = Recipe(
              depends_on=["primary_seating"]),
         role("focal_surface", "coffee_table", "front_of_anchor",
              ["min_clearance"], depends_on=["primary_seating", "floor_anchor"]),
-        role("support_surface", "side_table", "beside_anchor",
-             count=CountRule(mode="single"),  # a living room gets ONE side table, not a pair
-             depends_on=["primary_seating"]),
         # Secondary seating scales with the room: a BIG room gets a perpendicular RETURN sofa
         # forming an L with the primary (until_target lets a second sofa of the same category
         # place; the l_return strategy self-limits to one, and only when the room is large
@@ -52,6 +49,12 @@ LIVING_ROOM_RECIPE = Recipe(
         role("companion_seating", "accent_chair", "around_anchor",
              count=CountRule(mode="fill_available", per_area_m2=16, max=2),
              depends_on=["primary_seating", "secondary_seating", "storage"]),
+        # ONE side table, placed LAST among the seats so it can be steered to the SAME side as the
+        # companion seat (the L-return sofa or accent chair), serving both. Declared here (after the
+        # secondary seating + accent chairs) so the declared order is already a valid topo order.
+        role("support_surface", "side_table", "beside_anchor",
+             count=CountRule(mode="single"),
+             depends_on=["primary_seating", "secondary_seating", "companion_seating"]),
         role("ambient_light", "lighting", "corners",
              count=CountRule(mode="fill_available", per_area_m2=12, max=2),
              depends_on=["primary_seating"]),

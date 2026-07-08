@@ -106,7 +106,8 @@ def select_slots(
     if pref_cat == "3-seater-sofa":
         small_medium = room_area_cm2 is not None and room_area_cm2 < SMALL_MEDIUM_MAX_CM2
         second_sofa = any(placement_group(pr.category) == "sofa" for _it, pr in placed)
-        if small_medium or second_sofa:
+        # compact_seating: the planner re-plans a would-be lone 3-seater as a 2-seater + chair.
+        if small_medium or second_sofa or prefs.compact_seating:
             pref_cat = "2-seater-sofa"
     if pref_cat:
         preferred = [p for p in products if p.category == pref_cat]
@@ -124,6 +125,12 @@ def select_slots(
         within = [p for p in products if mnw <= p.width_cm <= mxw and mnd <= p.depth_cm <= mxd]
         if within:
             products = within
+
+    # Snapshot the size-appropriate pool BEFORE the palette narrows it. A colour/style is a PREFERENCE,
+    # never a reason to leave the room without the piece: if the palette-matching products don't FIT the
+    # zone (e.g. "Wood/Natural" has a single 350cm rug that fits no room), we relax the palette below and
+    # place a fitting off-palette piece instead of nothing.
+    pool_pre_palette = list(products)
 
     # Style / colour PREFERENCE filtering ("filter when available"): narrow to products matching BOTH
     # the chosen style and a chosen colour family when such products exist; otherwise honour whichever
@@ -179,10 +186,15 @@ def select_slots(
     if not zones:
         return SlotResult(None, None, None, {"reason": "no_zones"})
 
-    # relaxation ladder: strict -> include out-of-stock -> tight fit margin
+    # relaxation ladder: strict -> include out-of-stock -> tight fit margin. If the palette-filtered
+    # pool yields NO fit, repeat the ladder on the pre-palette pool - the palette is a preference, not a
+    # reason to drop the piece (a colour whose only rugs are oversized must not leave the room rug-less).
     gated: list[tuple[Product, ZoneData, list[str]]] = []
-    for margin, include_oos in ((1.0, False), (1.0, True), (1.05, True)):
-        gated = _gate(products, zones, margin, include_oos)
+    for pool in (products, pool_pre_palette):
+        for margin, include_oos in ((1.0, False), (1.0, True), (1.05, True)):
+            gated = _gate(pool, zones, margin, include_oos)
+            if gated:
+                break
         if gated:
             break
 
