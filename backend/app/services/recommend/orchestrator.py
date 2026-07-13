@@ -761,6 +761,14 @@ def _template_layout_score(resp: AssistLayoutResponse, analysis: RoomAnalysis) -
              "BLOCKS_WINDOW": 0.5}
     for fnd in resp.findings:
         score -= _WARN.get(fnd.code, 0.3 if fnd.severity == "warning" else 0.0)
+    # An accent chair is companion seating - it belongs CLOSE to the sofa (a conversation group), not
+    # stranded across the room. Penalise a chair that drifts far from the sofa, so a template that
+    # seats it BESIDE the sofa outranks one that exiles it to a far corner. (Soft: it re-orders, never
+    # drops - a room whose only option is a far chair still surfaces it.)
+    chairs = [p for p in resp.placements if p.category == "accent_chair"]
+    if chairs:
+        cd = min(((c.pose.x - sofa.pose.x) ** 2 + (c.pose.y - sofa.pose.y) ** 2) ** 0.5 for c in chairs)
+        score -= min(2.0, max(0.0, (cd - 250.0) / 120.0))
     score -= score_long_axis_penalty
     return score
 
@@ -969,6 +977,25 @@ def plan_layout_variants(
             key=lambda x: x[0], reverse=True,
         )
     rows = [r for _sc, r in pool[:max_variants]]
+    # Prefer templates that seat companion seating as a GROUP - an L-return sofa, or an accent chair
+    # BESIDE the sofa. Drop a template that is a lone sofa (the chair couldn't flank and was skipped)
+    # whenever a grouped alternative exists, so we never surface a lonely single sofa next to a proper
+    # conversation group. Kept only if nothing groups a companion (a genuinely constrained room), so
+    # the panel is never left empty.
+    def _grouped_companion(r: tuple) -> bool:
+        pl = r[2].placements
+        sfs = [p for p in pl if p.category == "sofa"]
+        if len(sfs) >= 2:
+            return True  # L-return (its adjacency to the primary is already enforced by _template_issues)
+        chs = [p for p in pl if p.category == "accent_chair"]
+        if not sfs or not chs:
+            return False  # lone sofa - no companion seat
+        prim = max(sfs, key=lambda p: p.product.width_cm)
+        return min(((c.pose.x - prim.pose.x) ** 2 + (c.pose.y - prim.pose.y) ** 2) ** 0.5 for c in chs) <= 300.0
+
+    grouped_rows = [r for r in rows if _grouped_companion(r)]
+    if grouped_rows:
+        rows = grouped_rows
     if not rows:  # every option is broken/misaligned - fall back to the single natural layout
         return [(f"{piece} layout", plan_layout_from_recipe(room, prefs, placed_items, room_type))]
 

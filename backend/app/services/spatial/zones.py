@@ -612,6 +612,17 @@ def _side_table_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats
     if secondary is not None:
         sec_item = secondary[0]
         target_side = 1.0 if dot(sub2((sec_item.x, sec_item.y), (item.x, item.y)), w) >= 0 else -1.0
+    # Keep the side table OFF the door side of the sofa - a table by the entry reads wrong. When no
+    # companion seat pins the side, steer it to the side AWAY from the door instead of the neutral
+    # default. (With a companion seat present the seat side wins; it's typically the door-free side.)
+    door_side = 0.0
+    door_pts = [sw.centroid for sw in analysis.swing_arcs.values()]
+    if door_pts:
+        dv = [dot(sub2((p.x, p.y), (item.x, item.y)), w) for p in door_pts]
+        if min(dv) > 20.0:
+            door_side = 1.0
+        elif max(dv) < -20.0:
+            door_side = -1.0
     blockers = _placed_blockers(placed)
     zones: list[ZoneData] = []
     for idx, side in enumerate((-1.0, 1.0)):
@@ -625,6 +636,8 @@ def _side_table_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats
             # Strongly prefer the companion-seat side; the other side stays only as a fallback
             # for when that side can't fit the table.
             score = 0.95 if side == target_side else 0.45
+        elif door_side != 0.0:
+            score = 0.9 if side == -door_side else 0.45  # away from the door
         else:
             score = 0.85 if side < 0 else 0.84
         zones.append(
@@ -713,6 +726,11 @@ def _accent_chair_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], sta
                 [R_CONVERSATION_ANGLE], "beside_seating", kind="free",
             )
         )
+    # A living-room accent chair is COMPANION seating - it only belongs BESIDE the sofa (a
+    # conversation group). If neither flank is available it is simply SKIPPED - NO corner fallback: a
+    # chair marooned in a corner isn't a living-room grouping (that's a bedroom reading-nook idea). The
+    # template layer instead prefers a wall that CAN group the chair, and falls to a clean single sofa
+    # only when no wall can.
     return _rank(zones, limit=2)
 
 
@@ -863,12 +881,15 @@ def _lighting_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: 
         f = front_vector(item.rotation_deg)
         near = add((item.x, item.y), f, product.depth_cm / 2.0)
         radius = 320.0
+    # Keep a floor lamp a real clearance off other furniture (a lamp 8cm from the console looks
+    # jammed): a 30cm blocker buffer, so it sits in a genuinely open corner near the seating rather
+    # than crammed beside the console/side table. Too tight a corner just drops the lamp.
     zones = _corner_spots(
         analysis, placed, "lighting", 55.0, max_zones=3,
-        near=near, near_radius=radius, reasons=[R_CORNER_LIGHT],
+        near=near, near_radius=radius, reasons=[R_CORNER_LIGHT], blocker_buffer=30.0,
     )
     if not zones:
-        zones = _corner_spots(analysis, placed, "lighting", 55.0, max_zones=3, reasons=[R_CORNER_LIGHT])
+        zones = _corner_spots(analysis, placed, "lighting", 55.0, max_zones=3, reasons=[R_CORNER_LIGHT], blocker_buffer=30.0)
     return zones
 
 
@@ -1067,9 +1088,13 @@ def _decor_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cat
     # Prefer corners near the seating, but consider EVERY corner (radius = room diagonal): in a
     # big room the near corners are often taken by lamps, so a plant should still fill an empty
     # far corner rather than being skipped.
+    # Keep the plant a real clearance off other furniture (like the floor lamp) - an 8cm buffer let it
+    # sit ~2cm from the service-table in a near-sofa corner. A 30cm buffer shrinks a crowded corner
+    # below the fit threshold, so the plant fills a genuinely EMPTY corner instead of crowding a piece.
     return _corner_spots(
         analysis, placed, "decor", 60.0, max_zones=4,
         near=near, near_radius=analysis.diag_cm if near else 0.0, reasons=[R_FLEXIBLE_SPOT],
+        blocker_buffer=30.0,
     )
 
 
