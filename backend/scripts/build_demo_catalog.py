@@ -13,7 +13,7 @@ synthesising them. We still:
 
 Usage:
     PYTHONPATH=. .venv/bin/python scripts/build_demo_catalog.py \
-        ../demo_products.csv app/data/catalog_stores.json
+        ../demo_products.csv spatial_planning/data/catalog_stores.json
 """
 
 from __future__ import annotations
@@ -24,8 +24,8 @@ import re
 import sys
 from collections import Counter
 
-from app.models.products import PLACEMENT_GROUP
-from app.models.style_metadata import STYLES, family_of
+from spatial_planning.models.products import PLACEMENT_GROUP
+from spatial_planning.models.style_metadata import STYLES, family_of
 
 ICON_BASE = "https://zory-temporary-uploads-backup.s3.ap-south-1.amazonaws.com"
 
@@ -217,7 +217,7 @@ def build(csv_path: str) -> tuple[list[dict], Counter]:
 
 def main() -> None:
     src = sys.argv[1] if len(sys.argv) > 1 else "../demo_products.csv"
-    out = sys.argv[2] if len(sys.argv) > 2 else "app/data/catalog_stores.json"
+    out = sys.argv[2] if len(sys.argv) > 2 else "spatial_planning/data/catalog_stores.json"
     products, rejects = build(src)
     json.dump(products, open(out, "w"), ensure_ascii=False, indent=2)
 

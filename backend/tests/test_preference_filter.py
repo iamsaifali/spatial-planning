@@ -5,12 +5,12 @@ differ ONLY in style/main_family - proving the preference (not the deterministic
 steers selection, and that an unmatched preference falls back instead of leaving a piece unplaceable.
 """
 
-from app.models.preferences import Preferences
-from app.models.products import Product
-from app.services.catalog.repository import CatalogRepository
-from app.services.recommend.selector import select_slots
-from app.services.spatial.analyze import analyze_room
-from app.services.spatial.zones import zones_for_category
+from spatial_planning.models.preferences import Preferences
+from spatial_planning.models.products import Product
+from spatial_planning.services.catalog.repository import CatalogRepository
+from spatial_planning.services.recommend.selector import select_slots
+from spatial_planning.services.spatial.analyze import analyze_room
+from spatial_planning.services.spatial.zones import zones_for_category
 
 
 def _sofa(pid: str, styles: list[str], family: str):

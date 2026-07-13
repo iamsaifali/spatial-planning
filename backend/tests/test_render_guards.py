@@ -2,29 +2,8 @@
 
 import base64
 
-import pytest
-
-from app.config import get_settings
-
 API = "/api/v1"
 ROOM = {"vertices": [[0, 0], [480, 0], [480, 360], [0, 360]]}
-
-
-@pytest.fixture()
-def keyed_client(tmp_path, monkeypatch):
-    """Client with a fake API key so guards beyond RENDER_DISABLED are reachable."""
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "t.db"))
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-fake-for-guard-tests")
-    get_settings.cache_clear()
-    from fastapi.testclient import TestClient
-
-    from app.main import create_app
-    from app.services.spatial.analyze import clear_cache
-
-    clear_cache()
-    with TestClient(create_app()) as c:
-        yield c
-    get_settings.cache_clear()
 
 
 def test_render_disabled_without_key(client):

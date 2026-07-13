@@ -4,13 +4,13 @@ Signals are additive and gated on the preference being supplied, so empty
 preferences must reproduce the pre-Phase-2 behaviour exactly.
 """
 
-from app.models.preferences import Preferences
-from app.models.products import Product
-from app.services.catalog.repository import CatalogRepository
-from app.services.recommend.scoring import preference_bonus, total_score
-from app.services.recommend.selector import select_slots
-from app.services.spatial.analyze import analyze_room
-from app.services.spatial.zones import zones_for_category
+from spatial_planning.models.preferences import Preferences
+from spatial_planning.models.products import Product
+from spatial_planning.services.catalog.repository import CatalogRepository
+from spatial_planning.services.recommend.scoring import preference_bonus, total_score
+from spatial_planning.services.recommend.selector import select_slots
+from spatial_planning.services.spatial.analyze import analyze_room
+from spatial_planning.services.spatial.zones import zones_for_category
 
 
 def _prod(pid: str, category: str = "sofa", **over) -> Product:
@@ -137,7 +137,7 @@ def test_seating_capacity_affects_ranking(rect_room, catalog_repo):
 
 
 def test_seating_considers_placed_items(rect_room, catalog_repo):
-    from app.models.geometry import PlacedItem
+    from spatial_planning.models.geometry import PlacedItem
 
     # target already met by a placed 3-seater -> no seating differentiation remains
     placed = [(PlacedItem(instance_id="s1", product_id="placed", x=0, y=0), _prod("placed", seating_capacity=3))]

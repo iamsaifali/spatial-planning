@@ -7,7 +7,7 @@ rows and non-placeable categories are dropped. Prints a rejects report.
 
 Usage:
     PYTHONPATH=. .venv/bin/python scripts/build_store_catalog.py \
-        ../samples_4stores.csv app/data/catalog_stores.json
+        ../samples_4stores.csv spatial_planning/data/catalog_stores.json
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import re
 import sys
 from collections import Counter
 
-from app.models.products import PLACEMENT_GROUP
+from spatial_planning.models.products import PLACEMENT_GROUP
 
 # The 2D-icon SVGs live in the same S3 bucket the existing catalog uses; the CSV carries the
 # relative object key, so we make it absolute. The frontend icon proxy (/api/icon) already
@@ -198,7 +198,7 @@ def build(csv_path: str) -> tuple[list[dict], Counter]:
 
 def main() -> None:
     src = sys.argv[1] if len(sys.argv) > 1 else "../samples_4stores.csv"
-    out = sys.argv[2] if len(sys.argv) > 2 else "app/data/catalog_stores.json"
+    out = sys.argv[2] if len(sys.argv) > 2 else "spatial_planning/data/catalog_stores.json"
     products, rejects = build(src)
     json.dump(products, open(out, "w"), ensure_ascii=False, indent=2)
 

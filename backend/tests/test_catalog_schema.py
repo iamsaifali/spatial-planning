@@ -6,9 +6,9 @@ living-room recommendations - only carry intent for future room-type support.
 
 import pytest
 
-from app.models.preferences import Preferences
-from app.models.products import Product
-from app.services.catalog.backfill import backfill_product, infer_seating_capacity
+from spatial_planning.models.preferences import Preferences
+from spatial_planning.models.products import Product
+from spatial_planning.services.catalog.backfill import backfill_product, infer_seating_capacity
 
 API = "/api/v1"
 

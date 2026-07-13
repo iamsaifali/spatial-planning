@@ -1,9 +1,9 @@
 """POST /assist/layout - deterministic whole-room auto-planner (now returns templates)."""
 
-from app.models.geometry import PlacedItem
-from app.models.validation import MUST_FIX_CODES
-from app.services.spatial.analyze import analyze_room
-from app.services.spatial.validate import validate_item
+from spatial_planning.models.geometry import PlacedItem
+from spatial_planning.models.validation import MUST_FIX_CODES
+from spatial_planning.services.spatial.analyze import analyze_room
+from spatial_planning.services.spatial.validate import validate_item
 
 API = "/api/v1"
 
@@ -68,7 +68,7 @@ def test_assist_layout_returns_distinct_named_templates(client):
 
 
 def test_assist_layout_placements_have_no_hard_errors(client, catalog_repo):
-    from app.models.geometry import Room
+    from spatial_planning.models.geometry import Room
 
     body = client.post(f"{API}/assist/layout", json=_payload()).json()
     room = Room.model_validate(ROOM)

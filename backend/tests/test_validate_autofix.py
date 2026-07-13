@@ -1,13 +1,13 @@
-from app.models.geometry import PlacedItem
-from app.models.validation import (
+from spatial_planning.models.geometry import PlacedItem
+from spatial_planning.models.validation import (
     BLOCKS_DOOR_SWING,
     MUST_FIX_CODES,
     OUT_OF_BOUNDS,
     OVERLAP_ITEM,
 )
-from app.services.spatial.analyze import analyze_room
-from app.services.spatial.autofix import find_autofix, find_better_placement
-from app.services.spatial.validate import validate_item
+from spatial_planning.services.spatial.analyze import analyze_room
+from spatial_planning.services.spatial.autofix import find_autofix, find_better_placement
+from spatial_planning.services.spatial.validate import validate_item
 
 
 def _sofa(catalog_repo):

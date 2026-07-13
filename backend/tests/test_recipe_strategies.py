@@ -8,12 +8,12 @@ and that center_area genuinely consumes size params.
 
 import pytest
 
-from app.models.geometry import Room
-from app.services.recipe.registry import get_recipe
-from app.services.recipe.strategies import STRATEGY_REGISTRY, resolve_strategy
-from app.services.spatial.analyze import analyze_room
-from app.services.spatial.strategies import SPATIAL_STRATEGIES, center_area
-from app.services.spatial.zones import zones_for_category
+from spatial_planning.models.geometry import Room
+from spatial_planning.services.recipe.registry import get_recipe
+from spatial_planning.services.recipe.strategies import STRATEGY_REGISTRY, resolve_strategy
+from spatial_planning.services.spatial.analyze import analyze_room
+from spatial_planning.services.spatial.strategies import SPATIAL_STRATEGIES, center_area
+from spatial_planning.services.spatial.zones import zones_for_category
 
 RECT = {
     "vertices": [[0, 0], [480, 0], [480, 360], [0, 360]],

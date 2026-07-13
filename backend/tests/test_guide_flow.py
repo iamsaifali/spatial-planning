@@ -1,8 +1,8 @@
 import pytest
 
-from app.errors import AppError
-from app.models.geometry import PlacedItem
-from app.services.guide.flow import completeness_pct, missing_essentials, require_step, steps_with_status
+from spatial_planning.errors import AppError
+from spatial_planning.models.geometry import PlacedItem
+from spatial_planning.services.guide.flow import completeness_pct, missing_essentials, require_step, steps_with_status
 
 
 def _placed(catalog_repo, category, iid):

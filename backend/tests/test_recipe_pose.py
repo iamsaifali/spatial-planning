@@ -5,13 +5,13 @@ settle_pose) and no longer re-derives zones via zones_for_category / suggest_pos
 tests prove that, broaden the equivalence coverage, and confirm shadow safety.
 """
 
-import app.services.recommend.orchestrator as orch
-import app.services.spatial.autofix as autofix_mod
-import app.services.spatial.strategies as strat_mod
-from app.models.geometry import PlacedItem, Room
-from app.models.preferences import Preferences
-from app.services.recipe.equivalence import compare_layouts
-from app.services.recommend.orchestrator import plan_layout, plan_layout_from_recipe
+import spatial_planning.services.recommend.orchestrator as orch
+import spatial_planning.services.spatial.autofix as autofix_mod
+import spatial_planning.services.spatial.strategies as strat_mod
+from spatial_planning.models.geometry import PlacedItem, Room
+from spatial_planning.models.preferences import Preferences
+from spatial_planning.services.recipe.equivalence import compare_layouts
+from spatial_planning.services.recommend.orchestrator import plan_layout, plan_layout_from_recipe
 
 GOLDEN_LIVING_PID = "lay_5f5d21801c"  # legacy
 GOLDEN_LIVING_RECIPE = "lay_cb5c145123"  # recipe (area-scaled); side_table now placed after accent_chair (depends_on) - identical poses, list reorder only
@@ -94,7 +94,7 @@ def test_shadow_still_returns_legacy(catalog_repo):
     import contextlib
     import os
 
-    from app.config import get_settings
+    from spatial_planning.config import get_settings
 
     @contextlib.contextmanager
     def mode(m):
@@ -281,7 +281,7 @@ GREAT_ROOM = {
 def test_great_room_floats_seating_and_wall_mounts_tv(catalog_repo):
     import math
     from shapely.geometry import Point
-    from app.services.spatial.analyze import analyze_room
+    from spatial_planning.services.spatial.analyze import analyze_room
 
     room = _room(GREAT_ROOM)
     resp = plan_layout_from_recipe(room, Preferences(styles=["modern"]), [])

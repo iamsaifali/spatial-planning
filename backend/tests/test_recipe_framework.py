@@ -7,9 +7,9 @@ construction; these tests lock in the equivalence the migration relies on.
 
 import pytest
 
-from app.models.geometry import Room
-from app.services.guide.flow import LIVING_ROOM_SEQUENCE, MAJLIS_SEQUENCE, sequence_for_room_type
-from app.services.recipe import (
+from spatial_planning.models.geometry import Room
+from spatial_planning.services.guide.flow import LIVING_ROOM_SEQUENCE, MAJLIS_SEQUENCE, sequence_for_room_type
+from spatial_planning.services.recipe import (
     PREDICATE_REGISTRY,
     STRATEGY_REGISTRY,
     all_recipes,
@@ -19,8 +19,8 @@ from app.services.recipe import (
     resolve_recipe_references,
     resolve_strategy,
 )
-from app.services.spatial.analyze import analyze_room
-from app.services.spatial.zones import zones_for_category
+from spatial_planning.services.spatial.analyze import analyze_room
+from spatial_planning.services.spatial.zones import zones_for_category
 
 
 # --- recipes load -----------------------------------------------------------------
@@ -75,7 +75,7 @@ def test_unknown_references_raise():
 
 
 def test_hard_predicates_map_to_real_finding_codes():
-    from app.models.validation import MUST_FIX_CODES
+    from spatial_planning.models.validation import MUST_FIX_CODES
 
     hard = [p for p in PREDICATE_REGISTRY.values() if p.kind == "hard"]
     assert hard, "expected some hard predicates"

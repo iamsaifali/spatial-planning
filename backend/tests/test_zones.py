@@ -1,6 +1,6 @@
-from app.models.geometry import PlacedItem
-from app.services.spatial.analyze import analyze_room
-from app.services.spatial.zones import anchor_pose, fits_zone, zones_for_category
+from spatial_planning.models.geometry import PlacedItem
+from spatial_planning.services.spatial.analyze import analyze_room
+from spatial_planning.services.spatial.zones import anchor_pose, fits_zone, zones_for_category
 
 
 def test_sofa_zone_on_clear_wall(rect_room, catalog_repo):
@@ -20,7 +20,7 @@ def test_sofa_anchor_pose_inside_room(rect_room, catalog_repo):
     zones = zones_for_category("sofa", analysis, [], catalog_repo.category_stats())
     product = catalog_repo.in_category("sofa")[0]
     pose = anchor_pose(zones[0], product, analysis)
-    from app.services.spatial.geometry_utils import item_polygon
+    from spatial_planning.services.spatial.geometry_utils import item_polygon
 
     poly = item_polygon(pose.x, pose.y, product.width_cm, product.depth_cm, pose.rotation_deg)
     assert poly.within(analysis.polygon.buffer(1.5))
@@ -65,8 +65,8 @@ def test_tiny_room_only_fits_compact_sofas(tiny_room, catalog_repo):
         for product in big_sofas:
             assert not fits_zone(zone, product), f"{product.id} should not fit a 2x2 m room"
 
-    from app.models.preferences import Preferences
-    from app.services.recommend.selector import select_slots
+    from spatial_planning.models.preferences import Preferences
+    from spatial_planning.services.recommend.selector import select_slots
 
     result = select_slots("sofa", zones, Preferences(), [], catalog_repo)
     if result.best is not None:

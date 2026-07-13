@@ -2,9 +2,9 @@ import math
 
 from shapely.prepared import prep
 
-from app.services.spatial.analyze import analyze_room
-from app.services.spatial.normalize import require_valid_room
-from app.services.spatial.walls import build_walls
+from spatial_planning.services.spatial.analyze import analyze_room
+from spatial_planning.services.spatial.normalize import require_valid_room
+from spatial_planning.services.spatial.walls import build_walls
 
 
 def test_wall_lengths_and_normals(rect_room):

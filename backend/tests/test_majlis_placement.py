@@ -7,14 +7,14 @@ never produce a TV-first layout - all without changing living-room behaviour.
 
 import math
 
-from app.models.geometry import PlacedItem, Room
-from app.models.preferences import Preferences
-from app.models.validation import MUST_FIX_CODES
-from app.services.catalog import get_repository
-from app.services.guide.flow import MAJLIS_SEQUENCE, sequence_for_room_type
-from app.services.recommend.orchestrator import plan_layout
-from app.services.spatial.analyze import analyze_room
-from app.services.spatial.validate import validate_item
+from spatial_planning.models.geometry import PlacedItem, Room
+from spatial_planning.models.preferences import Preferences
+from spatial_planning.models.validation import MUST_FIX_CODES
+from spatial_planning.services.catalog import get_repository
+from spatial_planning.services.guide.flow import MAJLIS_SEQUENCE, sequence_for_room_type
+from spatial_planning.services.recommend.orchestrator import plan_layout
+from spatial_planning.services.spatial.analyze import analyze_room
+from spatial_planning.services.spatial.validate import validate_item
 
 # A generous salon so benches can line several walls; door on the top wall.
 SALON = {
@@ -148,7 +148,7 @@ def test_living_room_flow_unchanged(catalog_repo):
 
 
 def test_majlis_fallback_when_no_majlis_products(catalog_repo):
-    from app.services.catalog import CatalogRepository, set_repository
+    from spatial_planning.services.catalog import CatalogRepository, set_repository
 
     original = get_repository()
     living_only = CatalogRepository([p for p in original.all() if "majlis" not in p.room_types])

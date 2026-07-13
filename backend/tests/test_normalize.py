@@ -1,8 +1,8 @@
 import pytest
 
-from app.errors import OPENING_INVALID, ROOM_INVALID, ROOM_TOO_LARGE, ROOM_TOO_SMALL, AppError
-from app.models.geometry import Door, Room
-from app.services.spatial.normalize import collect_room_issues, require_valid_room
+from spatial_planning.errors import OPENING_INVALID, ROOM_INVALID, ROOM_TOO_LARGE, ROOM_TOO_SMALL, AppError
+from spatial_planning.models.geometry import Door, Room
+from spatial_planning.services.spatial.normalize import collect_room_issues, require_valid_room
 
 
 def test_valid_room_passes(rect_room):

@@ -11,11 +11,11 @@ import os
 
 import pytest
 
-import app.services.recommend.orchestrator as orch
-from app.config import get_settings
-from app.models.geometry import Room
-from app.models.preferences import Preferences
-from app.services.recommend.orchestrator import plan_assist_layout, plan_layout
+import spatial_planning.services.recommend.orchestrator as orch
+from spatial_planning.config import get_settings
+from spatial_planning.models.geometry import Room
+from spatial_planning.models.preferences import Preferences
+from spatial_planning.services.recommend.orchestrator import plan_assist_layout, plan_layout
 
 GOLDEN_LIVING_PID = "lay_5f5d21801c"  # legacy (one-of-each) - rollback path
 GOLDEN_LIVING_RECIPE = "lay_cb5c145123"  # recipe (area-scaled accent pieces) - production; side_table placed after accent_chair (depends_on) - identical poses, list reorder only

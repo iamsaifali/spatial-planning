@@ -199,7 +199,7 @@ def convert(rows):
 
 def main():
     src_path = sys.argv[1] if len(sys.argv) > 1 else "/Users/haidermanzoor/Desktop/Zory_ai/backend/products_export.json"
-    out_path = sys.argv[2] if len(sys.argv) > 2 else "app/data/catalog_real.json"
+    out_path = sys.argv[2] if len(sys.argv) > 2 else "spatial_planning/data/catalog_real.json"
     rows = json.load(open(src_path))
     products, stats, rejected = convert(rows)
     json.dump(products, open(out_path, "w"), indent=1, ensure_ascii=False)

@@ -1,4 +1,4 @@
-"""Regenerates app/data/catalog.json (committed seed data).
+"""Regenerates spatial_planning/data/catalog.json (committed seed data).
 
 Deterministic: same script -> same catalog. Run from the backend directory:
     .venv/bin/python scripts/generate_catalog.py

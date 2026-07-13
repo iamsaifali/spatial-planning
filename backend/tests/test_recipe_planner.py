@@ -11,21 +11,21 @@ import os
 
 import pytest
 
-from app.config import get_settings
-from app.models.geometry import PlacedItem, Room
-from app.models.preferences import Preferences
-from app.models.validation import MUST_FIX_CODES
-from app.services.catalog import get_repository
-from app.services.recipe.equivalence import compare_layouts
-from app.services.recommend import orchestrator
-from app.services.recommend.orchestrator import (
+from spatial_planning.config import get_settings
+from spatial_planning.models.geometry import PlacedItem, Room
+from spatial_planning.models.preferences import Preferences
+from spatial_planning.models.validation import MUST_FIX_CODES
+from spatial_planning.services.catalog import get_repository
+from spatial_planning.services.recipe.equivalence import compare_layouts
+from spatial_planning.services.recommend import orchestrator
+from spatial_planning.services.recommend.orchestrator import (
     RecipeError,
     plan_assist_layout,
     plan_layout,
     plan_layout_from_recipe,
 )
-from app.services.spatial.analyze import analyze_room
-from app.services.spatial.validate import validate_item
+from spatial_planning.services.spatial.analyze import analyze_room
+from spatial_planning.services.spatial.validate import validate_item
 
 # Fixed inputs == those used for the golden capture (pre-refactor).
 LIVING_ROOM = {

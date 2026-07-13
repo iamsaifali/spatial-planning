@@ -1,9 +1,9 @@
-from app.models.geometry import PlacedItem
-from app.models.preferences import Preferences
-from app.models.recommend import NOTICE_NO_FIT
-from app.services.recommend.selector import select_slots
-from app.services.spatial.analyze import analyze_room
-from app.services.spatial.zones import anchor_pose, zones_for_category
+from spatial_planning.models.geometry import PlacedItem
+from spatial_planning.models.preferences import Preferences
+from spatial_planning.models.recommend import NOTICE_NO_FIT
+from spatial_planning.services.recommend.selector import select_slots
+from spatial_planning.services.spatial.analyze import analyze_room
+from spatial_planning.services.spatial.zones import anchor_pose, zones_for_category
 
 
 def test_sofa_slots_distinct_and_ordered(rect_room, catalog_repo):

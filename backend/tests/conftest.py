@@ -1,12 +1,59 @@
-import pytest
-from fastapi.testclient import TestClient
+import json as _json
+import os
 
-from app.config import get_settings
-from app.models.geometry import Door, Room, Window
+import django
+import pytest
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "project.settings")
+django.setup()
+
+from django.test import Client as _DjangoClient  # noqa: E402
+
+from spatial_planning.config import get_settings  # noqa: E402
+from spatial_planning.models.geometry import Door, Room, Window  # noqa: E402
 
 # Tests run against the small, fixed fixture catalog (NOT the large production catalog),
 # so golden layouts / counts stay stable as the real catalog grows.
-TEST_CATALOG = "app/data/catalog.json"
+TEST_CATALOG = "spatial_planning/data/catalog.json"
+
+
+class ApiClient:
+    """Thin adapter over Django's test client so tests keep the FastAPI-TestClient
+    call style: `client.get(url, params=...)` and `client.post(url, json=...)`."""
+
+    def __init__(self) -> None:
+        self._c = _DjangoClient()
+
+    def get(self, url, params=None):
+        return self._c.get(url, data=params)
+
+    def post(self, url, json=None):
+        body = _json.dumps(json) if json is not None else ""
+        return self._c.post(url, data=body, content_type="application/json")
+
+    def delete(self, url):
+        return self._c.delete(url)
+
+
+def _setup_repo_and_db(openai_key: str, db_path: str, monkeypatch):
+    """Load the fixture catalog + init a temp DB, then mark the Django lazy-bootstrap
+    done so the request middleware won't reload the production catalog."""
+    monkeypatch.setenv("DB_PATH", db_path)
+    monkeypatch.setenv("OPENAI_API_KEY", openai_key)
+    monkeypatch.setenv("CATALOG_PATH", TEST_CATALOG)
+    get_settings.cache_clear()
+
+    import spatial_planning.bootstrap as bootstrap
+    from spatial_planning.services.catalog import CatalogRepository, set_repository
+    from spatial_planning.services.persistence.db import init_db
+    from spatial_planning.services.spatial.analyze import clear_cache
+
+    clear_cache()
+    settings = get_settings()
+    set_repository(CatalogRepository.load(settings.resolve(TEST_CATALOG), settings.resolve(settings.static_dir)))
+    init_db(settings.resolve(settings.db_path))
+    bootstrap._done = True
+    return bootstrap
 
 
 @pytest.fixture()
@@ -60,7 +107,7 @@ def busy_room() -> Room:
 
 @pytest.fixture()
 def catalog_repo():
-    from app.services.catalog import CatalogRepository, set_repository
+    from spatial_planning.services.catalog import CatalogRepository, set_repository
 
     settings = get_settings()
     repo = CatalogRepository.load(
@@ -72,15 +119,17 @@ def catalog_repo():
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
-    monkeypatch.setenv("OPENAI_API_KEY", "")
-    monkeypatch.setenv("CATALOG_PATH", TEST_CATALOG)  # app under test uses the fixture catalog
+    """API client with no OpenAI key (LLM disabled → offline copy)."""
+    bootstrap = _setup_repo_and_db("", str(tmp_path / "test.db"), monkeypatch)
+    yield ApiClient()
+    bootstrap._done = False
     get_settings.cache_clear()
-    from app.main import create_app
-    from app.services.spatial.analyze import clear_cache
 
-    clear_cache()
-    app = create_app()
-    with TestClient(app) as c:
-        yield c
+
+@pytest.fixture()
+def keyed_client(tmp_path, monkeypatch):
+    """API client with a fake API key so guards beyond RENDER_DISABLED are reachable."""
+    bootstrap = _setup_repo_and_db("sk-fake-for-guard-tests", str(tmp_path / "t.db"), monkeypatch)
+    yield ApiClient()
+    bootstrap._done = False
     get_settings.cache_clear()

@@ -2,7 +2,7 @@
 
 import math
 
-from app.services.spatial.geometry_utils import (
+from spatial_planning.services.spatial.geometry_utils import (
     front_vector,
     item_polygon,
     rotation_for_normal,

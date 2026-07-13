@@ -6,12 +6,12 @@ rank them - all WITHOUT changing living-room behaviour (placement is still the
 existing living-room geometry; Majlis perimeter zones are a later phase).
 """
 
-from app.models.preferences import Preferences
-from app.models.products import Product
-from app.services.recommend.scoring import total_score
-from app.services.recommend.selector import select_slots
-from app.services.spatial.analyze import analyze_room
-from app.services.spatial.zones import zones_for_category
+from spatial_planning.models.preferences import Preferences
+from spatial_planning.models.products import Product
+from spatial_planning.services.recommend.scoring import total_score
+from spatial_planning.services.recommend.selector import select_slots
+from spatial_planning.services.spatial.analyze import analyze_room
+from spatial_planning.services.spatial.zones import zones_for_category
 
 API = "/api/v1"
 
@@ -125,6 +125,6 @@ def test_majlis_products_browsable_via_api(client):
 
 
 def _room():
-    from app.models.geometry import Room
+    from spatial_planning.models.geometry import Room
 
     return Room.model_validate(MAJLIS_ROOM)

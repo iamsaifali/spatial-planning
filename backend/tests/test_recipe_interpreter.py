@@ -6,18 +6,18 @@ proof that the recipe path reproduces the legacy planner.
 
 import pytest
 
-from app.models.geometry import Room
-from app.models.preferences import Preferences
-from app.services.recipe.equivalence import compare_layouts
-from app.services.recipe.models import (
+from spatial_planning.models.geometry import Room
+from spatial_planning.models.preferences import Preferences
+from spatial_planning.services.recipe.equivalence import compare_layouts
+from spatial_planning.services.recipe.models import (
     CountRule,
     PredicateRef,
     Recipe,
     RoleDefinition,
     ZoneStrategyRef,
 )
-from app.services.recipe.registry import get_recipe
-from app.services.recommend.orchestrator import (
+from spatial_planning.services.recipe.registry import get_recipe
+from spatial_planning.services.recommend.orchestrator import (
     RecipeError,
     _execute_role,
     _PlanState,
@@ -26,7 +26,7 @@ from app.services.recommend.orchestrator import (
     plan_layout,
     plan_layout_from_recipe,
 )
-from app.services.spatial.analyze import analyze_room
+from spatial_planning.services.spatial.analyze import analyze_room
 
 RECT = {
     "vertices": [[0, 0], [480, 0], [480, 360], [0, 360]],
