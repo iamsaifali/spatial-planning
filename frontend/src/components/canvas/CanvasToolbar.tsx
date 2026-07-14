@@ -6,7 +6,6 @@ import {
   EyeOff,
   LayoutTemplate,
   MousePointer2,
-  PackagePlus,
   PenLine,
   RectangleHorizontal,
   Redo2,
@@ -19,7 +18,6 @@ import { DOOR_WIDTH_PRESETS, WINDOW_WIDTH_PRESETS } from "@/lib/constants";
 import { redo, undo } from "@/stores/plannerStore";
 import { useGuideStore } from "@/stores/guideStore";
 import { useUiStore, type Tool } from "@/stores/uiStore";
-import { CustomItemDialog } from "./CustomItemDialog";
 import { RoomTemplatesDialog } from "./RoomTemplatesDialog";
 
 const TOOLS: { key: Tool; icon: typeof MousePointer2; label: string; shortcut: string }[] = [
@@ -69,7 +67,6 @@ export function CanvasToolbar() {
   const overlaysVisible = useGuideStore((s) => s.overlaysVisible);
   const toggleOverlays = useGuideStore((s) => s.toggleOverlays);
   const [templatesOpen, setTemplatesOpen] = useState(false);
-  const [customOpen, setCustomOpen] = useState(false);
 
   const showWidths = tool === "door" || tool === "window";
   const presets = tool === "door" ? DOOR_WIDTH_PRESETS : WINDOW_WIDTH_PRESETS;
@@ -108,12 +105,6 @@ export function CanvasToolbar() {
             />
           ))}
           <span className="mx-1 h-5 w-px shrink-0 bg-line" aria-hidden />
-          <ToolbarButton
-            icon={PackagePlus}
-            label="Your Item"
-            title="Add an item you already own"
-            onClick={() => setCustomOpen(true)}
-          />
           <ToolbarButton icon={LayoutTemplate} label="Templates" onClick={() => setTemplatesOpen(true)} />
           <ToolbarButton
             icon={overlaysVisible ? Eye : EyeOff}
@@ -139,7 +130,6 @@ export function CanvasToolbar() {
         )}
       </div>
       <RoomTemplatesDialog open={templatesOpen} onClose={() => setTemplatesOpen(false)} />
-      <CustomItemDialog open={customOpen} onClose={() => setCustomOpen(false)} />
     </>
   );
 }

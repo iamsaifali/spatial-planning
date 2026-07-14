@@ -170,26 +170,3 @@ def test_repository_room_type_and_region_filters(catalog_repo):
     assert total == 10  # Majlis seed adds Saudi-origin products
     items, total = catalog_repo.search(luxury_tier="standard")
     assert total == 102  # 100 living-origin standard + 2 standard beds
-
-
-def test_products_api_supports_new_filters(client):
-    # all sofas: 16 living-room + 6 Majlis = 22
-    r = client.get(f"{API}/products", params={"category": "sofa"})
-    assert r.status_code == 200 and r.json()["total"] == 22
-    # room_type filter excludes Majlis-only sofas -> back to the 16 living-room sofas
-    r = client.get(f"{API}/products", params={"room_type": "living_room", "category": "sofa"})
-    assert r.status_code == 200 and r.json()["total"] == 16
-    r = client.get(f"{API}/products", params={"region": "saudi_arabia"})
-    assert r.status_code == 200 and r.json()["total"] == 10
-
-
-def test_existing_living_room_recommendation_still_works(client):
-    """Guard: the new fields must not change living-room recommendations."""
-    room = {
-        "vertices": [[0, 0], [480, 0], [480, 360], [0, 360]],
-        "doors": [{"id": "d1", "wall_index": 0, "offset_cm": 40, "width_cm": 90}],
-        "windows": [{"id": "w1", "wall_index": 2, "offset_cm": 140, "width_cm": 180}],
-    }
-    r = client.post(f"{API}/guide/step/sofa", json={"room": room, "placed_items": []})
-    assert r.status_code == 200
-    assert len(r.json()["recommendations"]) == 3

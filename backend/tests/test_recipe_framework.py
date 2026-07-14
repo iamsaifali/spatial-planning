@@ -8,7 +8,7 @@ construction; these tests lock in the equivalence the migration relies on.
 import pytest
 
 from spatial_planning.models.geometry import Room
-from spatial_planning.services.guide.flow import LIVING_ROOM_SEQUENCE, MAJLIS_SEQUENCE, sequence_for_room_type
+from spatial_planning.services.guide.flow import LIVING_ROOM_SEQUENCE, sequence_for_room_type
 from spatial_planning.services.recipe import (
     PREDICATE_REGISTRY,
     STRATEGY_REGISTRY,
@@ -32,18 +32,12 @@ def test_living_room_recipe_loads():
     assert r.roles[0].role == "primary_seating"
 
 
-def test_majlis_recipe_loads():
-    r = get_recipe("majlis")
-    assert r is not None and r.recipe_id == "majlis.standard"
-    assert r.roles[0].role == "perimeter_seating"
-
-
 def test_unknown_room_type_returns_none():
     assert get_recipe("dining") is None  # not registered yet
 
 
 def test_registry_has_registered_recipes():
-    assert set(all_recipes()) == {"living_room", "majlis", "bedroom"}
+    assert set(all_recipes()) == {"living_room", "bedroom"}
 
 
 # --- references resolve ------------------------------------------------------------
@@ -101,17 +95,6 @@ def test_living_room_recipe_extends_current_sequence():
     assert seq.count("sofa") == 2  # primary + the L-return
 
 
-def test_majlis_recipe_matches_current_sequence():
-    assert get_recipe("majlis").category_sequence() == MAJLIS_SEQUENCE
-    assert get_recipe("majlis").category_sequence() == sequence_for_room_type("majlis")
-
-
-def test_fidelity_assertion_passes_for_majlis():
-    # majlis still faithfully reproduces the legacy planner. living_room intentionally
-    # diverges now (it adds the big-room L-return sofa), so it is exempt from strict fidelity.
-    assert_recipe_matches_current("majlis")
-
-
 def test_strategy_resolver_produces_identical_zones_to_current(catalog_repo):
     """A strategy reference resolves to zone-producing code byte-identical to today."""
     room = Room.model_validate(
@@ -125,12 +108,12 @@ def test_strategy_resolver_produces_identical_zones_to_current(catalog_repo):
     analysis = analyze_room(room)
     stats = catalog_repo.category_stats()
 
-    recipe = get_recipe("majlis")
-    seating = recipe.roles[0]  # perimeter_seating -> "perimeter_walls" -> sofa
+    recipe = get_recipe("living_room")
+    seating = recipe.roles[0]  # primary_seating -> "focal_wall" -> sofa
     strategy = resolve_strategy(seating.zone_strategy.name)
 
-    via_recipe = strategy.resolver("sofa", "majlis", analysis, [], stats, seating.zone_strategy.params)
-    via_current = zones_for_category("sofa", analysis, [], stats, room_type="majlis")
+    via_recipe = strategy.resolver("sofa", "living_room", analysis, [], stats, seating.zone_strategy.params)
+    via_current = zones_for_category("sofa", analysis, [], stats, room_type="living_room")
 
     assert [z.id for z in via_recipe] == [z.id for z in via_current]
     assert [z.reason_codes for z in via_recipe] == [z.reason_codes for z in via_current]
@@ -143,7 +126,6 @@ def test_count_modes_per_recipe():
     """The distinctive count modes each recipe relies on."""
     modes = {rt: {r.role: r.count.mode for r in get_recipe(rt).roles} for rt in all_recipes()}
     # multi-instance signatures
-    assert modes["majlis"]["perimeter_seating"] == "until_target"
     assert modes["bedroom"]["bedside_support"] == "mirror_pair"
     # the corner plant is a SINGLE piece (one flower-pot-and-plant per living room, any size);
     # lamps still scale with area
@@ -154,4 +136,3 @@ def test_count_modes_per_recipe():
     # essentials stay single
     assert modes["living_room"]["primary_seating"] == "single"
     assert modes["bedroom"]["primary_sleeping"] == "single"
-    assert modes["majlis"]["floor_anchor"] == "single"

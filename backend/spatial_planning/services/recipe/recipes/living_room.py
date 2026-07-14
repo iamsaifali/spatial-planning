@@ -18,10 +18,6 @@ LIVING_ROOM_RECIPE = Recipe(
     room_type="living_room",
     focal_strategy="longest_wall",
     room_goals=["conversation_focus"],
-    # No secondary seating vignette: a large living room keeps ONE conversation group
-    # (the open floor behind the floated seating stays open) rather than sprouting a second
-    # cluster of chairs/table/lamp beside it.
-    compose_secondary=False,
     roles=[
         role("primary_seating", "sofa", "focal_wall",
              ["against_wall", "not_block_door"], essential=True),

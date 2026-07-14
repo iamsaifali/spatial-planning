@@ -1,102 +1,35 @@
 "use client";
 
-/** Orchestrates the place -> validate -> warn -> fix loop shared by
- *  recommendation cards, the quick-add tray and canvas drags. */
+/** "Assist with AI": request a whole-room layout, preview it as ghosts, accept/dismiss.
+ *  Plus the client-side item operations (move, auto-fix, remove) the canvas uses.
+ *
+ *  The assist-only backend has no per-item validate/suggest endpoint, so there are no
+ *  live collision warnings — items move freely and `validateItem` is a no-op kept so the
+ *  canvas drag handlers still have something to call. */
 
-import { api, ApiError, NetworkError, debounced } from "@/lib/api";
-import { useGuideStore } from "@/stores/guideStore";
-import { newInstanceId, usePlannerStore } from "@/stores/plannerStore";
+import { api, ApiError, NetworkError } from "@/lib/api";
+import { usePlannerStore } from "@/stores/plannerStore";
 import { usePrefsStore } from "@/stores/prefsStore";
 import { useProductStore } from "@/stores/productStore";
 import { useUiStore } from "@/stores/uiStore";
-import type { AssistLayoutResponse, AssistTemplate, PlacedItem, Pose, Product } from "@/types/api";
+import type { AssistLayoutResponse, AssistTemplate, PlacedItem, Pose } from "@/types/api";
 
-function othersOf(instanceId: string): PlacedItem[] {
-  return usePlannerStore.getState().items.filter((i) => i.instance_id !== instanceId);
+/** No live validation on the assist-only backend; clear any stale pending/warning state. */
+export function validateItem(instanceId: string): void {
+  const ui = useUiStore.getState();
+  ui.setPendingValidation(null);
+  if (ui.warning?.instanceId === instanceId) ui.setWarning(null);
 }
 
-export async function validateItem(instanceId: string): Promise<void> {
-  const { room, items } = usePlannerStore.getState();
-  const item = items.find((i) => i.instance_id === instanceId);
-  const ui = useUiStore.getState();
-  if (!item) {
-    ui.setWarning(null);
-    return;
-  }
-  ui.setPendingValidation(instanceId);
-  try {
-    const result = await api.validatePlacement(room, othersOf(instanceId), item);
-    const current = useUiStore.getState();
-    current.setPendingValidation(null);
-    if (result.findings.length > 0) {
-      current.setWarning({ instanceId, result });
-    } else if (current.warning?.instanceId === instanceId) {
-      current.setWarning(null);
-    }
-  } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") return;
-    useUiStore.getState().setPendingValidation(null);
-    if (err instanceof NetworkError) {
-      useUiStore.getState().toast("error", err.message);
-    }
-  }
-}
-
-export const validateItemDebounced = debounced((instanceId: string) => {
-  void validateItem(instanceId);
-}, 300);
-
-export async function addProductToRoom(
-  product: Product,
-  opts: { pose?: Pose; zoneId?: string | null; advance?: boolean } = {},
-): Promise<string | null> {
-  const planner = usePlannerStore.getState();
-  const ui = useUiStore.getState();
-  useProductStore.getState().remember([product]);
-
-  let pose = opts.pose ?? null;
-  let zoneId = opts.zoneId ?? null;
-  if (!pose) {
-    try {
-      const suggestion = await api.suggestPlacement(
-        planner.room,
-        planner.items,
-        product.id,
-        opts.zoneId,
-      );
-      pose = suggestion.pose;
-      zoneId = suggestion.zone_id;
-    } catch (err) {
-      if (err instanceof ApiError || err instanceof NetworkError) {
-        ui.toast("error", err.message);
-      }
-      return null;
-    }
-  }
-
-  const instanceId = newInstanceId(product.id);
-  planner.addItem({
-    instance_id: instanceId,
-    product_id: product.id,
-    x: pose.x,
-    y: pose.y,
-    rotation_deg: pose.rotation_deg,
-    zone_id: zoneId,
-  });
-  ui.select(instanceId);
-  void validateItem(instanceId);
-
-  if (opts.advance !== false) {
-    useGuideStore.getState().advanceAfterPlacement();
-  }
-  return instanceId;
+export function validateItemDebounced(instanceId: string): void {
+  validateItem(instanceId);
 }
 
 export function applyAutofix(instanceId: string, pose: Pose): void {
   usePlannerStore.getState().moveItem(instanceId, pose);
   useUiStore.getState().setWarning(null);
   useUiStore.getState().setGhost(null);
-  void validateItem(instanceId);
+  validateItem(instanceId);
 }
 
 export function showBetterPlacement(instanceId: string, pose: Pose): void {
@@ -120,89 +53,6 @@ export function keepAnyway(): void {
   useUiStore.getState().setGhost(null);
 }
 
-export async function swapProduct(instanceId: string, next: Product): Promise<void> {
-  const planner = usePlannerStore.getState();
-  const item = planner.items.find((i) => i.instance_id === instanceId);
-  if (!item) return;
-  useProductStore.getState().remember([next]);
-
-  // try keeping the current pose; if the new piece can't sit there, re-suggest
-  planner.swapItem(instanceId, next.id);
-  try {
-    const result = await api.validatePlacement(
-      planner.room,
-      othersOf(instanceId),
-      { ...item, product_id: next.id },
-    );
-    const hasErrors = result.findings.some((f) => f.severity === "error");
-    if (hasErrors && result.better_placement) {
-      planner.moveItem(instanceId, result.better_placement.pose);
-    } else if (hasErrors && result.autofix) {
-      planner.moveItem(instanceId, result.autofix.pose);
-    }
-    void validateItem(instanceId);
-  } catch {
-    // validation is advisory; the swap itself already happened
-  }
-  useUiStore.getState().toast("success", `Swapped to ${next.name}`);
-}
-
-let customCounter = 0;
-
-/** Place an item the user already owns ("existing items you want to keep"). */
-export function addCustomItemToRoom(spec: {
-  name: string;
-  width_cm: number;
-  depth_cm: number;
-  height_cm: number;
-}): string {
-  customCounter += 1;
-  const productId = `custom-${Date.now().toString(36)}-${customCounter}`;
-  const pseudo: Product = {
-    id: productId,
-    name: spec.name,
-    brand: "Your item",
-    category: "custom",
-    price: 0,
-    mrp: null,
-    width_cm: spec.width_cm,
-    depth_cm: spec.depth_cm,
-    height_cm: spec.height_cm,
-    style_tags: [],
-    colors: [],
-    materials: [],
-    in_stock: true,
-    delivery_days: 1,
-    rating: 0,
-    attrs: {},
-    image_url: "",
-    is_walkable: false,
-    shape: "rect",
-    description: "",
-  };
-  useProductStore.getState().remember([pseudo]);
-
-  const planner = usePlannerStore.getState();
-  // drop it near the room centre; the user drags it to where it lives
-  const xs = planner.room.vertices.map((v) => v[0]);
-  const ys = planner.room.vertices.map((v) => v[1]);
-  const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
-  const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-
-  const instanceId = newInstanceId(productId);
-  planner.addItem({
-    instance_id: instanceId,
-    product_id: productId,
-    x: cx,
-    y: cy,
-    rotation_deg: 0,
-    custom: spec,
-  });
-  useUiStore.getState().select(instanceId);
-  void validateItem(instanceId);
-  return instanceId;
-}
-
 export function removeItem(instanceId: string): void {
   usePlannerStore.getState().removeItem(instanceId);
   const ui = useUiStore.getState();
@@ -215,7 +65,7 @@ export function removeItem(instanceId: string): void {
 
 /** Stage a backend proposal as ghost items (nothing committed until the user accepts). */
 export function previewLayout(proposal: AssistLayoutResponse): void {
-  // remember products so the ghost furniture (and later the cart/summary) can render
+  // remember products so the ghost furniture can render (dims / image by id)
   useProductStore.getState().remember(proposal.placements.map((p) => p.product));
   const ghosts: PlacedItem[] = proposal.placements.map((p) => ({
     instance_id: p.instance_id,
@@ -237,8 +87,9 @@ export async function requestLayout(): Promise<AssistTemplate[]> {
   const { preferences } = usePrefsStore.getState();
   try {
     const { templates } = await api.assistLayout(planner.room, planner.items, preferences, {
-      // preferences.room_type drives the sequence/zones/filtering; pass it explicitly too
-      room_type: preferences.room_type ?? "living_room",
+      // only living_room / bedroom are planner room types; clamp anything else (e.g. a
+      // stale persisted "majlis" pref) to living_room so the backend always has a recipe
+      room_type: preferences.room_type === "bedroom" ? "bedroom" : "living_room",
     });
     const rec = templates.find((t) => t.recommended) ?? templates[0];
     if (!rec || rec.layout.placements.length === 0) {
@@ -259,50 +110,20 @@ export async function requestLayout(): Promise<AssistTemplate[]> {
   }
 }
 
-/** Commit every ghost as a real placed item (re-minted ids), then re-validate. */
+/** Commit every ghost as a real placed item (re-minted ids). */
 export function acceptLayout(): void {
   const planner = usePlannerStore.getState();
   if (planner.proposedItems.length === 0) return;
   planner.acceptProposedItems();
-  useUiStore.getState().toast("success", "Layout added - drag to fine-tune or render an image.");
-  void revalidateAll();
+  useUiStore.getState().toast("success", "Layout added - drag to fine-tune.");
 }
 
 /** Commit a single ghost (used when the user taps one suggested item on the canvas). */
 export function acceptOne(instanceId: string): void {
   usePlannerStore.getState().acceptProposedItem(instanceId);
-  void revalidateAll();
 }
 
 /** Drop all pending ghosts without committing anything. */
 export function dismissLayout(): void {
   usePlannerStore.getState().clearProposedItems();
-}
-
-/** After room edits: re-check every placed item and badge the troubled ones. */
-export async function revalidateAll(): Promise<void> {
-  const { room, items } = usePlannerStore.getState();
-  const issues: Record<string, "error" | "warning"> = {};
-  for (const item of items) {
-    try {
-      const result = await api.validatePlacement(
-        room,
-        items.filter((i) => i.instance_id !== item.instance_id),
-        item,
-      );
-      const worst = result.findings.reduce<"error" | "warning" | null>((acc, f) => {
-        if (f.severity === "error") return "error";
-        if (f.severity === "warning" && acc !== "error") return "warning";
-        return acc;
-      }, null);
-      if (worst) issues[item.instance_id] = worst;
-    } catch {
-      return; // backend unreachable - badges would be stale guesses
-    }
-  }
-  useUiStore.getState().setItemIssues(issues);
-  const count = Object.keys(issues).length;
-  if (count > 0) {
-    useUiStore.getState().toast("info", `Room changed - ${count} item${count > 1 ? "s" : ""} may need repositioning.`);
-  }
 }

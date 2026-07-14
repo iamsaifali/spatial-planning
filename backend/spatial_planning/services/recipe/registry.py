@@ -1,13 +1,12 @@
 """Recipe registry / loader.
 
 Recipes register on import (they are authored, versioned artifacts — never generated
-at request time). Phase 1 ships living_room and majlis.
+at request time). Ships living_room and bedroom.
 """
 
 from spatial_planning.services.recipe.models import Recipe
 from spatial_planning.services.recipe.recipes.bedroom import BEDROOM_RECIPE
 from spatial_planning.services.recipe.recipes.living_room import LIVING_ROOM_RECIPE
-from spatial_planning.services.recipe.recipes.majlis import MAJLIS_RECIPE
 
 _RECIPES: dict[str, Recipe] = {}
 
@@ -26,5 +25,4 @@ def all_recipes() -> dict[str, Recipe]:
 
 
 register_recipe(LIVING_ROOM_RECIPE)
-register_recipe(MAJLIS_RECIPE)
 register_recipe(BEDROOM_RECIPE)

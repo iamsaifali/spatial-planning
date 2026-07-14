@@ -1,11 +1,10 @@
 """Shared request helpers for routers."""
 
-from spatial_planning.config import get_settings
-from spatial_planning.errors import DUPLICATE_INSTANCE, UNSUPPORTED_CURRENCY, AppError
+from spatial_planning.errors import DUPLICATE_INSTANCE, AppError
 from spatial_planning.models.geometry import PlacedItem
 from spatial_planning.models.products import Product
 from spatial_planning.services.catalog import get_repository
-from spatial_planning.services.spatial.core import RoomAnalysis, WallData, ZoneData
+from spatial_planning.services.spatial.core import WallData
 
 PlacedProduct = tuple[PlacedItem, Product]
 
@@ -32,27 +31,6 @@ def _pseudo_product(item: PlacedItem) -> Product:
         image_url="",
         is_walkable=False,
     )
-
-
-def resolve_currency(requested: str | None) -> str:
-    """Display currency for the request - validated against SUPPORTED_CURRENCIES."""
-    settings = get_settings()
-    if requested is None:
-        return settings.default_currency
-    code = requested.upper()
-    if code not in settings.supported_currencies:
-        raise AppError(
-            code=UNSUPPORTED_CURRENCY,
-            message=f"Currency '{requested}' is not supported. Use one of: "
-            + ", ".join(settings.supported_currencies),
-            status_code=422,
-        )
-    return code
-
-
-def to_display_amount(base_amount: int | float, currency: str) -> int:
-    """Convert a BASE_CURRENCY amount for display/order records (whole units)."""
-    return round(base_amount * get_settings().rate_for(currency))
 
 
 def resolve_item(item: PlacedItem) -> Product:
@@ -89,30 +67,3 @@ def wall_label(wall: WallData) -> str:
     if nx < -0.7:
         return "right"
     return "angled"
-
-
-def zone_guidance_facts(
-    category: str,
-    analysis: RoomAnalysis,
-    zones: list[ZoneData],
-    placed: list[PlacedProduct],
-) -> dict:
-    facts: dict = {
-        "category": category,
-        "room_area_m2": round(analysis.area_cm2 / 10_000.0, 1),
-        "placed_count": len(placed),
-        "placed_categories": sorted({p.category for _i, p in placed}),
-        "has_zone": bool(zones),
-        "reason_codes": [],
-    }
-    if zones:
-        best = zones[0]
-        facts["reason_codes"] = best.reason_codes
-        facts["zone_anchor"] = best.anchor_label
-        if best.kind == "wall_band" and best.wall_index is not None:
-            facts["wall_label"] = wall_label(analysis.walls[best.wall_index])
-            if best.seg:
-                facts["zone_len_cm"] = round(best.seg[1] - best.seg[0])
-        elif best.lat_len:
-            facts["zone_len_cm"] = round(best.lat_len)
-    return facts

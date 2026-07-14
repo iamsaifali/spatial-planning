@@ -1,27 +1,15 @@
-/** Typed API client with the backend's error envelope, abortable dedupe and debounce. */
+/** Typed API client with the backend's error envelope, abortable dedupe and debounce.
+ *  Assist-only backend: just health, config and the whole-room auto-layout. */
 
 import { API_V1 } from "@/lib/constants";
 import type {
-  AnalysisResponse,
   ApiErrorBody,
   AppConfigResponse,
-  AssistantResponse,
   AssistLayoutOptions,
-  DesignCreateResponse,
-  DesignResponse,
   HealthResponse,
-  OrderResponse,
   PlacedItem,
   Preferences,
-  ProductListResponse,
-  RenderResponse,
   Room,
-  RoomValidateResponse,
-  StepResponse,
-  StepsResponse,
-  SuggestResponse,
-  SummaryResponse,
-  ValidateResponse,
 } from "@/types/api";
 
 export class ApiError extends Error {
@@ -98,20 +86,6 @@ export const api = {
 
   config: () => request<AppConfigResponse>("/config"),
 
-  validateRoom: (room: Room) =>
-    latest("rooms/validate", (s) => post<RoomValidateResponse>("/rooms/validate", { room }, s)),
-
-  analyzeRoom: (room: Room) =>
-    latest("rooms/analyze", (s) => post<AnalysisResponse>("/rooms/analyze", { room }, s)),
-
-  guideSteps: (room: Room, placed_items: PlacedItem[]) =>
-    post<StepsResponse>("/guide/steps", { room, placed_items }),
-
-  guideStep: (stepKey: string, room: Room, preferences: Preferences, placed_items: PlacedItem[]) =>
-    latest(`guide/${stepKey}`, (s) =>
-      post<StepResponse>(`/guide/step/${stepKey}`, { room, preferences, placed_items }, s),
-    ),
-
   /** Whole-room deterministic auto-layout for "Assist with AI". No LLM picks coordinates. */
   assistLayout: (
     room: Room,
@@ -132,47 +106,6 @@ export const api = {
         s,
       ),
     ),
-
-  suggestPlacement: (room: Room, placed_items: PlacedItem[], product_id: string, zone_id?: string | null) =>
-    post<SuggestResponse>("/placement/suggest", { room, placed_items, product_id, zone_id }),
-
-  validatePlacement: (room: Room, placed_items: PlacedItem[], item: PlacedItem) =>
-    latest(`validate/${item.instance_id}`, (s) =>
-      post<ValidateResponse>("/placement/validate", { room, placed_items, item }, s),
-    ),
-
-  products: (params: Record<string, string | number | boolean | undefined>) => {
-    const query = Object.entries(params)
-      .filter(([, v]) => v !== undefined && v !== "")
-      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
-      .join("&");
-    return request<ProductListResponse>(`/products${query ? `?${query}` : ""}`);
-  },
-
-  summary: (room: Room, placed_items: PlacedItem[], preferences: Preferences, currency?: string) =>
-    post<SummaryResponse>("/summary", { room, placed_items, preferences, currency }),
-
-  render: (
-    room: Room,
-    placed_items: PlacedItem[],
-    preferences: Preferences,
-    canvas_png_b64: string,
-    signal?: AbortSignal,
-  ) => post<RenderResponse>("/render", { room, placed_items, preferences, canvas_png_b64 }, signal),
-
-  ask: (question: string, room: Room, placed_items: PlacedItem[], preferences: Preferences, step_key?: string) =>
-    post<AssistantResponse>("/assistant/ask", { question, room, placed_items, preferences, step_key }),
-
-  saveDesign: (name: string | null, room: Room, placed_items: PlacedItem[], preferences: Preferences) =>
-    post<DesignCreateResponse>("/designs", { name, room, placed_items, preferences }),
-
-  getDesign: (id: string) => request<DesignResponse>(`/designs/${encodeURIComponent(id)}`),
-
-  checkout: (
-    items: { product_id: string; qty: number }[],
-    contact: { name: string; email: string },
-    currency?: string,
-  ) => post<OrderResponse>("/checkout", { items, contact, currency }),
 };
 
 export function debounced<A extends unknown[]>(fn: (...args: A) => void, ms: number) {

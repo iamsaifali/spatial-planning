@@ -37,8 +37,8 @@ MIDDLEWARE = [
 ROOT_URLCONF = "project.urls"
 WSGI_APPLICATION = "project.wsgi.application"
 
-# Django requires DATABASES defined even though we never touch the ORM (designs/orders
-# use the app's own stdlib sqlite via spatial_planning.services.persistence.db).
+# Django requires DATABASES defined even though the app never touches the ORM (it is
+# stateless: no models, no persistence).
 DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
 
 # CORS: origins from the app config, credentials allowed (mirrors the prior setup).

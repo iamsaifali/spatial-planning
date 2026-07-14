@@ -1,36 +1,18 @@
 "use client";
 
 import { create } from "zustand";
-import { api } from "@/lib/api";
 import type { Product } from "@/types/api";
 
+/** In-memory cache of products the assist layout has returned, keyed by id, so the
+ *  canvas and 3D view can look up dimensions/images by product id. Populated via
+ *  `remember()` from the assist response (there is no product-browsing endpoint). */
 interface ProductState {
   byId: Record<string, Product>;
-  loaded: boolean;
-  loading: boolean;
-  error: string | null;
-  loadAll: () => Promise<void>;
   remember: (products: Product[]) => void;
 }
 
-export const useProductStore = create<ProductState>((set, get) => ({
+export const useProductStore = create<ProductState>((set) => ({
   byId: {},
-  loaded: false,
-  loading: false,
-  error: null,
-
-  loadAll: async () => {
-    if (get().loaded || get().loading) return;
-    set({ loading: true, error: null });
-    try {
-      const res = await api.products({ page_size: 100 });
-      const byId: Record<string, Product> = { ...get().byId };
-      for (const p of res.items) byId[p.id] = p;
-      set({ byId, loaded: true, loading: false });
-    } catch (err) {
-      set({ loading: false, error: err instanceof Error ? err.message : "Failed to load products" });
-    }
-  },
 
   remember: (products) =>
     set((s) => {

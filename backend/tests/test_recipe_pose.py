@@ -15,7 +15,6 @@ from spatial_planning.services.recommend.orchestrator import plan_layout, plan_l
 
 GOLDEN_LIVING_PID = "lay_5f5d21801c"  # legacy
 GOLDEN_LIVING_RECIPE = "lay_cb5c145123"  # recipe (area-scaled); side_table now placed after accent_chair (depends_on) - identical poses, list reorder only
-GOLDEN_MAJLIS_PID = "lay_bcabef51da"
 
 LIVING_ROOM = {
     "vertices": [[0, 0], [480, 0], [480, 360], [0, 360]],
@@ -30,10 +29,6 @@ SALON = {
     "wall_height_cm": 300,
 }
 LIVING_PREFS = Preferences(styles=["modern"], budget_tier="mid", total_budget=8000, room_purpose="entertaining")
-MAJLIS_PREFS = Preferences(
-    room_type="majlis", region="saudi_arabia", styles=["majlis", "luxury"],
-    luxury_tier="luxury", formality="formal", seating_capacity=10,
-)
 
 
 def _room(spec):
@@ -56,7 +51,6 @@ def test_recipe_path_makes_no_zones_for_category_calls(catalog_repo, monkeypatch
     monkeypatch.setattr(orch, "zones_for_category", spy)
     monkeypatch.setattr(autofix_mod, "zones_for_category", spy)
 
-    plan_layout_from_recipe(_room(SALON), MAJLIS_PREFS, [], room_type="majlis")
     plan_layout_from_recipe(_room(LIVING_ROOM), LIVING_PREFS, [])
     assert calls == [], f"recipe path called zones_for_category {len(calls)} times"
 
@@ -75,7 +69,6 @@ def test_recipe_path_does_not_use_suggest_pose(catalog_repo, monkeypatch):
 
     monkeypatch.setattr(orch, "suggest_pose", spy)
     plan_layout_from_recipe(_room(LIVING_ROOM), LIVING_PREFS, [])
-    plan_layout_from_recipe(_room(SALON), MAJLIS_PREFS, [], room_type="majlis")
     assert calls == []  # recipe path generates poses from the strategy zone directly
 
     plan_layout(_room(LIVING_ROOM), LIVING_PREFS, [])  # legacy still uses it
@@ -87,7 +80,6 @@ def test_recipe_path_does_not_use_suggest_pose(catalog_repo, monkeypatch):
 
 def test_golden_unchanged_after_pose_change(catalog_repo):
     assert plan_layout_from_recipe(_room(LIVING_ROOM), LIVING_PREFS, []).proposal_id == GOLDEN_LIVING_RECIPE
-    assert plan_layout_from_recipe(_room(SALON), MAJLIS_PREFS, [], room_type="majlis").proposal_id == GOLDEN_MAJLIS_PID
 
 
 def test_shadow_still_returns_legacy(catalog_repo):
@@ -146,16 +138,6 @@ LIVING_CASES = [
     Preferences(styles=["scandinavian", "minimal"], colors=["Ivory", "Oak"], room_purpose="family"),
     Preferences(room_purpose="compact_living"),
 ]
-MAJLIS_CASES = [
-    Preferences(room_type="majlis"),
-    Preferences(room_type="majlis", seating_capacity=4),
-    Preferences(room_type="majlis", seating_capacity=8),
-    Preferences(room_type="majlis", seating_capacity=12),
-    Preferences(room_type="majlis", luxury_tier="luxury", formality="formal", region="saudi_arabia"),
-    Preferences(room_type="majlis", styles=["majlis", "arabic"], seating_capacity=6),
-]
-
-
 def _assert_equivalent(spec, room_type, prefs, placed=None):
     room = _room(spec)
     legacy = plan_layout(room, prefs, placed or [], room_type=room_type)
@@ -182,17 +164,8 @@ def test_living_room_recipe_valid_and_deterministic(catalog_repo):
             _assert_valid_and_deterministic(spec, "living_room", prefs)
 
 
-def test_broad_equivalence_majlis(catalog_repo):
-    # majlis still mirrors legacy exactly across the battery
-    for name, spec in ROOMS.items():
-        for prefs in MAJLIS_CASES:
-            _assert_equivalent(spec, "majlis", prefs)
-
-
 def test_equivalence_with_preplaced_items(catalog_repo):
-    sofa = PlacedItem(instance_id="mine", product_id="sofa-001", x=240, y=70, rotation_deg=0)
-    # majlis stays equivalent with a seeded item; living_room stays valid/deterministic
-    _assert_equivalent(ROOMS["large"], "majlis", Preferences(room_type="majlis", seating_capacity=8), placed=[sofa])
+    # living_room stays valid/deterministic with a seeded item
     _assert_valid_and_deterministic(ROOMS["medium"], "living_room", Preferences(styles=["modern"]))
 
 
@@ -260,14 +233,6 @@ def test_normal_room_keeps_accent_chairs_not_a_second_sofa(catalog_repo):
     small = plan_layout_from_recipe(_room(ROOMS["small"]), Preferences(styles=["modern"]), [])
     assert [p.category for p in small.placements].count("sofa") == 1  # no L-return in a small room
     assert not [f for f in small.findings if f.severity == "error"]
-
-
-def test_majlis_never_composes_secondary_zone(catalog_repo):
-    """Majlis opts out of generic composition (it lays out the room itself)."""
-    mj = plan_layout_from_recipe(
-        _room(ROOMS["large"]), Preferences(room_type="majlis", seating_capacity=10), [], room_type="majlis"
-    )
-    assert not _secondary(mj)
 
 
 # --- viewing-distance-aware TV (great-rooms float the media; normal rooms wall-mount) --

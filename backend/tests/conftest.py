@@ -35,23 +35,19 @@ class ApiClient:
         return self._c.delete(url)
 
 
-def _setup_repo_and_db(openai_key: str, db_path: str, monkeypatch):
-    """Load the fixture catalog + init a temp DB, then mark the Django lazy-bootstrap
-    done so the request middleware won't reload the production catalog."""
-    monkeypatch.setenv("DB_PATH", db_path)
-    monkeypatch.setenv("OPENAI_API_KEY", openai_key)
+def _setup_repo(monkeypatch):
+    """Load the fixture catalog, then mark the Django lazy-bootstrap done so the request
+    middleware won't reload the production catalog. The assist-only app is stateless (no DB)."""
     monkeypatch.setenv("CATALOG_PATH", TEST_CATALOG)
     get_settings.cache_clear()
 
     import spatial_planning.bootstrap as bootstrap
     from spatial_planning.services.catalog import CatalogRepository, set_repository
-    from spatial_planning.services.persistence.db import init_db
     from spatial_planning.services.spatial.analyze import clear_cache
 
     clear_cache()
     settings = get_settings()
     set_repository(CatalogRepository.load(settings.resolve(TEST_CATALOG), settings.resolve(settings.static_dir)))
-    init_db(settings.resolve(settings.db_path))
     bootstrap._done = True
     return bootstrap
 
@@ -118,18 +114,9 @@ def catalog_repo():
 
 
 @pytest.fixture()
-def client(tmp_path, monkeypatch):
-    """API client with no OpenAI key (LLM disabled → offline copy)."""
-    bootstrap = _setup_repo_and_db("", str(tmp_path / "test.db"), monkeypatch)
-    yield ApiClient()
-    bootstrap._done = False
-    get_settings.cache_clear()
-
-
-@pytest.fixture()
-def keyed_client(tmp_path, monkeypatch):
-    """API client with a fake API key so guards beyond RENDER_DISABLED are reachable."""
-    bootstrap = _setup_repo_and_db("sk-fake-for-guard-tests", str(tmp_path / "t.db"), monkeypatch)
+def client(monkeypatch):
+    """API client for the assist-only app."""
+    bootstrap = _setup_repo(monkeypatch)
     yield ApiClient()
     bootstrap._done = False
     get_settings.cache_clear()

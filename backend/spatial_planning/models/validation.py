@@ -40,15 +40,3 @@ class AutoFix(StrictModel):
 class BetterPlacement(StrictModel):
     pose: Pose
     zone_id: str | None = None
-
-
-class ValidateResponse(StrictModel):
-    findings: list[Finding]
-    autofix: AutoFix | None = None
-    better_placement: BetterPlacement | None = None
-
-
-class SuggestResponse(StrictModel):
-    pose: Pose
-    zone_id: str | None = None
-    alternatives: list[Pose] = Field(default_factory=list)

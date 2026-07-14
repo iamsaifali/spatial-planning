@@ -66,8 +66,8 @@ export function ResumeDraftDialog({
           </Button>
         </div>
         <p className="text-[11px] leading-4 text-ink-faint">
-          Starting fresh clears the draft room and its items. Your cart, favourites and
-          preferences are kept. You can also reset anytime via the Templates tool.
+          Starting fresh clears the draft room and its items. Your style preferences are
+          kept. You can also reset anytime via the Templates tool.
         </p>
       </div>
     </Dialog>

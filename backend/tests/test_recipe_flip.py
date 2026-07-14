@@ -19,7 +19,6 @@ from spatial_planning.services.recommend.orchestrator import plan_assist_layout,
 
 GOLDEN_LIVING_PID = "lay_5f5d21801c"  # legacy (one-of-each) - rollback path
 GOLDEN_LIVING_RECIPE = "lay_cb5c145123"  # recipe (area-scaled accent pieces) - production; side_table placed after accent_chair (depends_on) - identical poses, list reorder only
-GOLDEN_MAJLIS_PID = "lay_bcabef51da"
 
 LIVING_ROOM = {
     "vertices": [[0, 0], [480, 0], [480, 360], [0, 360]],
@@ -34,10 +33,6 @@ SALON = {
     "wall_height_cm": 300,
 }
 LIVING_PREFS = Preferences(styles=["modern"], budget_tier="mid", total_budget=8000, room_purpose="entertaining")
-MAJLIS_PREFS = Preferences(
-    room_type="majlis", region="saudi_arabia", styles=["majlis", "luxury"],
-    luxury_tier="luxury", formality="formal", seating_capacity=10,
-)
 
 
 @contextlib.contextmanager
@@ -74,9 +69,7 @@ def test_default_planner_mode_is_recipe(monkeypatch):
 def test_recipe_mode_returns_golden(catalog_repo):
     with planner_mode("recipe"):
         lr = plan_assist_layout(_room(LIVING_ROOM), LIVING_PREFS, [])
-        mj = plan_assist_layout(_room(SALON), MAJLIS_PREFS, [], room_type="majlis")
     assert lr.proposal_id == GOLDEN_LIVING_RECIPE  # recipe = area-scaled
-    assert mj.proposal_id == GOLDEN_MAJLIS_PID
 
 
 # --- rollback paths still work -----------------------------------------------------
@@ -90,9 +83,10 @@ def test_legacy_mode_still_works(catalog_repo):
 
 def test_shadow_mode_still_returns_legacy(catalog_repo, caplog):
     with planner_mode("shadow"), caplog.at_level(logging.INFO, logger="zory"):
-        out = plan_assist_layout(_room(SALON), MAJLIS_PREFS, [], room_type="majlis")
-    assert out.proposal_id == GOLDEN_MAJLIS_PID
-    assert "EQUIVALENT" in caplog.text  # shadow comparison still runs
+        out = plan_assist_layout(_room(LIVING_ROOM), LIVING_PREFS, [])
+    assert out.proposal_id == GOLDEN_LIVING_PID
+    # shadow comparison still runs; the living-room recipe intentionally diverges from legacy
+    assert "DIVERGENCE" in caplog.text
 
 
 # --- categories override decision (Option A: route to legacy) ----------------------
@@ -146,9 +140,9 @@ def test_shadow_mode_swallows_recipe_failure(catalog_repo, monkeypatch):
 
 def test_recipe_mode_emits_safety_log(catalog_repo, caplog):
     with planner_mode("recipe"), caplog.at_level(logging.INFO, logger="zory"):
-        plan_assist_layout(_room(SALON), MAJLIS_PREFS, [], room_type="majlis")
+        plan_assist_layout(_room(LIVING_ROOM), LIVING_PREFS, [])
     text = caplog.text
-    assert "assist recipe[majlis]" in text
-    assert GOLDEN_MAJLIS_PID in text
-    assert "recipe=majlis.standard@" in text
+    assert "assist recipe[living_room]" in text
+    assert GOLDEN_LIVING_RECIPE in text
+    assert "recipe=living_room.standard@" in text
     assert "placements=" in text and "skipped=" in text and "hard=" in text

@@ -57,25 +57,8 @@ ESSENTIAL_REASONS = {
 # orchestrator loop.
 LIVING_ROOM_SEQUENCE: list[str] = [s.category for s in STEPS]
 
-# Majlis maps onto the EXISTING categories (Majlis products were authored with
-# existing categories + taxonomy fields in Phase 3): seating first (placed along the
-# perimeter walls by the Majlis zone generator), then a centred rug + low table, then
-# accents. Note: NO tv_unit - a Majlis is not a TV-first room. accent_chair (floor
-# cushions / poufs) comes last as optional seating fill.
-MAJLIS_SEQUENCE: list[str] = [
-    "sofa",          # majlis benches along the walls
-    "rug",           # centred
-    "coffee_table",  # low table, centred on the rug
-    "side_table",
-    "lighting",
-    "storage",
-    "decor",
-    "accent_chair",  # floor cushions / poufs - optional fill
-]
-
 STEP_SEQUENCES: dict[str, list[str]] = {
     "living_room": LIVING_ROOM_SEQUENCE,
-    "majlis": MAJLIS_SEQUENCE,
 }
 
 

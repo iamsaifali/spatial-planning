@@ -1,13 +1,10 @@
 "use client";
 
-import { ArrowLeft, ClipboardList, Pencil, Redo2, Save, Share2, ShoppingCart, Undo2 } from "lucide-react";
+import { ArrowLeft, Pencil, Redo2, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { Button } from "@/components/ui/Button";
-import { cartCount, useCartStore } from "@/stores/cartStore";
 import { useCurrencyStore } from "@/stores/currencyStore";
 import { redo, undo, usePlannerStore } from "@/stores/plannerStore";
-import { useUiStore } from "@/stores/uiStore";
 
 function DesignName() {
   const designName = usePlannerStore((s) => s.designName);
@@ -82,10 +79,6 @@ function CurrencyToggle() {
 }
 
 export function TopBar() {
-  const lines = useCartStore((s) => s.lines);
-  const setSheet = useUiStore((s) => s.setSheet);
-  const count = cartCount(lines);
-
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-surface px-3 sm:px-4">
       <Link
@@ -118,42 +111,7 @@ export function TopBar() {
             <Redo2 className="h-4 w-4" />
           </button>
         </div>
-
-        {/* display toggles live on wrappers - Button's own inline-flex must not be overridden */}
-        <span className="lg:hidden">
-          <Button variant="ghost" size="sm" onClick={() => setSheet("summaryOpen", true)}>
-            <ClipboardList className="h-4 w-4" />
-            <span className="hidden sm:inline">Summary</span>
-          </Button>
-        </span>
         <CurrencyToggle />
-        <Button variant="secondary" size="sm" onClick={() => setSheet("shareOpen", true)}>
-          <Share2 className="h-4 w-4" />
-          <span className="hidden md:inline">Share</span>
-        </Button>
-        <Button size="sm" variant="secondary" onClick={() => setSheet("shareOpen", true)}>
-          <Save className="h-4 w-4" />
-          <span className="hidden md:inline">Save</span>
-        </Button>
-        {/* mockup parity: labelled cart button with count on wide screens */}
-        <span className="hidden lg:block">
-          <Button size="sm" onClick={() => setSheet("cartOpen", true)}>
-            <ShoppingCart className="h-4 w-4" />
-            Add to Cart{count > 0 ? ` (${count})` : ""}
-          </Button>
-        </span>
-        <button
-          onClick={() => setSheet("cartOpen", true)}
-          className="relative flex h-9 w-9 items-center justify-center rounded-full text-ink-soft hover:bg-surface-2 hover:text-ink lg:hidden"
-          aria-label={`Cart, ${count} items`}
-        >
-          <ShoppingCart className="h-4.5 w-4.5" />
-          {count > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-amber px-1 text-[10px] font-bold text-white">
-              {count > 99 ? "99+" : count}
-            </span>
-          )}
-        </button>
       </div>
     </header>
   );

@@ -28,7 +28,6 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
-    db_path: str = "var/zory.db"
     static_dir: str = "static"
     # production default: the real store catalog (~5.6k products). Tests pin CATALOG_PATH
     # to the small fixture catalog (spatial_planning/data/catalog.json) so the golden layouts stay

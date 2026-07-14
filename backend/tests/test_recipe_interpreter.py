@@ -53,7 +53,7 @@ def _zs(name):
 
 
 def test_topological_order_preserves_declared_order_for_shipped_recipes():
-    for rt in ("living_room", "majlis"):
+    for rt in ("living_room", "bedroom"):
         recipe = get_recipe(rt)
         ordered = [r.role for r in _topological_order(recipe.roles)]
         assert ordered == [r.role for r in recipe.roles]
@@ -81,17 +81,6 @@ def test_topological_order_rejects_cycle():
 # --- count-rule execution ----------------------------------------------------------
 
 
-def test_until_target_seating_reproduces_legacy(catalog_repo):
-    # the generic until_target executor must match the legacy Majlis seating loop
-    room = Room.model_validate(WIDE)
-    prefs = Preferences(room_type="majlis", seating_capacity=10)
-    legacy = plan_layout(room, prefs, [], room_type="majlis")
-    recipe = plan_layout_from_recipe(room, prefs, [], room_type="majlis")
-    legacy_sofas = [p.product_id for p in legacy.placements if p.category == "sofa"]
-    recipe_sofas = [p.product_id for p in recipe.placements if p.category == "sofa"]
-    assert legacy_sofas == recipe_sofas and len(legacy_sofas) >= 2
-
-
 def test_unimplemented_count_mode_raises(catalog_repo):
     st = _PlanState(
         analysis=analyze_room(Room.model_validate(RECT)),
@@ -113,7 +102,7 @@ def test_unimplemented_count_mode_raises(catalog_repo):
 
 
 def test_predicate_awareness_resolves_shipped_recipes():
-    for rt in ("living_room", "majlis"):
+    for rt in ("living_room", "bedroom"):
         _resolve_recipe_predicates(get_recipe(rt))  # no raise
 
 
@@ -127,23 +116,3 @@ def test_predicate_awareness_rejects_unknown_predicate():
         _resolve_recipe_predicates(bad)
 
 
-# --- broadened equivalence ---------------------------------------------------------
-
-
-def test_interpreter_equivalent_across_rooms_and_prefs(catalog_repo):
-    # Majlis still mirrors the legacy planner exactly (its recipe uses single +
-    # until_target, both of which reproduce legacy). living_room/bedroom intentionally
-    # diverge now (area-scaled accent pieces), so they are NOT compared here.
-    cases = [
-        (WIDE, "majlis", Preferences(room_type="majlis", seating_capacity=8)),
-        (WIDE, "majlis", Preferences(room_type="majlis")),  # area-based default target
-        (RECT, "majlis", Preferences(room_type="majlis", seating_capacity=6)),
-        (LSHAPE, "majlis", Preferences(room_type="majlis", luxury_tier="luxury")),
-    ]
-    for spec, rt, prefs in cases:
-        room = Room.model_validate(spec)
-        legacy = plan_layout(room, prefs, [], room_type=rt)
-        recipe = plan_layout_from_recipe(room, prefs, [], room_type=rt)
-        cmp = compare_layouts(legacy, recipe)
-        assert cmp.equivalent, (spec["vertices"][1], rt, cmp.diffs)
-        assert cmp.proposal_id_match, (rt, prefs)

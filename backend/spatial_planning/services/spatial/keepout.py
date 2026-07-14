@@ -5,7 +5,7 @@ import math
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
-from spatial_planning.models.geometry import Room, Window
+from spatial_planning.models.geometry import Room
 from spatial_planning.services.spatial.core import WallData
 from spatial_planning.services.spatial.geometry_utils import add, largest_piece, quad
 
@@ -75,7 +75,3 @@ def build_keepout(
 def keep_clear_union(swing_arcs: dict[str, Polygon], entry_clearances: dict[str, Polygon]):
     geoms = list(swing_arcs.values()) + list(entry_clearances.values())
     return unary_union(geoms) if geoms else Polygon()
-
-
-def window_sill(room: Room, window_id: str) -> Window | None:
-    return next((w for w in room.windows if w.id == window_id), None)

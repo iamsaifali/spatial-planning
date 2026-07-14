@@ -3,12 +3,11 @@
 from shapely.prepared import prep
 
 from spatial_planning.config import get_settings
-from spatial_planning.models.analysis import AnalysisResponse, RoomMetrics
 from spatial_planning.models.geometry import Room
 from spatial_planning.services.spatial.cache import LRUCache
 from spatial_planning.services.spatial.circulation import build_corridors, build_entries, interior_anchor
-from spatial_planning.services.spatial.core import RoomAnalysis, ZoneData
-from spatial_planning.services.spatial.geometry_utils import dot, pieces_of, poly_pts
+from spatial_planning.services.spatial.core import RoomAnalysis
+from spatial_planning.services.spatial.geometry_utils import dot
 from spatial_planning.services.spatial.hashing import room_hash
 from spatial_planning.services.spatial.keepout import build_keepout, keep_clear_union
 from spatial_planning.services.spatial.normalize import require_valid_room
@@ -79,32 +78,6 @@ def analyze_room(room: Room) -> RoomAnalysis:
     )
     _cache.put(h, analysis)
     return analysis
-
-
-def to_response(analysis: RoomAnalysis, zones: list[ZoneData]) -> AnalysisResponse:
-    poly = analysis.polygon
-    minx, miny, maxx, maxy = poly.bounds
-    return AnalysisResponse(
-        analysis_hash=analysis.analysis_hash,
-        metrics=RoomMetrics(
-            area_m2=round(poly.area / 10_000.0, 2),
-            perimeter_cm=round(poly.exterior.length, 1),
-            bbox_w_cm=round(maxx - minx, 1),
-            bbox_h_cm=round(maxy - miny, 1),
-        ),
-        walls=[w.to_model() for w in analysis.walls],
-        entries=[e.to_model() for e in analysis.entries],
-        keep_clear=[
-            poly_pts(p)
-            for p in pieces_of(analysis.keep_clear_union)
-        ],
-        window_strips=[poly_pts(strip) for strip, _sill in analysis.window_strips.values()],
-        corridors=[c.to_model() for c in analysis.corridors],
-        usable_area=[poly_pts(p) for p in pieces_of(analysis.usable_area)],
-        focal_wall_index=analysis.focal_wall_index,
-        zones=[z.to_model() for z in zones],
-        notices=analysis.notices,
-    )
 
 
 def clear_cache() -> None:

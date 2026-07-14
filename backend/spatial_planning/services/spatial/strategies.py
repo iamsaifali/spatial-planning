@@ -35,7 +35,6 @@ from spatial_planning.services.spatial.zones import (
     _lamp_on_table_zones,
     _lighting_zones,
     _vases_on_console_zones,
-    _majlis_sofa_zones,
     _reading_chair_zones,
     _rug_zones,
     _side_table_zones,
@@ -164,24 +163,12 @@ def on_surface(category, room_type, analysis, placed, stats, params):
     return _fallback(category, room_type, analysis, placed, stats, params)
 
 
-def perimeter_walls(category, room_type, analysis, placed, stats, params):
-    """Inward-facing seating along each clear wall, longest-first (majlis benches).
-
-    params: face="inward" (only inward is supported; reflected in the generator),
-    min_wall_cm (currently reflected as the generator's 140cm primary threshold; not yet
-    parameterized) - documented, not consumed.
-    """
-    if category == "sofa":
-        return _majlis_sofa_zones(analysis, placed, stats)
-    return _fallback(category, room_type, analysis, placed, stats, params)
-
-
 def center_area(category, room_type, analysis, placed, stats, params):
-    """A centred free zone (majlis rug / low table).
+    """A centred free zone (a room-centred rug / low table).
 
     CONSUMES params size_w / size_d when provided. When absent, sizes from the
     category's footprint - rug from the catalog's max dims, other categories from a
-    140x120 default - exactly reproducing the legacy majlis zones.
+    140x120 default.
     """
     cat_stats = stats.get(category, {})
     if category == "rug":
@@ -216,7 +203,6 @@ SPATIAL_STRATEGIES: dict[str, ZoneStrategyFn] = {
     "remaining_wall": remaining_wall,
     "reading_corner": reading_corner,
     "on_surface": on_surface,
-    "perimeter_walls": perimeter_walls,
     "center_area": center_area,
     "wall_band": wall_band,
 }

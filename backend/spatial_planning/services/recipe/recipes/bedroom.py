@@ -14,7 +14,6 @@ BEDROOM_RECIPE = Recipe(
     room_type="bedroom",
     focal_strategy="longest_wall",
     room_goals=["restful", "symmetry"],
-    compose_secondary=False,  # no extra chair-group/table/lamp cluster in the open area
     roles=[
         role("primary_sleeping", "bed", "focal_wall",
              ["against_wall", "not_block_door"], essential=True),

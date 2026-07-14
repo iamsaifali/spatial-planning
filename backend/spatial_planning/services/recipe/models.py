@@ -84,10 +84,6 @@ class Recipe(StrictModel):
     focal_strategy: Literal["longest_wall", "window", "tv_wall", "none"] = "none"
     room_goals: list[str] = Field(default_factory=list)
     roles: list[RoleDefinition] = Field(min_length=1)
-    # composition: when true, a LARGE room gets a secondary seating cluster in the open
-    # area left by the primary group (see orchestrator._furnish_secondary_zone). Majlis
-    # leaves this off - it composes the room itself via perimeter seating.
-    compose_secondary: bool = False
 
     def category_sequence(self) -> list[str]:
         """The primary-category placement order — used by the migration adapter to

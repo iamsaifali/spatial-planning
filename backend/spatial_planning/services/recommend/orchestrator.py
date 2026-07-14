@@ -11,10 +11,8 @@ involved in choosing coordinates:
 The rationale strings are template text built from machine-checked facts, not an
 LLM. (An LLM may later phrase nicer copy, but never the geometry.)
 
-Two flows share one response builder:
-  * living_room - one best product per category (the original behaviour, unchanged)
-  * majlis      - benches lined along the perimeter walls until a seating-capacity
-                  target is met, then a centred rug + low table, then accents.
+The living_room flow places one best product per category; bedroom adds mirrored
+nightstands. Every flow shares one response builder.
 """
 
 import hashlib
@@ -49,9 +47,7 @@ from spatial_planning.services.recipe.registry import get_recipe
 from spatial_planning.services.recipe.strategies import resolve_strategy
 from spatial_planning.services.spatial.zones import (
     CategoryStats,
-    R_MAJLIS_PERIMETER_SEATING,
     anchor_pose,
-    secondary_nook_zones,
     zones_for_category,
 )
 
@@ -67,7 +63,7 @@ class RecipeError(RuntimeError):
 
 
 def _default_seat_target(analysis: RoomAnalysis) -> int:
-    """Sensible Majlis seating target from room area when none is supplied."""
+    """Sensible seating-capacity target from room area when none is supplied."""
     area_m2 = analysis.area_cm2 / 10_000.0
     if area_m2 < 16.0:
         return 6  # small
@@ -79,10 +75,6 @@ def _default_seat_target(analysis: RoomAnalysis) -> int:
 def _rationale(category: str, zone: ZoneData, analysis: RoomAnalysis) -> str:
     """Deterministic, template-only explanation (no LLM) from the chosen zone."""
     label = CATEGORY_LABELS.get(category, category.replace("_", " ").title())
-    if R_MAJLIS_PERIMETER_SEATING in zone.reason_codes:
-        side = wall_label(analysis.walls[zone.wall_index]) if zone.wall_index is not None else "a"
-        where = f"the {side} wall" if side in ("top", "bottom", "left", "right") else "a wall"
-        return f"{label} lined along {where} as majlis perimeter seating, keeping the centre open."
     if zone.kind == "wall_band" and zone.wall_index is not None:
         side = wall_label(analysis.walls[zone.wall_index])
         if side in ("top", "bottom", "left", "right"):
@@ -131,53 +123,6 @@ def _commit(
         rationale=_rationale(category, candidate.zone, analysis), notices=candidate.notices,
     )
     return placement, item, None
-
-
-def _place_majlis_seating(
-    analysis: RoomAnalysis,
-    prefs: Preferences,
-    repo,
-    stats,
-    working: list[PlacedProduct],
-    placements: list[AssistPlacement],
-    ids,
-    target: int,
-) -> bool:
-    """Line benches along the perimeter walls until the seating target is reached.
-
-    One bench per wall (longest clear wall first), so seating spreads across 2-3
-    walls and the centre stays open. Re-derives zones each round so later benches
-    account for the ones already placed. Returns True if any bench was placed.
-    """
-    used_walls: set[int] = set()
-    seated = sum(p.seating_capacity for _i, p in working if p.seating_capacity > 0)
-    placed_any = False
-
-    while seated < target:
-        zones = zones_for_category("sofa", analysis, working, stats, room_type="majlis")
-        zone = next((z for z in zones if z.wall_index not in used_walls), None)
-        if zone is None:
-            break  # no more unused perimeter walls
-        used_walls.add(zone.wall_index)  # one bench per wall segment - no duplicates
-
-        # pick the best Majlis bench that fits THIS wall band
-        result = select_slots("sofa", [zone], prefs, working, repo, room_area_cm2=analysis.area_cm2)
-        candidate = result.best
-        if candidate is None:
-            continue
-        product = candidate.product
-        pose = settle_pose(analysis, working, product, anchor_pose(zone, product, analysis))
-        placement, item, _reason = _commit(
-            "sofa", candidate, pose, zone.id, f"{AUTO_PREFIX}{next(ids)}", analysis, working
-        )
-        if placement is None:
-            continue
-        placements.append(placement)
-        working.append((item, product))
-        seated += product.seating_capacity
-        placed_any = True
-
-    return placed_any
 
 
 def _proposal_id(analysis: RoomAnalysis, placements: list[AssistPlacement]) -> str:
@@ -257,15 +202,6 @@ def plan_layout(
     ids = count(1)
 
     for category in sequence:
-        # Majlis seating: place MULTIPLE benches along the perimeter (always tops up
-        # toward the capacity target, even if the user already placed some seating).
-        if effective_room_type == "majlis" and category == "sofa":
-            target = preferences.seating_capacity or _default_seat_target(analysis)
-            if not _place_majlis_seating(analysis, preferences, repo, stats, working, placements, ids, target):
-                skipped.append(AssistSkip(category="sofa", reason="NO_FIT"))
-            have_categories.add("sofa")
-            continue
-
         # Respect the user's own items: don't add a second essential they placed.
         if category in have_categories:
             skipped.append(AssistSkip(category=category, reason="ALREADY_PRESENT"))
@@ -308,8 +244,8 @@ def plan_layout(
 # from strategies (via the registry), computes poses with the existing placement
 # helpers, and proves correctness with the unchanged gate (_commit -> validate_item).
 # It reproduces the legacy planner's output for the shipped recipes (equivalence is
-# enforced by tests + shadow mode). The legacy plan_layout + _place_majlis_seating
-# are left untouched as the equivalence reference.
+# enforced by tests + shadow mode). The legacy plan_layout is left untouched as the
+# equivalence reference.
 # ============================================================================
 
 
@@ -547,48 +483,6 @@ def _execute_fill_available(role: RoleDefinition, st: _PlanState) -> None:
     st.have_categories.add(category)
 
 
-def _furnish_secondary_zone(st: _PlanState) -> None:
-    """Composition pass: in a LARGE room, furnish secondary cluster(s) in the open area.
-
-    The recipe builds one seating group; on a big floor that leaves obvious empty
-    regions. This lays out coherent reading/conversation nooks there (a side table, one
-    or two accent chairs facing the primary group, a floor lamp) so the room reads as
-    composed rather than sparse. The number of nooks scales with floor area - a great
-    room gets two or three, each filling the next-largest open region - so very large
-    rooms don't end up with a tiny group lost in empty space. A no-op for normal rooms
-    (the geometry returns nothing below the size threshold), so smaller rooms and the
-    goldens are unaffected. Every piece still passes the validation gate.
-    """
-    # one nook for a large room, at most two for a great-room - more than that reads as a
-    # cluttered pile of identical chairs rather than composed zones.
-    max_zones = min(2, max(1, int(st.analysis.area_cm2 / 320_000.0)))
-    for _ in range(max_zones):
-        zones = secondary_nook_zones(st.analysis, st.working, st.stats)
-        if not zones:
-            break  # no open region large enough remains - stop filling
-        placed_any = False
-        for zone in zones:
-            category = zone.category
-            result = select_slots(category, [zone], st.preferences, st.working, st.repo, room_area_cm2=st.analysis.area_cm2)
-            candidate = result.best
-            if candidate is None:
-                continue
-            product = candidate.product
-            # pose is taken from the composed nook center (not a wall anchor), then settled
-            base = Pose(x=zone.origin[0], y=zone.origin[1], rotation_deg=zone.rotation_deg)
-            pose = settle_pose(st.analysis, st.working, product, base)
-            placement, item, _reason = _commit(
-                category, candidate, pose, zone.id, f"{AUTO_PREFIX}{next(st.ids)}", st.analysis, st.working
-            )
-            if placement is None:
-                continue
-            st.placements.append(placement)
-            st.working.append((item, product))
-            placed_any = True
-        if not placed_any:
-            break  # couldn't place anything in the remaining region - avoid looping
-
-
 def _execute_role(role: RoleDefinition, st: _PlanState) -> None:
     mode = role.count.mode
     if mode == "single":
@@ -644,11 +538,6 @@ def plan_layout_from_recipe(
 
     for role in _topological_order(recipe.roles):
         _execute_role(role, st)
-
-    # composition layer: opted-in recipes get a secondary cluster in a large room's
-    # leftover open area (majlis opts out - it composes itself via perimeter seating)
-    if recipe.compose_secondary:
-        _furnish_secondary_zone(st)
 
     resp = _finalize_response(st.analysis, st.placements, st.skipped, st.working)
 

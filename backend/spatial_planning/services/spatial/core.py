@@ -6,9 +6,9 @@ from shapely.geometry import LineString, Polygon
 from shapely.geometry.base import BaseGeometry
 from shapely.prepared import PreparedGeometry
 
-from spatial_planning.models.analysis import Corridor, Entry, OpeningSpan, WallInfo, Zone
+from spatial_planning.models.analysis import Zone
 from spatial_planning.models.geometry import Room
-from spatial_planning.services.spatial.geometry_utils import Vec, line_pts, poly_pts
+from spatial_planning.services.spatial.geometry_utils import Vec, poly_pts
 
 
 @dataclass
@@ -36,36 +36,12 @@ class WallData:
     def point_at(self, t: float) -> Vec:
         return (self.start[0] + self.dir[0] * t, self.start[1] + self.dir[1] * t)
 
-    def to_model(self) -> WallInfo:
-        return WallInfo(
-            index=self.index,
-            start=(round(self.start[0], 1), round(self.start[1], 1)),
-            end=(round(self.end[0], 1), round(self.end[1], 1)),
-            length_cm=round(self.length, 1),
-            inward_normal=(round(self.normal[0], 4), round(self.normal[1], 4)),
-            openings=[
-                OpeningSpan(kind=o.kind, id=o.id, start_cm=round(o.a, 1), end_cm=round(o.b, 1))
-                for o in self.openings
-            ],
-            clear_floor_segments=[(round(a, 1), round(b, 1)) for a, b in self.clear_floor],
-            clear_solid_segments=[(round(a, 1), round(b, 1)) for a, b in self.clear_solid],
-            is_longest_clear=self.is_longest_clear,
-            is_focal=self.is_focal,
-        )
-
 
 @dataclass
 class EntryData:
     door_id: str
     point: Vec
     is_primary: bool = False
-
-    def to_model(self) -> Entry:
-        return Entry(
-            door_id=self.door_id,
-            point=(round(self.point[0], 1), round(self.point[1], 1)),
-            is_primary=self.is_primary,
-        )
 
 
 @dataclass
@@ -77,16 +53,6 @@ class CorridorData:
     b: Vec
     path: LineString
     polygon: Polygon
-
-    def to_model(self) -> Corridor:
-        return Corridor(
-            id=self.id,
-            from_label=self.from_label,
-            to_label=self.to_label,
-            polyline=line_pts(self.path),
-            polygon=poly_pts(self.polygon),
-            width_cm=80,
-        )
 
 
 @dataclass

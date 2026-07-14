@@ -41,15 +41,10 @@ SALON = {
     "wall_height_cm": 300,
 }
 LIVING_PREFS = Preferences(styles=["modern"], budget_tier="mid", total_budget=8000, room_purpose="entertaining")
-MAJLIS_PREFS = Preferences(
-    room_type="majlis", region="saudi_arabia", styles=["majlis", "luxury"],
-    luxury_tier="luxury", formality="formal", seating_capacity=10,
-)
 
 # Golden values. Living: legacy (one-of-each) vs recipe (area-scaled accent pieces).
 GOLDEN_LIVING_PID = "lay_5f5d21801c"  # legacy planner
 GOLDEN_LIVING_RECIPE = "lay_cb5c145123"  # recipe planner (area-scaled); side_table placed after accent_chair (depends_on) - identical poses, list reorder only
-GOLDEN_MAJLIS_PID = "lay_bcabef51da"  # majlis (recipe == legacy)
 
 
 @contextlib.contextmanager
@@ -76,12 +71,10 @@ def _room(spec) -> Room:
 
 def test_legacy_unchanged_vs_golden(catalog_repo):
     lr = plan_layout(_room(LIVING_ROOM), LIVING_PREFS, [])
-    mj = plan_layout(_room(SALON), MAJLIS_PREFS, [], room_type="majlis")
     assert lr.proposal_id == GOLDEN_LIVING_PID
-    assert mj.proposal_id == GOLDEN_MAJLIS_PID
 
 
-# --- recipe behaviour: majlis reproduces legacy; living scales beyond it ----------
+# --- recipe behaviour: living scales beyond legacy --------------------------------
 
 
 def test_living_room_recipe_scales_beyond_legacy(catalog_repo):
@@ -92,15 +85,6 @@ def test_living_room_recipe_scales_beyond_legacy(catalog_repo):
     assert recipe.proposal_id == GOLDEN_LIVING_RECIPE  # deterministic recipe golden
     assert not [f for f in recipe.placements if f.product.category == "custom"]
     assert not [f for f in recipe.findings if f.severity == "error"]
-
-
-def test_majlis_recipe_equivalent_to_legacy(catalog_repo):
-    legacy = plan_layout(_room(SALON), MAJLIS_PREFS, [], room_type="majlis")
-    recipe = plan_layout_from_recipe(_room(SALON), MAJLIS_PREFS, [], room_type="majlis")
-    cmp = compare_layouts(legacy, recipe)
-    assert cmp.equivalent, cmp.diffs
-    assert cmp.proposal_id_match
-    assert recipe.proposal_id == GOLDEN_MAJLIS_PID
 
 
 # --- modes -------------------------------------------------------------------------
@@ -114,23 +98,15 @@ def test_legacy_mode_returns_current(catalog_repo):
 
 def test_recipe_mode_returns_valid(catalog_repo):
     with planner_mode("recipe"):
-        out = plan_assist_layout(_room(SALON), MAJLIS_PREFS, [], room_type="majlis")
+        out = plan_assist_layout(_room(SALON), LIVING_PREFS, [])
     assert out.totals.item_count >= 3
     assert not [f for f in out.findings if f.severity == "error"]
-    assert out.proposal_id == GOLDEN_MAJLIS_PID  # recipe mode == legacy output
 
 
 def test_shadow_mode_returns_legacy(catalog_repo):
     with planner_mode("shadow"):
         out = plan_assist_layout(_room(LIVING_ROOM), LIVING_PREFS, [])
     assert out.proposal_id == GOLDEN_LIVING_PID
-
-
-def test_shadow_mode_records_equivalent_comparison(catalog_repo, caplog):
-    with planner_mode("shadow"), caplog.at_level(logging.INFO, logger="zory"):
-        plan_assist_layout(_room(SALON), MAJLIS_PREFS, [], room_type="majlis")
-    assert "EQUIVALENT" in caplog.text
-    assert "DIVERGENCE" not in caplog.text
 
 
 # --- safety / fallback -------------------------------------------------------------
@@ -172,7 +148,7 @@ def test_shadow_swallows_recipe_failure(catalog_repo, monkeypatch, caplog):
 
 def test_recipe_path_respects_validation_gate(catalog_repo):
     # whatever the recipe places, no placement may carry a hard (MUST_FIX) error
-    recipe = plan_layout_from_recipe(_room(SALON), MAJLIS_PREFS, [], room_type="majlis")
+    recipe = plan_layout_from_recipe(_room(SALON), LIVING_PREFS, [])
     analysis = analyze_room(_room(SALON))
     repo = get_repository()
     placed: list = []

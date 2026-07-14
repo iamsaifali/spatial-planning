@@ -50,8 +50,8 @@ def test_handlers_return_zone_lists(catalog_repo):
     analysis = analyze_room(Room.model_validate(WIDE))
     stats = catalog_repo.category_stats()
     # a couple of representative handlers run end-to-end and yield zones
-    assert isinstance(resolve_strategy("perimeter_walls").resolver("sofa", "majlis", analysis, [], stats, {}), list)
-    assert isinstance(resolve_strategy("center_area").resolver("rug", "majlis", analysis, [], stats, {}), list)
+    assert isinstance(resolve_strategy("focal_wall").resolver("sofa", "living_room", analysis, [], stats, {}), list)
+    assert isinstance(resolve_strategy("center_area").resolver("rug", "bedroom", analysis, [], stats, {}), list)
 
 
 # --- zones match the legacy dispatch ----------------------------------------------
@@ -77,29 +77,6 @@ def test_living_room_strategy_zones_match_legacy(catalog_repo):
     _assert_roles_match_legacy(RECT, "living_room", catalog_repo)
 
 
-def test_majlis_strategy_zones_match_legacy(catalog_repo):
-    _assert_roles_match_legacy(WIDE, "majlis", catalog_repo)
-
-
-def test_perimeter_walls_matches_legacy_majlis_sofa(catalog_repo):
-    analysis = analyze_room(Room.model_validate(WIDE))
-    stats = catalog_repo.category_stats()
-    via_strategy = resolve_strategy("perimeter_walls").resolver("sofa", "majlis", analysis, [], stats, {})
-    via_legacy = zones_for_category("sofa", analysis, [], stats, room_type="majlis")
-    assert _sig(via_strategy) == _sig(via_legacy)
-    # and it is genuinely the perimeter (not the living-room sofa) behaviour
-    assert via_strategy and all("majlis_perimeter_seating" in z.reason_codes for z in via_strategy)
-
-
-def test_center_area_matches_legacy_rug_and_table(catalog_repo):
-    analysis = analyze_room(Room.model_validate(WIDE))
-    stats = catalog_repo.category_stats()
-    for category in ("rug", "coffee_table"):
-        via_strategy = resolve_strategy("center_area").resolver(category, "majlis", analysis, [], stats, {})
-        via_legacy = zones_for_category(category, analysis, [], stats, room_type="majlis")
-        assert _sig(via_strategy) == _sig(via_legacy), category
-
-
 # --- param consumption -------------------------------------------------------------
 
 
@@ -107,12 +84,11 @@ def test_center_area_consumes_size_params(catalog_repo):
     analysis = analyze_room(Room.model_validate(WIDE))
     stats = catalog_repo.category_stats()
 
-    default = center_area("coffee_table", "majlis", analysis, [], stats, {})
-    explicit = center_area("coffee_table", "majlis", analysis, [], stats, {"size_w": 140, "size_d": 120})
-    bigger = center_area("coffee_table", "majlis", analysis, [], stats, {"size_w": 400, "size_d": 400})
+    default = center_area("coffee_table", "living_room", analysis, [], stats, {})
+    explicit = center_area("coffee_table", "living_room", analysis, [], stats, {"size_w": 140, "size_d": 120})
+    bigger = center_area("coffee_table", "living_room", analysis, [], stats, {"size_w": 400, "size_d": 400})
 
-    # explicit defaults reproduce the implicit (legacy) sizing
+    # explicit defaults reproduce the implicit sizing
     assert _sig(default) == _sig(explicit)
-    assert _sig(default) == _sig(zones_for_category("coffee_table", analysis, [], stats, room_type="majlis"))
     # a larger size genuinely flows into the geometry -> a different zone
     assert _sig(default) != _sig(bigger)
