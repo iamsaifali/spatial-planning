@@ -27,6 +27,8 @@ Category = Literal[
     "chaise-lounge",
     "chair",
     "office-chair",
+    "office-table",  # desk — placed via a work-nook rule (next phase); not yet in any recipe
+    "dining-table",  # dining group — placed via a dining rule (next phase); not yet in any recipe
     "tv-table",
     "center-table",
     "side-table",
@@ -57,6 +59,9 @@ PLACEMENT_GROUP: dict[str, str] = {
     "storage": "storage", "decor": "decor", "bed": "bed", "custom": "custom",
     "2-seater-sofa": "sofa", "3-seater-sofa": "sofa", "l-shape-sofa": "sofa", "chaise-lounge": "sofa",
     "chair": "accent_chair", "office-chair": "accent_chair",
+    # new placement roles - no recipe uses them yet, so these products load but are not placed
+    # until their rules are built (work nook / dining group). See the room-preferences plan.
+    "office-table": "desk", "dining-table": "dining_table",
     "tv-table": "tv_unit", "center-table": "coffee_table",
     "side-table": "side_table", "service-table": "side_table",
     "carpet": "rug",
