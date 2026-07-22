@@ -159,6 +159,9 @@ export interface Preferences {
   room_type?: RoomType | null;
   region?: Region | null;
   seating_capacity?: number | null;
+  // living-room piece checklist (backend `included_pieces`) + sofa footprint choice
+  included_pieces?: string[] | null;
+  sofa_type?: "auto" | "2-seater" | "3-seater" | "l-shape";
   formality?: Formality | null;
   luxury_tier?: LuxuryTier | null;
   materials?: string[];
@@ -177,6 +180,8 @@ export const EMPTY_PREFERENCES: Preferences = {
   room_type: null,
   region: null,
   seating_capacity: null,
+  included_pieces: null,
+  sofa_type: "auto",
   formality: null,
   luxury_tier: null,
   materials: [],
@@ -372,7 +377,8 @@ export interface AssistPlacement {
 }
 
 export interface AssistSkip {
-  category: Category;
+  // backend sends a plain category string (role or store category), not always in `Category`
+  category: string;
   reason: string;
 }
 
@@ -388,6 +394,7 @@ export interface AssistLayoutResponse {
   skipped: AssistSkip[];
   findings: Finding[];
   totals: AssistTotals;
+  notices: string[]; // human-readable "the X didn't fit this room" strings
 }
 
 export interface AssistTemplate {

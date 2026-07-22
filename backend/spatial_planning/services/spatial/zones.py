@@ -802,7 +802,8 @@ def _lighting_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: 
 
 
 def _storage_zones(
-    analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats, room_type: str = "living_room"
+    analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats, room_type: str = "living_room",
+    allow_small_console: bool = False,
 ) -> list[ZoneData]:
     # SEPARATE handling per storage TYPE - they want different walls:
     #   console (living)     : a fully CLEAN wall (never behind the seating or across a path); optional.
@@ -811,8 +812,14 @@ def _storage_zones(
     already_storage = any(placement_group(pr.category) == "storage" for _it, pr in placed)
     target = ("dressing-table" if already_storage else "wardrobe") if room_type == "bedroom" else "console"
 
-    if target == "console" and analysis.area_cm2 < SMALL_MEDIUM_MAX_CM2:
-        return []  # a console just crowds a small/medium living room
+    # Small-room console skip: on the LEGACY path (allow_small_console=False) a console just crowds a
+    # small/medium living room AND would float, so skip it on size (keeps the legacy golden intact).
+    # On the RECIPE path (allow_small_console=True) the console ROLE only runs when the user opted it in
+    # (Phase-1 checklist gating), so we DON'T size-skip - physical fit still governs: the clean-wall /
+    # walkway / door / behind-seating rules below place the console only where a wall truly holds it,
+    # else it's skipped cleanly -> the "didn't fit" notice.
+    if target == "console" and analysis.area_cm2 < SMALL_MEDIUM_MAX_CM2 and not allow_small_console:
+        return []
     s = stats.get("storage", {})
     depth = s.get("max_d", 45.0) + 6.0
     min_w = min(s.get("min_w", 80.0), 80.0)
@@ -1072,21 +1079,78 @@ def _reading_chair_zones(
 def _chaise_zones(
     analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats
 ) -> list[ZoneData]:
-    """A STANDALONE chaise-lounge tucked into a genuinely empty, door-free corner (or a clear
-    stretch by a window), angled to face INTO the room. Modeled on the reading chair: it needs a
-    genuinely clear corner (a wide 35cm clearance off any furniture) and keeps the standard 30cm
-    buffer off door swings (both via _corner_spots), so a door/occupied corner shrinks below the
-    fit threshold and yields no zone - the piece is simply SKIPPED rather than crammed in. It sits
-    in the corner FARTHEST from the sofa (so it never competes with the seating) and turns to face
-    the room centre. No zone survives -> caller skips the chaise (a 'didn't fit' notice)."""
-    sofa = _find_placed(placed, "sofa")
-    far = (sofa[0].x, sofa[0].y) if sofa is not None else None
-    centroid = analysis.polygon.centroid
-    center = (centroid.x, centroid.y)
-    return _corner_spots(
-        analysis, placed, "chaise", 150.0, max_zones=1, far_from=far, face=center,
-        reasons=[R_FLEXIBLE_SPOT], blocker_buffer=35.0,
-    )
+    """A STANDALONE chaise-lounge placed as a WALL-HUGGING lounge piece: its back against a clear
+    wall, long side PARALLEL to that wall, oriented to FACE INTO the room - exactly the way the
+    sofa / console / TV hug a wall (not a corner diagonal). It reuses the shared wall-band
+    infrastructure (`_wall_band_candidates` + `_band_zone`), so the pose and orientation come from
+    the wall itself (`rotation_for_normal`, front vector pointing off the wall into the room).
+
+    It seeks a genuinely CLEAR secondary wall BESIDE or ACROSS FROM the seating - never behind it:
+    it hard-excludes every wall a seating piece BACKS ONTO (the primary sofa AND the L-return, and a
+    floated sofa's back wall), so it never sits behind the group; plus the TV wall and any wall whose
+    clear run overlaps a walkway;
+    it PREFERS a wall away from the door (a soft penalty, not a hard drop); it keeps a 20cm gap off
+    every placed piece (the seating group / coffee table) and the standard 30cm keep-out off door
+    swings, and trims a candidate's run where a swing or adjacent furniture clips its corner. No
+    clean wall survives -> [] -> the caller skips the chaise (a 'didn't fit' notice)."""
+    s = stats.get("chaise", {})
+    depth = s.get("max_d", 80.0) + 8.0
+    min_w = min(s.get("min_w", 140.0), 140.0)
+    # Keep a real gap off the seating group (sofa / L-return / coffee table / any placed piece); the
+    # walkable rug is excluded automatically, so the chaise may kiss the rug's edge but never a sofa.
+    blockers = _placed_blockers(placed, buffer_cm=20.0)
+    # Hug a SOLID wall stretch (like the console / TV), holding the standard 30cm clear of any swing.
+    cands = _wall_band_candidates(analysis, depth, min_w, use_solid=True, blockers=blockers, door_clearance=30.0)
+    if not cands:
+        return []
+
+    # Trim a candidate's run where a door swing OR adjacent-wall furniture clips its corner, so a
+    # chaise centred on it can't poke into the door or the neighbouring piece.
+    obs = [blockers] if (blockers is not None and not blockers.is_empty) else []
+    obs += [sw.buffer(30.0) for sw in analysis.swing_arcs.values()]
+    if obs:
+        cands = _trim_band_extent(cands, analysis, depth, unary_union(obs), min_w)
+    if not cands:
+        return []
+
+    # Walls to avoid: every wall BEHIND the seating group (never crammed beside/behind the main
+    # seating), the TV wall, and - preferably - the door wall.
+    door_walls = {d.wall_index for d in analysis.room.doors}
+    tv = _find_placed(placed, "tv_unit")
+    tv_wall = None
+    if tv is not None:
+        tv_f = front_vector(tv[0].rotation_deg)
+        tv_wall = max(range(len(analysis.walls)), key=lambda i: dot(analysis.walls[i].normal, tv_f))
+    # The walls BEHIND the seating group: for EVERY placed seating piece (primary sofa AND the
+    # L-return - an L-group backs onto two walls), the wall it backs onto is the one whose inward
+    # normal best aligns with the piece's FRONT vector (equivalently, the wall its back edge faces).
+    # Exclude that wall whether the piece HUGS it (primary / a corner L-return) or FLOATS off it (a
+    # great-room sofa or a floated L-return) - a chaise on any of these walls sits BEHIND the group.
+    seating_back_walls: set[int] = set()
+    for it, pr in placed:
+        if placement_group(pr.category) != "sofa":
+            continue
+        sf = front_vector(it.rotation_deg)
+        back = max(range(len(analysis.walls)), key=lambda i: dot(analysis.walls[i].normal, sf))
+        seating_back_walls.add(back)
+
+    max_extent = max(c.extent for c in cands)
+    zones: list[ZoneData] = []
+    for i, cand in enumerate(cands):
+        w = cand.wall
+        blocks_walkway = _corridor_overlap_ratio(analysis, cand.piece) > 0.05
+        if w.index in seating_back_walls or (tv_wall is not None and w.index == tv_wall) or blocks_walkway:
+            continue  # hard-exclude any wall behind the seating, the TV wall, and a walkway-blocking run
+        pen = 0.35 if w.index in door_walls else 0.0  # prefer a clean secondary wall over the door wall
+        win_ratio = _window_overlap_ratio(w, cand.lo, cand.hi)
+        score = (
+            0.6 * (cand.extent / max_extent)
+            + 0.4 * _entry_distance_norm(analysis, cand.piece)
+            - 0.1 * win_ratio
+            - pen
+        )
+        zones.append(_band_zone(analysis, cand, "chaise", i, score, [R_FLEXIBLE_SPOT], depth))
+    return _rank(zones)
 
 
 def _dining_zones(

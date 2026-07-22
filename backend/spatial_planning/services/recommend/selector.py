@@ -125,6 +125,16 @@ def select_slots(
     bounds = size_bounds(category, pref_cat, room_area_cm2)
     if bounds is not None:
         mnw, mxw, mnd, mxd = bounds
+        # A sofa the USER explicitly pinned (Q2 sofa_type != "auto" -> _sofa_ladder pins store_category)
+        # is their choice: the room-proportional MAX WIDTH must not filter it out - only PHYSICAL fit
+        # (fits_zone / validate_item) may reject it, after which _execute_primary_sofa's honour-then-
+        # size-down ladder sizes it down with the existing notice. NOT lifted for the AUTO path
+        # (store_category is None), NOR for the COMPACT re-plan: the never-lone-3-seater compaction
+        # forces store_category="2-seater-sofa" WITHOUT the user asking, so that fallback stays
+        # room-proportional (else it grabs the widest 2-seater and crowds out the console). MIN +
+        # DEPTH bounds are unchanged.
+        if category == "sofa" and store_category is not None and not prefs.compact_seating:
+            mxw = float("inf")
         within = [p for p in products if mnw <= p.width_cm <= mxw and mnd <= p.depth_cm <= mxd]
         if within:
             products = within

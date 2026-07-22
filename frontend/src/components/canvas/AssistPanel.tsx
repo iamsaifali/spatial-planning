@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, RotateCcw, Sparkles, X } from "lucide-react";
+import { Check, Info, RotateCcw, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { StylePrefsDialog } from "./StylePrefsDialog";
@@ -152,7 +152,27 @@ export function AssistPanel() {
           Dismiss
         </Button>
       </div>
+      {proposal && proposal.notices.length > 0 && <NoticesNote notices={proposal.notices} />}
       {proposal && <ProposalQA proposal={proposal} roomType={roomType} />}
+    </div>
+  );
+}
+
+/** Gentle, user-facing note listing the pieces the user included that couldn't be placed
+ *  in the currently-selected layout. Reflects `proposal.notices`, so it updates whenever
+ *  the user switches templates. Strings are display-ready from the backend - rendered as-is. */
+function NoticesNote({ notices }: { notices: string[] }) {
+  return (
+    <div className="pointer-events-auto flex w-full items-start gap-2 rounded-2xl border border-amber-soft bg-amber-faint px-3 py-2 text-xs text-ink shadow-sm">
+      <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-deep" aria-hidden />
+      <div>
+        <span className="font-semibold text-amber-deep">Couldn&apos;t fit everything</span>
+        <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-ink-soft">
+          {notices.map((notice) => (
+            <li key={notice}>{notice}</li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

@@ -153,7 +153,7 @@ def corners(category, room_type, analysis, placed, stats, params):
 def remaining_wall(category, room_type, analysis, placed, stats, params):
     """A solid wall segment not used by other roles (storage / console)."""
     if category == "storage":
-        return _storage_zones(analysis, placed, stats, room_type=room_type)
+        return _storage_zones(analysis, placed, stats, room_type=room_type, allow_small_console=True)
     return _fallback(category, room_type, analysis, placed, stats, params)
 
 
@@ -165,8 +165,9 @@ def reading_corner(category, room_type, analysis, placed, stats, params):
 
 
 def chaise(category, room_type, analysis, placed, stats, params):
-    """A standalone chaise-lounge in an empty, door-free corner (or by a window), angled to face
-    into the room. Opt-in; never competes as a primary/secondary sofa (its own placement role)."""
+    """A standalone chaise-lounge placed WALL-HUGGING: back against a clear secondary wall, long
+    side parallel, facing into the room. Opt-in; never competes as a primary/secondary sofa
+    (its own placement role)."""
     if category == "chaise":
         return _chaise_zones(analysis, placed, stats)
     return _fallback(category, room_type, analysis, placed, stats, params)

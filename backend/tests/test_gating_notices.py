@@ -34,6 +34,15 @@ TINY = {
     "doors": [{"id": "d1", "wall_index": 0, "offset_cm": 20, "width_cm": 80}],
     "windows": [],
 }
+# A small/medium room (240x330 = 7.9 m^2) with NO clean wall a console can hug: the sofa/TV consume
+# the short walls and the side walls have no clear run long enough -> the requested console is
+# skipped cleanly (a "didn't fit" notice), even though the recipe path opts small-room consoles in.
+NO_CONSOLE_WALL = {
+    "vertices": [[0, 0], [240, 0], [240, 330], [0, 330]],
+    "doors": [{"id": "d1", "wall_index": 0, "offset_cm": 40, "width_cm": 90}],
+    "windows": [{"id": "w1", "wall_index": 2, "offset_cm": 80, "width_cm": 80}],
+    "wall_height_cm": 270,
+}
 ALL_PIECES = ["rug", "coffee_table", "tv_unit", "floor_lamp", "chaise_lounge", "dining_set", "side_table", "console", "plant", "vases"]
 OPTIONALS = {"side_table", "console", "plant", "vases"}
 
@@ -100,14 +109,42 @@ def test_unchecking_tv_removes_tv(catalog_repo):
 
 
 def test_requested_but_unfit_piece_emits_notice(catalog_repo):
-    # The 480x360 room is small/medium, so the console is size-skipped by the selector even
-    # though the user requested it -> an honest "didn't fit" notice + a did_not_fit skip.
+    # The 480x360 room is small/medium and requests the (oversized) chaise + dining set; neither
+    # physically fits -> an honest "didn't fit" notice for each. (The console DOES fit here now -
+    # see test_console_placed_in_small_room_with_clean_wall - so it is NOT among the notices.)
     resp = plan_layout_from_recipe(
         _room(LIVING_ROOM), Preferences(styles=["modern"], included_pieces=ALL_PIECES), []
     )
+    assert "The chaise lounge didn't fit this room." in resp.notices
+    assert "The dining set didn't fit this room." in resp.notices
+    assert "The console didn't fit this room." not in resp.notices
+
+
+def test_console_placed_in_small_room_with_clean_wall(catalog_repo):
+    # NEW console rule: on the recipe path a small/medium room no longer blanket-skips the console.
+    # The 480x360 room has a clean secondary wall (the east wall: not the TV/door/window wall, no
+    # sofa in its band), so an opted-in console is PLACED there - no "didn't fit" notice, no skip.
+    resp = plan_layout_from_recipe(
+        _room(LIVING_ROOM), Preferences(styles=["modern"], included_pieces=["rug", "coffee_table", "tv_unit", "console"]), []
+    )
+    assert "storage" in _cats(resp)  # the console is placed
+    assert not any("console" in n for n in resp.notices)
+    assert not [s for s in resp.skipped if s.category == "storage" and s.reason == "did_not_fit"]
+    assert not [f for f in resp.findings if f.severity == "error"]  # placed cleanly (clean wall)
+
+
+def test_console_without_clean_wall_skipped_with_notice(catalog_repo):
+    # Same recipe path, but NO_CONSOLE_WALL has no clean wall long enough for a console -> even
+    # though it is opted in, physical fit governs: the console is skipped cleanly with the honest
+    # "didn't fit" notice + a did_not_fit skip, and the rest of the room still lays out.
+    resp = plan_layout_from_recipe(
+        _room(NO_CONSOLE_WALL), Preferences(styles=["modern"], included_pieces=["rug", "coffee_table", "tv_unit", "console"]), []
+    )
+    assert "storage" not in _cats(resp)  # no console placed
     assert "The console didn't fit this room." in resp.notices
     console_skips = [s for s in resp.skipped if s.category == "storage"]
     assert console_skips and console_skips[0].reason == "did_not_fit"
+    assert not [f for f in resp.findings if f.severity == "error"]
 
 
 def test_excluded_piece_emits_no_notice(catalog_repo):

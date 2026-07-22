@@ -18,7 +18,7 @@ from spatial_planning.models.preferences import Preferences
 from spatial_planning.services.recommend.orchestrator import plan_assist_layout, plan_layout
 
 GOLDEN_LIVING_PID = "lay_5f5d21801c"  # legacy (one-of-each) - rollback path
-GOLDEN_LIVING_RECIPE = "lay_0dff965858"  # recipe (Phase 2: GAP-driven accent chairs) - production; a 2nd flanking chair now tops up toward the seat target (was 1 area-scaled chair)
+GOLDEN_LIVING_RECIPE = "lay_6528dd94ec"  # recipe planner: small/medium living room now opts a CONSOLE in on the recipe path (allow_small_console); it lands on the clean east wall, the east accent chair drops (never on the console side) and two vases sit on the console. Legacy golden lay_5f5d21801c is unaffected (skip kept there).
 
 LIVING_ROOM = {
     "vertices": [[0, 0], [480, 0], [480, 360], [0, 360]],

@@ -102,6 +102,15 @@ export async function requestLayout(): Promise<AssistTemplate[]> {
       "success",
       n > 1 ? `${n} layouts - tap one to preview, then accept.` : "Suggested layout - review, then accept.",
     );
+    // Surface the recommended template's "didn't fit" notices (already display-ready
+    // strings from the backend). Cap the toast spam: show up to 2, summarise the rest.
+    const notices = rec.layout.notices ?? [];
+    if (notices.length > 0) {
+      const shown = notices.slice(0, 2);
+      shown.forEach((notice) => ui.toast("info", notice));
+      const extra = notices.length - shown.length;
+      if (extra > 0) ui.toast("info", `+${extra} more item${extra > 1 ? "s" : ""} couldn't be placed.`);
+    }
     return templates;
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") return [];

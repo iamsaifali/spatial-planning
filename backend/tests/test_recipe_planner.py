@@ -50,7 +50,7 @@ LIVING_PREFS = Preferences(
 
 # Golden values. Living: legacy (one-of-each) vs recipe (area-scaled accent pieces).
 GOLDEN_LIVING_PID = "lay_5f5d21801c"  # legacy planner
-GOLDEN_LIVING_RECIPE = "lay_0dff965858"  # recipe planner (Phase 2: GAP-driven accent chairs); a 2nd flanking chair now tops up toward the seat target (was 1 area-scaled chair)
+GOLDEN_LIVING_RECIPE = "lay_6528dd94ec"  # recipe planner: small/medium living room now opts a CONSOLE in on the recipe path (allow_small_console); it lands on the clean east wall, the east accent chair drops (never on the console side) and two vases sit on the console. Legacy golden lay_5f5d21801c is unaffected (skip kept there).
 
 
 @contextlib.contextmanager
