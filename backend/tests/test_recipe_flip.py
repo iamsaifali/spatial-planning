@@ -18,7 +18,7 @@ from spatial_planning.models.preferences import Preferences
 from spatial_planning.services.recommend.orchestrator import plan_assist_layout, plan_layout
 
 GOLDEN_LIVING_PID = "lay_5f5d21801c"  # legacy (one-of-each) - rollback path
-GOLDEN_LIVING_RECIPE = "lay_cb5c145123"  # recipe (area-scaled accent pieces) - production; side_table placed after accent_chair (depends_on) - identical poses, list reorder only
+GOLDEN_LIVING_RECIPE = "lay_0dff965858"  # recipe (Phase 2: GAP-driven accent chairs) - production; a 2nd flanking chair now tops up toward the seat target (was 1 area-scaled chair)
 
 LIVING_ROOM = {
     "vertices": [[0, 0], [480, 0], [480, 360], [0, 360]],
@@ -32,7 +32,13 @@ SALON = {
     "windows": [{"id": "w1", "wall_index": 2, "offset_cm": 200, "width_cm": 180}],
     "wall_height_cm": 300,
 }
-LIVING_PREFS = Preferences(styles=["modern"], budget_tier="mid", total_budget=8000, room_purpose="entertaining")
+# Opt in EVERY checklist piece that maps to a living-room role, so gating is a no-op and the
+# recipe reproduces the pre-gating full-room layout byte-for-byte (golden hashes unchanged).
+_ALL_LIVING_PIECES = ["rug", "coffee_table", "tv_unit", "floor_lamp", "side_table", "console", "plant", "vases"]
+LIVING_PREFS = Preferences(
+    styles=["modern"], budget_tier="mid", total_budget=8000, room_purpose="entertaining",
+    included_pieces=_ALL_LIVING_PIECES,
+)
 
 
 @contextlib.contextmanager

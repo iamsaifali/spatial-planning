@@ -19,6 +19,7 @@ Category = Literal[
     "storage",
     "decor",
     "bed",  # bedroom primary sleeping (new category - own stats/terciles, no impact on others)
+    "chaise",  # standalone lounge placement role (chaise-lounge products; opt-in living-room piece)
     "custom",  # user's own kept items - never recommended, price 0
     # --- real multi-store categories (kept verbatim on the product; placed via PLACEMENT_GROUP) ---
     "2-seater-sofa",
@@ -57,7 +58,10 @@ PLACEMENT_GROUP: dict[str, str] = {
     "sofa": "sofa", "tv_unit": "tv_unit", "rug": "rug", "coffee_table": "coffee_table",
     "side_table": "side_table", "accent_chair": "accent_chair", "lighting": "lighting",
     "storage": "storage", "decor": "decor", "bed": "bed", "custom": "custom",
-    "2-seater-sofa": "sofa", "3-seater-sofa": "sofa", "l-shape-sofa": "sofa", "chaise-lounge": "sofa",
+    "2-seater-sofa": "sofa", "3-seater-sofa": "sofa", "l-shape-sofa": "sofa",
+    # chaise-lounge is a STANDALONE lounge piece (opt-in), NOT a sofa: its own "chaise" role so
+    # the sofa role can never select it (a chaise never becomes a primary/secondary sofa).
+    "chaise-lounge": "chaise",
     "chair": "accent_chair", "office-chair": "accent_chair",
     # new placement roles - no recipe uses them yet, so these products load but are not placed
     # until their rules are built (work nook / dining group). See the room-preferences plan.
@@ -112,6 +116,30 @@ def preferred_store_category(room_type: str, role: str) -> str | None:
 # Rooms below this floor area count as "small/medium": they get a 2-seater sofa (not a 3-seater)
 # and no storage console - both would crowd a tight room. Rooms at/above it are "large".
 SMALL_MEDIUM_MAX_CM2 = 240_000.0  # 24 m2
+
+# Q2 main-sofa choice (Preferences.sofa_type) -> the PRIMARY sofa's STORE category. "auto" has
+# no entry: the planner derives the size from room area (today's default behaviour).
+SOFA_TYPE_CATEGORY: dict[str, str] = {
+    "2-seater": "2-seater-sofa",
+    "3-seater": "3-seater-sofa",
+    "l-shape": "l-shape-sofa",
+}
+# Sofa size ladder, LARGEST -> smallest (by seat capacity / footprint). The primary sofa sizes
+# DOWN this ladder when the chosen size can't be placed, so a room is never left sofa-less
+# (honour-then-size-down). SOFA_RANK is the same order as a comparable index.
+SOFA_LADDER: list[str] = ["l-shape-sofa", "3-seater-sofa", "2-seater-sofa"]
+SOFA_RANK: dict[str, int] = {"2-seater-sofa": 0, "3-seater-sofa": 1, "l-shape-sofa": 2}
+
+
+def seat_target_for_area(area_cm2: float) -> int:
+    """Sensible seating-capacity target from room area when the user gives no explicit count.
+    Shared by the planner (default target) and the accent-chair strategy (gap gate)."""
+    area_m2 = area_cm2 / 10_000.0
+    if area_m2 < 16.0:
+        return 6  # small
+    if area_m2 < 28.0:
+        return 8  # medium
+    return 11  # large
 
 # "Measure the room, then shop to that size." Room-proportional MAX width (cm) per placement ROLE:
 # furniture scales with the room, so a small room gets a compact piece and a large room a bigger one

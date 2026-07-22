@@ -23,6 +23,7 @@ from itertools import count
 
 from spatial_planning.config import get_settings
 from spatial_planning.models.api import (
+    SKIP_DID_NOT_FIT,
     AssistLayoutResponse,
     AssistPlacement,
     AssistSkip,
@@ -30,7 +31,15 @@ from spatial_planning.models.api import (
 )
 from spatial_planning.models.geometry import PlacedItem, Pose, Room
 from spatial_planning.models.preferences import Preferences
-from spatial_planning.models.products import CATEGORY_LABELS, expected_max_width, placement_group
+from spatial_planning.models.products import (
+    CATEGORY_LABELS,
+    SOFA_LADDER,
+    SOFA_RANK,
+    SOFA_TYPE_CATEGORY,
+    expected_max_width,
+    placement_group,
+    seat_target_for_area,
+)
 from spatial_planning.models.validation import MUST_FIX_CODES, Finding
 from spatial_planning.handlers._common import PlacedProduct, resolve_placed, wall_label
 from spatial_planning.services.catalog import CatalogRepository, get_repository
@@ -41,6 +50,7 @@ from spatial_planning.services.spatial.autofix import find_autofix, settle_pose,
 from spatial_planning.services.spatial.core import RoomAnalysis, ZoneData
 from spatial_planning.services.spatial.validate import validate_item
 from spatial_planning.services.recipe.equivalence import compare_layouts
+from spatial_planning.services.recipe import pieces
 from spatial_planning.services.recipe.models import CountRule, Recipe, RoleDefinition
 from spatial_planning.services.recipe.predicates import resolve_predicate
 from spatial_planning.services.recipe.registry import get_recipe
@@ -64,12 +74,26 @@ class RecipeError(RuntimeError):
 
 def _default_seat_target(analysis: RoomAnalysis) -> int:
     """Sensible seating-capacity target from room area when none is supplied."""
-    area_m2 = analysis.area_cm2 / 10_000.0
-    if area_m2 < 16.0:
-        return 6  # small
-    if area_m2 < 28.0:
-        return 8  # medium
-    return 11  # large
+    return seat_target_for_area(analysis.area_cm2)
+
+
+# Human phrases (with the right article) for the honour-then-size-down notice.
+_SOFA_PHRASE = {"2-seater-sofa": "a 2-seater", "3-seater-sofa": "a 3-seater", "l-shape-sofa": "an L-shape"}
+
+
+def _sofa_ladder(prefs: Preferences) -> list[str | None]:
+    """Store categories to try for the PRIMARY sofa, honoured choice first then sizing DOWN.
+
+    - "auto" -> [None]: the selector derives the size from room area (today's behaviour).
+    - a compact re-plan (compact_seating) forces a 2-seater (+ chair), whatever Q2 asked.
+    - an explicit Q2 choice starts at that size and sizes DOWN the ladder if it can't place.
+    """
+    if prefs.compact_seating:
+        return ["2-seater-sofa"]
+    if prefs.sofa_type == "auto":
+        return [None]
+    start = SOFA_TYPE_CATEGORY[prefs.sofa_type]
+    return list(SOFA_LADDER[SOFA_LADDER.index(start):])
 
 
 def _rationale(category: str, zone: ZoneData, analysis: RoomAnalysis) -> str:
@@ -261,11 +285,25 @@ class _PlanState:
     working: list[PlacedProduct]
     placements: list[AssistPlacement] = field(default_factory=list)
     skipped: list[AssistSkip] = field(default_factory=list)
+    # Human-readable planner messages (size-down / seat-count shortfall) surfaced on the
+    # response.notices channel alongside the Phase 1 "didn't fit" gating notices.
+    notices: list[str] = field(default_factory=list)
     have_categories: set[str] = field(default_factory=set)
     ids: Iterator[int] = field(default_factory=lambda: count(1))
+    # Per-role bookkeeping for checklist gating notices (Phase 1): how many instances each
+    # role placed, and the last skip it emitted (used to turn "requested but placed zero"
+    # into a "didn't fit" notice). Keyed by role name so the decor duplicate (plant vs
+    # vases, same category) is disambiguated.
+    placed_by_role: dict[str, int] = field(default_factory=dict)
+    skip_by_role: dict[str, AssistSkip] = field(default_factory=dict)
     # role -> a pinned zone (template generation forces the primary piece onto a chosen
     # wall; every other role still resolves normally and cascades around it)
     zone_overrides: dict[str, ZoneData] = field(default_factory=dict)
+    # Phase 4: was a TV UNIT actually requested (in the active checklist set)? Default True
+    # (TV-included is the essentials default and every golden). When False the room is
+    # conversation-focal: the sofa's window-wall avoidance relaxes (see _run_strategy /
+    # _sofa_zones) and the TV-shaped template ranking/drops are skipped.
+    tv_requested: bool = True
 
 
 def _topological_order(roles: list[RoleDefinition]) -> list[RoleDefinition]:
@@ -291,6 +329,43 @@ def _topological_order(roles: list[RoleDefinition]) -> list[RoleDefinition]:
     return ordered
 
 
+def active_roles(recipe: Recipe, preferences: Preferences, room_type: str) -> list[RoleDefinition]:
+    """The recipe roles to execute, after checklist gating (Phase 1).
+
+    CORE roles (a role that maps to a core piece, or to NO checklist piece at all — e.g.
+    the L-return `secondary_seating`) ALWAYS run. CHECKLIST roles (essentials + optionals)
+    run only when their piece key is in the active set: `preferences.included_pieces` if
+    given, else the essentials-only default. Gating is scoped to living_room (the checklist
+    feature); every other room type runs its recipe unchanged.
+
+    Pure filter over `recipe.roles` (declared order preserved) — it never reorders, so
+    opting in every mapped piece reproduces the ungated layout byte-for-byte.
+    """
+    if room_type != "living_room":
+        return list(recipe.roles)
+    active = pieces.resolve_active_pieces(preferences.included_pieces)
+    kept: list[RoleDefinition] = []
+    for role in recipe.roles:
+        pc = pieces.piece_for_role(role.role)
+        if pc is None or pc.tier == "core" or pc.key in active:
+            kept.append(role)
+    return kept
+
+
+def _tv_requested(preferences: Preferences, room_type: str) -> bool:
+    """Phase 4 signal — was a TV UNIT REQUESTED (INTENT), not "was one placed".
+
+    The active checklist set = `preferences.included_pieces` if given, else the essentials-only
+    default (which INCLUDES `tv_unit`). So `included_pieces=None` -> True (unchanged), a list
+    OMITTING `tv_unit` -> False (conversation-focal, relax the TV rules), a list including it -> True.
+    A TV requested but that didn't fit is still True (not a no-TV case). Non-living rooms and the
+    legacy path are always True — the checklist feature is living-room only, so nothing changes there.
+    """
+    if room_type != "living_room":
+        return True
+    return "tv_unit" in pieces.resolve_active_pieces(preferences.included_pieces)
+
+
 def _resolve_recipe_predicates(recipe: Recipe) -> None:
     """Predicate awareness: resolve every predicate reference up-front. This is an
     orchestration decision - the interpreter refuses to run a recipe whose intent it
@@ -305,7 +380,13 @@ def _run_strategy(role: RoleDefinition, category: str, st: _PlanState) -> list[Z
     """Invoke the role's zone strategy through the registry (Phase 1 strategies still
     delegate to the existing zone code, so zones are identical to the legacy path)."""
     strategy = resolve_strategy(role.zone_strategy.name)
-    return strategy.resolver(category, st.room_type, st.analysis, st.working, st.stats, role.zone_strategy.params)
+    params = role.zone_strategy.params
+    # Phase 4: thread the "no TV requested" signal into the zone strategy so _sofa_zones can
+    # relax its window-wall avoidance. Only injected when NO TV was requested, so a TV-included
+    # plan passes the recipe's params dict UNCHANGED (strict no-op, byte-identical goldens).
+    if not st.tv_requested:
+        params = {**params, "tv_requested": False}
+    return strategy.resolver(category, st.room_type, st.analysis, st.working, st.stats, params)
 
 
 def _metric_of(product, metric: str) -> int:
@@ -327,10 +408,63 @@ def _count_target(rule: CountRule, st: _PlanState) -> int:
     raise RecipeError(f"until_target count rule needs a resolvable target (source={rule.source!r})")
 
 
+def _execute_primary_sofa(role: RoleDefinition, st: _PlanState) -> None:
+    """Place the PRIMARY living-room sofa, honouring the Q2 sofa_type then sizing DOWN.
+
+    Q2 (prefs.sofa_type) pins the primary sofa's form; if the chosen size can't be selected
+    or placed in this room, we walk DOWN the ladder (l-shape -> 3-seater -> 2-seater) and
+    surface a notice, so a room is never left sofa-less (honour-then-size-down, CLAUDE.md 5.1).
+    "auto" preserves today's area-derived default (the first rung is the selector's own
+    resolution). The L-return (secondary_seating) is unaffected - it stays a 2-seater."""
+    category = role.categories[0]
+    pinned = st.zone_overrides.get(role.role)
+    requested = SOFA_TYPE_CATEGORY.get(st.preferences.sofa_type)  # None for "auto"
+    last_reason = "NO_FIT"
+    for store_cat in _sofa_ladder(st.preferences):
+        zones = [pinned] if pinned is not None else _run_strategy(role, category, st)
+        result = select_slots(
+            category, zones, st.preferences, st.working, st.repo,
+            room_area_cm2=st.analysis.area_cm2, store_category=store_cat,
+        )
+        candidate = result.best
+        if candidate is None:
+            last_reason = str(result.no_fit_hints.get("reason", "NO_FIT"))
+            continue
+        pose = settle_pose(
+            st.analysis, st.working, candidate.product,
+            anchor_pose(candidate.zone, candidate.product, st.analysis),
+        )
+        placement, item, reason = _commit(
+            category, candidate, pose, candidate.zone.id, f"{AUTO_PREFIX}{next(st.ids)}", st.analysis, st.working
+        )
+        if placement is None:
+            last_reason = reason or "NO_VALID_SPOT"
+            continue
+        st.placements.append(placement)
+        st.working.append((item, candidate.product))
+        st.have_categories.add(category)
+        # Honour-then-size-down notice: the sofa we placed is smaller than the user's explicit
+        # Q2 choice (only meaningful when the catalog has distinct sofa store categories).
+        placed_cat = candidate.product.category
+        if requested and placed_cat in SOFA_RANK and SOFA_RANK[placed_cat] < SOFA_RANK[requested]:
+            st.notices.append(
+                f"We used {_SOFA_PHRASE[placed_cat]} — {_SOFA_PHRASE[requested]} "
+                "wouldn't fit this room comfortably."
+            )
+        return
+    st.skipped.append(AssistSkip(category=category, reason=last_reason))
+    st.have_categories.add(category)
+
+
 def _execute_single(role: RoleDefinition, st: _PlanState) -> None:
     category = role.categories[0]
     if category in st.have_categories:
         st.skipped.append(AssistSkip(category=category, reason="ALREADY_PRESENT"))
+        return
+
+    # The living-room primary sofa owns Q2 (sofa_type) + the honour-then-size-down ladder.
+    if st.room_type == "living_room" and role.role == "primary_seating":
+        _execute_primary_sofa(role, st)
         return
 
     pinned = st.zone_overrides.get(role.role)
@@ -450,11 +584,20 @@ def _execute_fill_available(role: RoleDefinition, st: _PlanState) -> None:
         return
 
     zones = _run_strategy(role, category, st)
-    area_m2 = st.analysis.area_cm2 / 10_000.0
-    per = role.count.per_area_m2 or 12.0
-    cap = max(1, round(area_m2 / per))
-    if role.count.max is not None:
-        cap = min(cap, role.count.max)
+    if st.room_type == "living_room" and role.role == "companion_seating":
+        # Sofa-first ladder: accent chairs are the LAST resort and GAP-driven, NOT area-scaled.
+        # Place only enough to top up the seat target the sofa group (primary + L-return)
+        # couldn't reach - cap = clamp(target - seats already placed, 0, max) - so a room that
+        # the sofas already seat gets zero chairs, and an odd +1 tops up (CLAUDE.md 5.1).
+        target = st.preferences.seating_capacity or _default_seat_target(st.analysis)
+        seated = sum(_metric_of(p, "seating_capacity") for _i, p in st.working if _metric_of(p, "seating_capacity") > 0)
+        cap = max(0, min(role.count.max or 2, target - seated))
+    else:
+        area_m2 = st.analysis.area_cm2 / 10_000.0
+        per = role.count.per_area_m2 or 12.0
+        cap = max(1, round(area_m2 / per))
+        if role.count.max is not None:
+            cap = min(cap, role.count.max)
 
     placed = 0
     for zone in zones:
@@ -478,13 +621,49 @@ def _execute_fill_available(role: RoleDefinition, st: _PlanState) -> None:
         st.working.append((item, product))
         placed += 1
 
-    if placed == 0:
+    # cap == 0 is an INTENTIONAL "no more seats needed" (gap-driven chairs), not a fit failure -
+    # only flag NO_FIT when we actually tried (cap > 0) and nothing landed.
+    if placed == 0 and cap > 0:
         st.skipped.append(AssistSkip(category=category, reason="NO_FIT"))
     st.have_categories.add(category)
 
 
+def _execute_per_anchor(role: RoleDefinition, st: _PlanState) -> None:
+    """Place one item per candidate zone the strategy rings around an anchor (dining chairs
+    around the dining table). Every candidate is gated by _commit; a position that can't fit
+    (crowded against a wall, or the anchor never placed -> no zones) is simply SKIPPED — fewer
+    is fine. Bounded by role.count.max. Unlike the other executors this NEVER touches
+    have_categories: the ring shares its placement group (accent_chair) with the companion
+    chairs, and marking it present would wrongly gate them (they run first regardless)."""
+    category = role.categories[0]
+    zones = _run_strategy(role, category, st)
+    placed_any = False
+    for zone in zones[: (role.count.max or len(zones))]:
+        result = select_slots(
+            category, [zone], st.preferences, st.working, st.repo,
+            room_area_cm2=st.analysis.area_cm2, store_category=role.store_category,
+        )
+        candidate = result.best
+        if candidate is None:
+            continue
+        product = candidate.product
+        pose = settle_pose(st.analysis, st.working, product, anchor_pose(zone, product, st.analysis))
+        placement, item, _reason = _commit(
+            category, candidate, pose, zone.id, f"{AUTO_PREFIX}{next(st.ids)}", st.analysis, st.working
+        )
+        if placement is None:
+            continue
+        st.placements.append(placement)
+        st.working.append((item, product))
+        placed_any = True
+
+    if not placed_any:
+        st.skipped.append(AssistSkip(category=category, reason="NO_FIT"))
+
+
 def _execute_role(role: RoleDefinition, st: _PlanState) -> None:
     mode = role.count.mode
+    before_placed, before_skipped = len(st.placements), len(st.skipped)
     if mode == "single":
         _execute_single(role, st)
     elif mode == "until_target":
@@ -493,9 +672,55 @@ def _execute_role(role: RoleDefinition, st: _PlanState) -> None:
         _execute_mirror_pair(role, st)
     elif mode == "fill_available":
         _execute_fill_available(role, st)
+    elif mode == "per_anchor":
+        _execute_per_anchor(role, st)
     else:
-        # per_anchor is part of the count vocabulary but no shipped recipe uses it yet.
         raise RecipeError(f"count mode '{mode}' is not implemented yet (role '{role.role}')")
+    # Bookkeeping for gating notices: record what THIS role placed / skipped (by role name,
+    # so two roles sharing a category — plant & vases are both 'decor' — stay distinct).
+    st.placed_by_role[role.role] = len(st.placements) - before_placed
+    new_skips = st.skipped[before_skipped:]
+    if new_skips:
+        st.skip_by_role[role.role] = new_skips[-1]
+
+
+def _apply_gating_notices(
+    resp: AssistLayoutResponse, preferences: Preferences, room_type: str, st: _PlanState
+) -> None:
+    """Honest 'didn't fit' notices (Phase 1), scoped to living_room.
+
+    For every checklist piece the user REQUESTED (in the active set) whose role ran but
+    placed zero instances, mark its skip `SKIP_DID_NOT_FIT` and append a human-readable
+    line to `resp.notices`. Excluded pieces produce no skip (their role never ran) and
+    core seating shortfall is out of scope (Phase 2), so neither is ever notified. A piece
+    the user already placed themselves (ALREADY_PRESENT) is present, not unfit — no notice.
+    """
+    if room_type != "living_room":
+        return
+    for key in pieces.resolve_active_pieces(preferences.included_pieces):
+        pc = pieces.piece(key)
+        if pc is None or pc.tier == "core" or pc.role is None:
+            continue  # core / role-less (dining_set) — nothing ran to notice
+        if st.placed_by_role.get(pc.role, 0) > 0:
+            continue  # requested and placed — no notice
+        skip = st.skip_by_role.get(pc.role)
+        if skip is None or skip.reason == "ALREADY_PRESENT":
+            continue  # role didn't run, or the user already placed it
+        skip.reason = SKIP_DID_NOT_FIT
+        resp.notices.append(f"The {pc.label.lower()} didn't fit this room.")
+
+
+def _apply_seating_notices(
+    resp: AssistLayoutResponse, preferences: Preferences, room_type: str
+) -> None:
+    """Seat-count rounds UP, never under: when even the smallest clean arrangement over-fills
+    the room the ladder walks DOWN (fewer sofas/chairs) and we say how many it actually seats.
+    Only surfaced when the user gave an EXPLICIT count and the placed seating fell short."""
+    if room_type != "living_room" or preferences.seating_capacity is None:
+        return
+    seated = sum(p.product.seating_capacity for p in resp.placements if p.product.seating_capacity > 0)
+    if 0 < seated < preferences.seating_capacity:
+        resp.notices.append(f"This room comfortably seats {seated}.")
 
 
 def plan_layout_from_recipe(
@@ -534,10 +759,16 @@ def plan_layout_from_recipe(
         working=working,
         have_categories={placement_group(product.category) for _i, product in working},
         zone_overrides=zone_overrides or {},
+        tv_requested=_tv_requested(preferences, effective_room_type),
     )
 
+    # Gate the recipe to the requested checklist pieces. Topologically order the FULL recipe
+    # (so a dependency filtered out below still linearises without error), then execute only
+    # the active roles — a filtered role is thus equivalent to being absent/skipped.
+    active = {r.role for r in active_roles(recipe, preferences, effective_room_type)}
     for role in _topological_order(recipe.roles):
-        _execute_role(role, st)
+        if role.role in active:
+            _execute_role(role, st)
 
     resp = _finalize_response(st.analysis, st.placements, st.skipped, st.working)
 
@@ -555,6 +786,9 @@ def plan_layout_from_recipe(
                 room_type,
                 zone_overrides,
             )
+    resp.notices.extend(st.notices)  # size-down / honour-then-size-down messages from this pass
+    _apply_seating_notices(resp, preferences, effective_room_type)
+    _apply_gating_notices(resp, preferences, effective_room_type, st)
     return resp
 
 
@@ -596,21 +830,30 @@ def _anchor_label(analysis: RoomAnalysis, room: Room, zone: ZoneData, piece: str
     return f"{piece} on the {side} wall", side
 
 
-def _template_layout_score(resp: AssistLayoutResponse, analysis: RoomAnalysis) -> float:
+def _template_layout_score(
+    resp: AssistLayoutResponse, analysis: RoomAnalysis, tv_requested: bool = True
+) -> float:
     """A design-quality score used to rank/recommend templates. Today it rewards a working
     sofa<->TV pair (the TV actually faces the sofa, at a comfortable distance) - so we
     recommend a sofa wall whose opposite wall can host the TV, instead of one where the TV
     gets pushed to a side wall - and, in a clearly rectangular room, a sofa on a LONG wall
     facing ACROSS the SHORTER span (a comfortable viewing distance) over one on a SHORT wall
     facing down the long axis. 0 for rooms without a sofa+TV (e.g. bedrooms), leaving their
-    order unchanged."""
+    order unchanged.
+
+    Phase 4: when no TV was REQUESTED (`tv_requested=False`), the TV terms (in-front reward,
+    viewing distance, off-centre penalty) are SKIPPED - a conversation-focal room must never be
+    ranked on a TV it doesn't have - while the TV-independent terms (long-axis balance, tight
+    L-return, companion-chair proximity, warnings) still rank the walls."""
     from spatial_planning.services.spatial.geometry_utils import front_vector, item_polygon
 
     sofas = [p for p in resp.placements if p.category == "sofa"]
     tvs = [p for p in resp.placements if p.category == "tv_unit"]
-    if not sofas or not tvs:
+    if not sofas:
         return 0.0
-    sofa, tv = sofas[0], tvs[0]  # sofas[0] is the PRIMARY (placed first); an L-return is 2nd
+    if tv_requested and not tvs:
+        return 0.0  # a TV-focal room with no TV placed is degenerate - leave its order unchanged
+    sofa = sofas[0]  # sofas[0] is the PRIMARY (placed first); an L-return is 2nd
     f = front_vector(sofa.pose.rotation_deg)
     # Viewing-distance / room-shape preference: in a clearly rectangular room a sofa facing
     # ACROSS the SHORTER span sits on a LONG wall a comfortable distance from its TV on the
@@ -625,18 +868,21 @@ def _template_layout_score(resp: AssistLayoutResponse, analysis: RoomAnalysis) -
         score_long_axis_penalty = 2.0 * along_long
     else:
         score_long_axis_penalty = 0.0
-    fx = sofa.pose.x + f[0] * sofa.product.depth_cm / 2.0
-    fy = sofa.pose.y + f[1] * sofa.product.depth_cm / 2.0
-    vx, vy = tv.pose.x - fx, tv.pose.y - fy
-    d = (vx * vx + vy * vy) ** 0.5
-    facing = (f[0] * vx + f[1] * vy) / d if d > 1.0 else -1.0
-    score = 2.0 if facing > 0.6 else (0.7 if facing > 0.3 else 0.0)  # TV in front of the sofa
-    if 200.0 <= d <= 430.0:
-        score += 1.0  # comfortable viewing distance
-    elif d <= 480.0:
-        score += 0.4
-    # the TV should sit CENTRED in front of the sofa, not shoved to one side
-    score -= min(1.5, abs(vy * f[0] - vx * f[1]) / 60.0)
+    score = 0.0
+    if tv_requested:  # tvs guaranteed present here (early-returned above otherwise)
+        tv = tvs[0]
+        fx = sofa.pose.x + f[0] * sofa.product.depth_cm / 2.0
+        fy = sofa.pose.y + f[1] * sofa.product.depth_cm / 2.0
+        vx, vy = tv.pose.x - fx, tv.pose.y - fy
+        d = (vx * vx + vy * vy) ** 0.5
+        facing = (f[0] * vx + f[1] * vy) / d if d > 1.0 else -1.0
+        score = 2.0 if facing > 0.6 else (0.7 if facing > 0.3 else 0.0)  # TV in front of the sofa
+        if 200.0 <= d <= 430.0:
+            score += 1.0  # comfortable viewing distance
+        elif d <= 480.0:
+            score += 0.4
+        # the TV should sit CENTRED in front of the sofa, not shoved to one side
+        score -= min(1.5, abs(vy * f[0] - vx * f[1]) / 60.0)
     # a big-room L-return should form a TIGHT adjacent L, not a second sofa floating in the
     # middle of the room: reward a small gap between the two sofas, penalise a large one
     if len(sofas) >= 2:
@@ -669,17 +915,24 @@ def _template_layout_score(resp: AssistLayoutResponse, analysis: RoomAnalysis) -
 _TV_SOFA_CENTER_TOL_CM = 30.0
 
 
-def _template_issues(resp: AssistLayoutResponse, analysis: RoomAnalysis) -> bool:
+def _template_issues(
+    resp: AssistLayoutResponse, analysis: RoomAnalysis, tv_requested: bool = True
+) -> bool:
     """A template we should NOT surface at all: it has a layout warning, the TV isn't really in
     front of the sofa, the TV is shoved onto a WINDOW wall (squeezed beside/below the window),
-    or a big-room second sofa FLOATS instead of forming an adjacent L."""
+    or a big-room second sofa FLOATS instead of forming an adjacent L.
+
+    Phase 4: the TV-shaped drops (TV not in front, TV past the sofa edge, TV on a window wall,
+    sofa facing down the long axis toward a far TV) apply ONLY when a TV was REQUESTED. A
+    conversation-focal room is never dropped for a TV it doesn't have; the TV-independent drops
+    (warnings, floating L-return, bed crammed on a door, oversized piece) still apply."""
     if any(fd.severity == "warning" for fd in resp.findings):
         return True
     from spatial_planning.services.spatial.geometry_utils import front_vector, item_polygon
 
     sofas = [p for p in resp.placements if p.category == "sofa"]
     tvs = [p for p in resp.placements if p.category == "tv_unit"]
-    if sofas and tvs:
+    if tv_requested and sofas and tvs:
         sofa, tv = sofas[0], tvs[0]
         f = front_vector(sofa.pose.rotation_deg)
         fx = sofa.pose.x + f[0] * sofa.product.depth_cm / 2.0
@@ -745,13 +998,20 @@ def _template_quality_ok(room: Room, zone: ZoneData, category: str) -> bool:
     return not on_door  # sofa under a window is fine; on the door wall is not
 
 
-def _tv_in_front(resp: AssistLayoutResponse, analysis: RoomAnalysis) -> bool:
+def _tv_in_front(
+    resp: AssistLayoutResponse, analysis: RoomAnalysis, tv_requested: bool = True
+) -> bool:
     """True only if the TV genuinely sits IN FRONT of the PRIMARY sofa: inside the forward cone
     (facing >= 0.4) AND laterally within the sofa's own width (not shoved diagonally onto a side
     wall). This mirrors the facing+lateral test in _template_issues, so the last-resort fallback
     never surfaces a 'TV off to the side' layout - a TV diagonally in front (facing ~0.6) but past
     the sofa's edge reads as misaligned and must be dropped. The primary is the WIDEST sofa (the
-    3-seater); a big-room L-return 2-seater must not be mistaken for it."""
+    3-seater); a big-room L-return 2-seater must not be mistaken for it.
+
+    Phase 4: when no TV was REQUESTED the constraint is not applicable - a conversation-focal
+    template is always acceptable on this axis - so return True (never filter it out)."""
+    if not tv_requested:
+        return True
     from spatial_planning.services.spatial.geometry_utils import front_vector
     sofas = [p for p in resp.placements if p.category == "sofa"]
     tvs = [p for p in resp.placements if p.category == "tv_unit"]
@@ -796,6 +1056,12 @@ def plan_layout_variants(
     has_palette = bool(preferences.style) or bool(preferences.color_families)
     layout_prefs = prefs.model_copy(update={"style": None, "color_families": []}) if has_palette else prefs
 
+    # Phase 4: whether the user REQUESTED a TV (intent, from the active checklist set). When False
+    # the template ranking + drops skip every TV-shaped term (see _template_layout_score /
+    # _template_issues / _tv_in_front) so a conversation-focal room is never down-ranked or dropped
+    # for an absent TV. True for the default and all goldens -> the TV path is byte-identical.
+    has_tv = _tv_requested(prefs, effective_room_type)
+
     primary = _primary_role(recipe) if recipe is not None else None
     if primary is None:  # no single anchor -> one honest layout
         return [("Suggested layout", plan_layout_from_recipe(room, prefs, placed_items, room_type))]
@@ -803,7 +1069,13 @@ def plan_layout_variants(
     analysis = analyze_room(room)
     stats = get_repository().category_stats()
     strategy = resolve_strategy(primary.zone_strategy.name)
-    cands = strategy.resolver(primary.categories[0], effective_room_type, analysis, [], stats, primary.zone_strategy.params)
+    # Phase 4: relax the sofa's window-wall avoidance for candidate-WALL ranking too when no TV was
+    # requested, so the best wall (e.g. the solid long wall facing a window) ranks first and becomes
+    # the recommended template. Only injected in the no-TV case -> the TV path is byte-identical.
+    primary_params = primary.zone_strategy.params
+    if not has_tv:
+        primary_params = {**primary_params, "tv_requested": False}
+    cands = strategy.resolver(primary.categories[0], effective_room_type, analysis, [], stats, primary_params)
 
     # keep one candidate per distinct wall, best-first
     distinct: list[ZoneData] = []
@@ -841,16 +1113,16 @@ def plan_layout_variants(
     # the TV not in front of the sofa, or a floating non-adjacent L). Keep the single best if
     # everything has issues, so the panel is never empty.
     scored = sorted(
-        ((_template_layout_score(r[2], analysis), r) for r in good_rows), key=lambda x: x[0], reverse=True
+        ((_template_layout_score(r[2], analysis, has_tv), r) for r in good_rows), key=lambda x: x[0], reverse=True
     )
-    kept = [sr for sr in scored if not _template_issues(sr[1][2], analysis)]
+    kept = [sr for sr in scored if not _template_issues(sr[1][2], analysis, has_tv)]
     if not kept:
         # Every design-sound wall has a real issue (e.g. the TV forced onto a window). Prefer a
         # weaker wall that is at least ISSUE-FREE - a sofa under a window with the TV on a CLEAR
         # wall beats a "better" wall whose TV is broken. Never surface a broken layout if a
         # clean one exists anywhere.
         kept = sorted(
-            ((_template_layout_score(r[2], analysis), r) for r in other_rows if not _template_issues(r[2], analysis)),
+            ((_template_layout_score(r[2], analysis, has_tv), r) for r in other_rows if not _template_issues(r[2], analysis, has_tv)),
             key=lambda x: x[0],
             reverse=True,
         )
@@ -860,9 +1132,10 @@ def plan_layout_variants(
         # No issue-free template anywhere. Honour "a misaligned template must NEVER render": among
         # ALL flawed options keep only those where the TV is genuinely IN FRONT of the primary sofa
         # (best layout-score first). A flawed-but-aligned template (e.g. TV forced onto a window
-        # wall) always beats one where the TV isn't in front of the sofa at all.
+        # wall) always beats one where the TV isn't in front of the sofa at all. (No TV requested ->
+        # _tv_in_front is vacuously True, so the constraint doesn't filter a conversation-focal room.)
         pool = sorted(
-            ((_template_layout_score(r[2], analysis), r) for r in (good_rows + other_rows) if _tv_in_front(r[2], analysis)),
+            ((_template_layout_score(r[2], analysis, has_tv), r) for r in (good_rows + other_rows) if _tv_in_front(r[2], analysis, has_tv)),
             key=lambda x: x[0], reverse=True,
         )
     rows = [r for _sc, r in pool[:max_variants]]

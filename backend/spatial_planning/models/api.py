@@ -40,9 +40,17 @@ class AssistPlacement(StrictModel):
     notices: list[str] = Field(default_factory=list)
 
 
+# Planner-intent skip reasons (Phase 1 will set `AssistSkip.reason` to these when a piece
+# is skipped by design rather than by a validation failure). Defined here as the single
+# source of truth; NOT yet emitted anywhere — existing skip call sites are unchanged.
+SKIP_NOT_INCLUDED = "not_included"  # user left the piece unchecked in the checklist
+SKIP_DID_NOT_FIT = "did_not_fit"  # the piece was wanted but no valid pose existed
+
+
 class AssistSkip(StrictModel):
     category: str
     reason: str  # NO_FIT / ALREADY_PRESENT / a Finding code (e.g. BLOCKS_DOOR_SWING)
+    # or a planner-intent reason: SKIP_NOT_INCLUDED / SKIP_DID_NOT_FIT (Phase 1)
 
 
 class AssistTotals(StrictModel):
@@ -56,6 +64,9 @@ class AssistLayoutResponse(StrictModel):
     placements: list[AssistPlacement] = Field(default_factory=list)
     skipped: list[AssistSkip] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)  # advisory warnings on the proposed set
+    # FE-ready channel for human-readable "the X didn't fit this room" messages. Phase 1
+    # populates it; stays empty for now (Phase 0 contract — no behaviour change).
+    notices: list[str] = Field(default_factory=list)
     totals: AssistTotals
 
 

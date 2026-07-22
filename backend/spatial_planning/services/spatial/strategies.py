@@ -20,7 +20,7 @@ intact for equivalence comparison.
 from collections.abc import Callable
 from typing import Any
 
-from spatial_planning.models.products import placement_group
+from spatial_planning.models.products import seat_target_for_area
 from spatial_planning.services.spatial.core import RoomAnalysis, ZoneData
 from spatial_planning.services.spatial.zones import (
     CategoryStats,
@@ -28,8 +28,11 @@ from spatial_planning.services.spatial.zones import (
     _accent_chair_zones,
     _bed_zones,
     _bedside_zones,
+    _chaise_zones,
     _coffee_table_zones,
     _decor_zones,
+    _dining_chair_zones,
+    _dining_zones,
     _free_zone_center,
     _l_return_sofa_zones,
     _lamp_on_table_zones,
@@ -63,7 +66,9 @@ def focal_wall(category, room_type, analysis, placed, stats, params):
     """A large piece against the focal wall (living-room sofa, bedroom bed - headboard
     to the wall)."""
     if category == "sofa":
-        return _sofa_zones(analysis, placed, stats)
+        # Phase 4: when no TV was requested (params tv_requested=False, injected by the
+        # orchestrator), relax the window-wall avoidance so the sofa takes the best wall.
+        return _sofa_zones(analysis, placed, stats, tv_requested=params.get("tv_requested", True))
     if category == "bed":
         return _bed_zones(analysis, placed, stats)
     return _fallback(category, room_type, analysis, placed, stats, params)
@@ -113,15 +118,21 @@ def l_return(category, room_type, analysis, placed, stats, params):
 def around_anchor(category, room_type, analysis, placed, stats, params):
     """Conversation seating arranged around the sofa (living-room accent chair).
 
-    The accent chair is the companion for a 2-SEATER primary only. It is skipped when (a) a second
-    sofa already formed an L (the L-return IS the companion seating - never both), OR (b) the primary
-    is a 3-SEATER: a big sofa pairs with an L-return, never a lone chair (that combo reads as
-    unbalanced). So if a 3-seater's L-return didn't fit the room shape it stays a clean single sofa
-    rather than sprouting a mismatched chair."""
+    Sofa-first ladder (see CLAUDE.md 5.1): accent chairs are the LAST resort - a chair is
+    added only to TOP UP the seats the sofa group (primary + L-return) couldn't reach. So we
+    offer chair zones only while the seat TARGET is not yet met, and return NONE once the
+    placed seating already satisfies it (an L-return / big sofa that seats the room needs no
+    chair). This lets an odd +1 top up a 3-seater + L-return (=5) toward a target of 6, while
+    a target of 5 that the sofa group already meets sprouts no chair.
+
+    The precise gap (and the user's EXPLICIT seat count) is enforced by the orchestrator's
+    gap-driven cap; this area-based target keeps the strategy honest when no count is given
+    and never blocks a chair the planner still wants (the placed seating rarely reaches the
+    area target from sofas alone)."""
     if category == "accent_chair":
-        sofas = [p for _i, p in placed if placement_group(p.category) == "sofa"]
-        if len(sofas) >= 2 or any(p.category == "3-seater-sofa" for p in sofas):
-            return []
+        seated = sum(p.seating_capacity for _i, p in placed if p.seating_capacity > 0)
+        if seated >= seat_target_for_area(analysis.area_cm2):
+            return []  # the seat target is already met by the sofa group - no chair needed
         return _accent_chair_zones(analysis, placed, stats)
     return _fallback(category, room_type, analysis, placed, stats, params)
 
@@ -150,6 +161,31 @@ def reading_corner(category, room_type, analysis, placed, stats, params):
     """A reading chair tucked into the empty, door-free corner OPPOSITE the bed (bedroom)."""
     if category == "accent_chair":
         return _reading_chair_zones(analysis, placed, stats)
+    return _fallback(category, room_type, analysis, placed, stats, params)
+
+
+def chaise(category, room_type, analysis, placed, stats, params):
+    """A standalone chaise-lounge in an empty, door-free corner (or by a window), angled to face
+    into the room. Opt-in; never competes as a primary/secondary sofa (its own placement role)."""
+    if category == "chaise":
+        return _chaise_zones(analysis, placed, stats)
+    return _fallback(category, room_type, analysis, placed, stats, params)
+
+
+def dining(category, room_type, analysis, placed, stats, params):
+    """A dining TABLE in an open pocket BESIDE the conversation group (its own separate area,
+    never overlapping the seating). Opt-in; no separate open floor -> no zone -> skipped."""
+    if category == "dining_table":
+        return _dining_zones(analysis, placed, stats)
+    return _fallback(category, room_type, analysis, placed, stats, params)
+
+
+def dining_ring(category, room_type, analysis, placed, stats, params):
+    """Dining chairs ringed around the placed dining table, each facing it. Yields one candidate
+    zone per ring position; the per-anchor loop validates + keeps the ones that fit. No table
+    placed -> no zones -> no chairs (never orphaned)."""
+    if category == "accent_chair":
+        return _dining_chair_zones(analysis, placed, stats)
     return _fallback(category, room_type, analysis, placed, stats, params)
 
 
@@ -202,6 +238,9 @@ SPATIAL_STRATEGIES: dict[str, ZoneStrategyFn] = {
     "corners": corners,
     "remaining_wall": remaining_wall,
     "reading_corner": reading_corner,
+    "chaise": chaise,
+    "dining": dining,
+    "dining_ring": dining_ring,
     "on_surface": on_surface,
     "center_area": center_area,
     "wall_band": wall_band,

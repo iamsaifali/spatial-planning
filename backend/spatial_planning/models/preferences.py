@@ -40,6 +40,20 @@ class Preferences(StrictModel):
     # UI selection and leave the canvas blank.
     color_families: list[str] = Field(default_factory=list, max_length=11)
 
+    # --- living-room "Assist with AI" checklist intent (all optional, additive) --------
+    # PHASE 0 CONTRACT ONLY: these are captured but NOT consumed by the planner yet.
+    #
+    # `included_pieces`: the checklist pieces the user wants placed, as piece keys from
+    # services/recipe/pieces.py::checklist_keys() (rug, coffee_table, tv_unit, floor_lamp,
+    # chaise_lounge, dining_set, side_table, console, plant, vases). Core pieces
+    # (sofa / accent_chair) are ALWAYS placed and are NOT valid entries here. `None` means
+    # "use the room default" (essentials only) — Phase 1 resolves that default and gates
+    # the recipe on this list; do not resolve it here.
+    included_pieces: list[str] | None = None
+    # `sofa_type`: the Q2 main-sofa choice. "auto" preserves today's behaviour (the planner
+    # picks the sofa size from room area). Phase 2 consumes the explicit choices.
+    sofa_type: Literal["auto", "2-seater", "3-seater", "l-shape"] = "auto"
+
     # INTERNAL (set by the planner, not the UI): force a COMPACT (2-seater) primary sofa + accent chair
     # instead of a 3-seater. The planner re-plans with this on when a 3-seater primary couldn't get its
     # L-return (narrow room / windows on both long walls), so a room never ends up a lone 3-seater.

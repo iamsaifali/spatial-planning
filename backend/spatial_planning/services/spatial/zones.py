@@ -15,6 +15,7 @@ from dataclasses import dataclass
 
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
+from shapely.prepared import prep
 
 from spatial_planning.models.geometry import PlacedItem, Pose
 from spatial_planning.models.products import SMALL_MEDIUM_MAX_CM2, Product, placement_group
@@ -52,6 +53,8 @@ R_CONVERSATION_ANGLE = "conversation_angle"
 R_CORNER_LIGHT = "corner_near_seating"
 R_REMAINING_WALL = "uses_remaining_wall"
 R_FLEXIBLE_SPOT = "flexible_spot"
+R_SEPARATE_DINING_ZONE = "separate_dining_zone"
+R_FACES_DINING_TABLE = "faces_dining_table"
 R_LONG_CLEAR_WALL = "long_clear_wall"
 R_KEEP_CENTER_OPEN = "keep_center_open"
 R_MAXIMIZE_SEATING = "maximize_seating"
@@ -226,7 +229,12 @@ def _trim_band_extent(cands, analysis, depth, obstacles, min_len):
 # --- per-category generators -------------------------------------------------
 
 
-def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
+def _sofa_zones(
+    analysis: RoomAnalysis,
+    placed: list[PlacedProduct],
+    stats: CategoryStats,
+    tv_requested: bool = True,
+) -> list[ZoneData]:
     s = stats.get("sofa", {})
     depth = s.get("max_d", 105.0) + 10.0
     min_w = s.get("min_w", 160.0)
@@ -254,6 +262,9 @@ def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cate
         # A sofa that FACES a window wall forces the TV onto that window (glare + an off-centre,
         # unaligned TV). MASSIVE penalty: strongly prefer a wall whose OPPOSITE is solid so the
         # TV lands on a clear wall - even if that means the sofa itself sits under a window.
+        # Phase 4: this penalty ONLY exists to reserve a clear wall for the TV. When no TV was
+        # REQUESTED (conversation-focal room) there is nothing to keep off the glass, so drop it
+        # and let the sofa take the genuinely best wall (longest / facing the room), window or not.
         faced = min(analysis.walls, key=lambda ww: dot(cand.wall.normal, ww.normal))
         faces_window = any(o.kind == "window" for o in faced.openings)
         score = (
@@ -262,7 +273,7 @@ def _sofa_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cate
             + 0.20 * entry_norm
             + 0.20 * focal
             - 0.15 * corridor_ratio
-            - (0.7 if faces_window else 0.0)
+            - (0.7 if (faces_window and tv_requested) else 0.0)
         )
         # Great-room: the wall the sofa FACES is too far to comfortably watch a wall-mounted
         # TV from. Rather than floating the TV out to meet a wall-glued sofa, float the whole
@@ -1056,6 +1067,169 @@ def _reading_chair_zones(
         analysis, placed, "accent_chair", 70.0, max_zones=1, far_from=far, face=far,
         reasons=[R_FLEXIBLE_SPOT], blocker_buffer=35.0,
     )
+
+
+def _chaise_zones(
+    analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats
+) -> list[ZoneData]:
+    """A STANDALONE chaise-lounge tucked into a genuinely empty, door-free corner (or a clear
+    stretch by a window), angled to face INTO the room. Modeled on the reading chair: it needs a
+    genuinely clear corner (a wide 35cm clearance off any furniture) and keeps the standard 30cm
+    buffer off door swings (both via _corner_spots), so a door/occupied corner shrinks below the
+    fit threshold and yields no zone - the piece is simply SKIPPED rather than crammed in. It sits
+    in the corner FARTHEST from the sofa (so it never competes with the seating) and turns to face
+    the room centre. No zone survives -> caller skips the chaise (a 'didn't fit' notice)."""
+    sofa = _find_placed(placed, "sofa")
+    far = (sofa[0].x, sofa[0].y) if sofa is not None else None
+    centroid = analysis.polygon.centroid
+    center = (centroid.x, centroid.y)
+    return _corner_spots(
+        analysis, placed, "chaise", 150.0, max_zones=1, far_from=far, face=center,
+        reasons=[R_FLEXIBLE_SPOT], blocker_buffer=35.0,
+    )
+
+
+def _dining_zones(
+    analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats
+) -> list[ZoneData]:
+    """An open rectangular pocket for a dining TABLE, BESIDE the conversation group and never
+    overlapping it. We scan the clear floor for a table-sized rectangle that (a) lies entirely
+    inside the CLEAR area — the room minus door swings / entry clearances / corridors — so it
+    can never block a door or a walkway, and (b) is DISJOINT from every placed item's buffered
+    footprint, so it never touches the sofa / L-return / rug / coffee table. The pocket FARTHEST
+    from the seating centroid wins (a genuinely separate area — the opposite end or a far
+    corner). No clean pocket survives -> [] -> the dining set is skipped ('didn't fit')."""
+    s = stats.get("dining_table", {})
+    # Target footprint from the catalog, capped so a giant banquet table doesn't demand an
+    # impossible pocket; the selector fits a real table to the zone it produces.
+    tw = max(90.0, min(s.get("max_w", 150.0), 200.0))
+    td = max(70.0, min(s.get("max_d", 90.0), 120.0))
+
+    # The genuinely clear floor: room minus keep-clear (door swings + entry clearances) minus
+    # corridors (walkways). Placed items are handled separately (a disjoint test) so the pocket
+    # keeps a real gap off the seating group, not merely a non-overlap.
+    clear = analysis.polygon.difference(analysis.keep_clear_union)
+    if analysis.corridors:
+        clear = clear.difference(unary_union([c.polygon for c in analysis.corridors]))
+    if clear.is_empty:
+        return []
+    # Avoid EVERY placed item (buffered 25cm), including the walkable rug — the dining set must
+    # keep a real gap off the whole conversation group (sofa / L-return / rug / coffee table).
+    placed_polys = [
+        item_polygon(i.x, i.y, p.width_cm, p.depth_cm, i.rotation_deg).buffer(25.0)
+        for i, p in placed
+    ]
+    blockers = unary_union(placed_polys) if placed_polys else Polygon()
+    pclear = prep(clear)
+
+    seat_pts = [
+        (it.x, it.y)
+        for it, pr in placed
+        if placement_group(pr.category)
+        in {"sofa", "rug", "coffee_table", "accent_chair", "chaise", "side_table"}
+    ]
+    if seat_pts:
+        sx = sum(p[0] for p in seat_pts) / len(seat_pts)
+        sy = sum(p[1] for p in seat_pts) / len(seat_pts)
+    else:
+        c = analysis.polygon.centroid
+        sx, sy = c.x, c.y
+
+    minx, miny, maxx, maxy = analysis.polygon.bounds
+    step = 20.0
+    best = None
+    best_key: tuple | None = None
+    # Try both orientations (long axis along x or y) so a narrow open strip can still hold a table.
+    for rot in (0.0, 90.0):
+        pw, pd = (tw, td) if rot == 0.0 else (td, tw)
+        hw, hd = pw / 2.0, pd / 2.0
+        cx = minx + hw
+        while cx <= maxx - hw + 1e-6:
+            cy = miny + hd
+            while cy <= maxy - hd + 1e-6:
+                rect = item_polygon(cx, cy, pw, pd, 0.0)
+                if pclear.contains(rect) and rect.disjoint(blockers):
+                    d = math.hypot(cx - sx, cy - sy)
+                    # farthest-from-seating first; deterministic tie-break by position.
+                    key = (round(d, 1), -round(cx, 1), -round(cy, 1))
+                    if best_key is None or key > best_key:
+                        best_key = key
+                        best = (cx, cy, pw, pd, rot)
+                cy += step
+            cx += step
+
+    if best is None:
+        return []
+    cx, cy, pw, pd, rot = best
+    piece = largest_piece(item_polygon(cx, cy, pw, pd, 0.0).intersection(clear))
+    if piece is None:
+        return []
+    score = 0.7 + 0.3 * min(1.0, math.hypot(cx - sx, cy - sy) / 500.0)
+    return [
+        _frame_zone(
+            "dining_table", 0, piece, score, rot, (cx, cy), (0.0, 1.0), (1.0, 0.0),
+            pd, pw, [R_SEPARATE_DINING_ZONE, R_FLEXIBLE_SPOT], "dining_pocket", kind="free",
+        )
+    ]
+
+
+def _dining_chair_zones(
+    analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats
+) -> list[ZoneData]:
+    """Dining chairs ringed around the placed dining TABLE, each turned to face it. Chairs sit
+    just off the table edges (a small gap so they never overlap it beyond tolerance) distributed
+    along the two long sides, scaling with the table (~4 chairs, up to ~6 for a long table). Each
+    candidate is a small free zone; the caller's per-anchor loop validates every one and simply
+    SKIPS any that can't fit (e.g. a side crowded against a wall) — fewer chairs is fine. No table
+    placed -> [] -> no chairs (never orphaned)."""
+    table = _find_placed(placed, "dining_table")
+    if table is None:
+        return []
+    item, product = table
+    f = front_vector(item.rotation_deg)  # table depth axis
+    w = width_axis(item.rotation_deg)  # table width axis
+    half_w = product.width_cm / 2.0
+    half_d = product.depth_cm / 2.0
+
+    cs = stats.get("accent_chair", {})
+    chair = max(45.0, min(cs.get("min_w", 55.0), 60.0))  # a dining-chair-sized footprint
+    gap = 8.0  # keep the chair a hair off the table edge (no overlap beyond tolerance)
+
+    # Chairs per long side scale with the table width: 2 for a normal table, 3 for a long one.
+    per_side = max(2, min(3, int(round(product.width_cm / 75.0))))
+    span = product.width_cm - chair - 10.0  # usable width for chair centres along the long edge
+    laterals = (
+        [(-0.5 + i / (per_side - 1)) * span for i in range(per_side)]
+        if span > 0.0 and per_side > 1
+        else [0.0]
+    )
+
+    # Candidate ring positions as (centre, ...): the two LONG sides (offset along ±f, spread along
+    # w) plus one head/foot chair at each SHORT end (offset along ±w, centred). Long sides first so
+    # a max cap keeps the fuller sides; every candidate is gated by the caller and skipped if unfit.
+    spots: list[Vec] = []
+    long_off = half_d + gap + chair / 2.0
+    for side in (1.0, -1.0):
+        base = add((item.x, item.y), f, side * long_off)
+        for lat in laterals:
+            spots.append(add(base, w, lat))
+    short_off = half_w + gap + chair / 2.0
+    for side in (1.0, -1.0):  # head + foot of the table
+        spots.append(add((item.x, item.y), w, side * short_off))
+
+    zones: list[ZoneData] = []
+    for idx, (cx, cy) in enumerate(spots):
+        rot = math.degrees(math.atan2(-(item.x - cx), item.y - cy))  # face the table centre
+        piece = largest_piece(item_polygon(cx, cy, chair, chair, rot).intersection(analysis.polygon))
+        if piece is None:
+            continue
+        zones.append(
+            _frame_zone(
+                "accent_chair", idx, piece, 0.8, rot, (cx, cy), (0.0, 1.0), (1.0, 0.0),
+                chair, chair, [R_FACES_DINING_TABLE], f"dining_chair_{idx}", kind="free",
+            )
+        )
+    return zones
 
 
 def _bed_zones(

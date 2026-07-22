@@ -103,7 +103,10 @@ def select_slots(
     pref_cat = store_category or preferred_store_category(room_type, category)
     # The default living-room sofa is a 3-seater, EXCEPT: a small/medium room gets a 2-seater,
     # and the SECOND sofa (the L-return in a big room) is a 2-seater - not another 3-seater.
-    if pref_cat == "3-seater-sofa":
+    # ONLY the AUTO/default resolution (store_category is None) is downgraded: when the planner
+    # explicitly PINS a sofa store category (Q2 sofa_type, or the honour-then-size-down ladder),
+    # that choice is honoured as-is - the ladder owns any sizing-down, not this block.
+    if pref_cat == "3-seater-sofa" and store_category is None:
         small_medium = room_area_cm2 is not None and room_area_cm2 < SMALL_MEDIUM_MAX_CM2
         second_sofa = any(placement_group(pr.category) == "sofa" for _it, pr in placed)
         # compact_seating: the planner re-plans a would-be lone 3-seater as a 2-seater + chair.

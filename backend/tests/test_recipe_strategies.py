@@ -64,7 +64,7 @@ def _assert_roles_match_legacy(room_spec, room_type, repo):
         # Some strategies are intentionally BEYOND the legacy planner (no legacy dispatch
         # equivalent), so they are exempt from the equivalence check: l_return (big-room
         # L-return sofa), on_surface (accents resting on a surface, e.g. vases on a console).
-        if role.zone_strategy.name in ("l_return", "on_surface"):
+        if role.zone_strategy.name in ("l_return", "on_surface", "chaise", "dining", "dining_ring"):
             continue
         category = role.categories[0]
         strat = resolve_strategy(role.zone_strategy.name)

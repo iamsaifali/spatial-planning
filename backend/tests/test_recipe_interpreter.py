@@ -90,11 +90,13 @@ def test_unimplemented_count_mode_raises(catalog_repo):
         room_type="living_room",
         working=[],
     )
+    # Every declared CountMode is now implemented (per_anchor landed with the dining set), so an
+    # unimplemented mode can only be reached by bypassing the CountRule literal validation.
     role = RoleDefinition(
         role="x", categories=["decor"], zone_strategy=_zs("corners"),
-        count=CountRule(mode="per_anchor"),
+        count=CountRule.model_construct(mode="not_a_real_mode"),
     )
-    with pytest.raises(RecipeError, match="per_anchor"):
+    with pytest.raises(RecipeError, match="not_a_real_mode"):
         _execute_role(role, st)
 
 
