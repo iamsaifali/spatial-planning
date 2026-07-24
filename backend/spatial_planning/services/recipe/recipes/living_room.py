@@ -35,25 +35,30 @@ LIVING_ROOM_RECIPE = Recipe(
              ["not_block_door"],
              count=CountRule(mode="until_target", metric="seating_capacity", source="pref_or_area_default"),
              depends_on=["primary_seating", "focal_media"]),
+        # Conversation seating: a pair of accent chairs around the sofa. around_anchor skips these
+        # once an L-return sofa exists (a room gets the second sofa OR the chairs). Placed BEFORE the
+        # console (seating outranks storage): the chair claims the door-FREE flank first, then the
+        # console takes the remaining wall away from the seating group (see `storage` below).
+        role("companion_seating", "accent_chair", "around_anchor",
+             count=CountRule(mode="fill_available", per_area_m2=16, max=2),
+             depends_on=["primary_seating", "secondary_seating"]),
         # OPT-IN standalone chaise-lounge (checklist piece 'chaise_lounge', gated off by default).
-        # A purposeful lounge piece: it claims space AHEAD of the accessory roles (console / side
-        # table / decor, §5 priority) so it's placed after the essentials + core seating but before
-        # them. Its own "chaise" role/strategy tucks it into a free corner facing the room; it never
-        # competes as a primary/secondary sofa. Skipped (with a notice) when no clean spot survives.
+        # A purposeful lounge piece placed AFTER the core seating (incl. the accent chairs) but before
+        # the accessory roles (console / side table / decor, §5 priority). Its own "chaise" role/strategy
+        # hugs a clear wall facing the room, keeping a CIRCULATION walkway off every placed piece; it
+        # never competes as a primary/secondary sofa. Skipped (with a notice) when no clean spot survives.
         role("lounge_chaise", "chaise", "chaise",
              ["not_block_door"],
              count=CountRule(mode="single"), store_category="chaise-lounge",
-             depends_on=["primary_seating", "secondary_seating"]),
-        # Storage goes BEFORE the accent chairs so the chairs can balance to the OPPOSITE side
-        # (and storage avoids the TV wall). depends on focal_media so the TV wall is known.
+             # AFTER the accent chairs (companion_seating): conversation seating claims its flanks
+             # first, then the lounge chaise takes a clear wall WITH circulation around it, or is
+             # skipped - so it never gets jammed against a chair.
+             depends_on=["primary_seating", "secondary_seating", "companion_seating"]),
+        # Storage goes AFTER the accent chairs (depends on companion_seating): the chair has already
+        # taken the door-free flank, so the console steers to the wall AWAY from the seating group
+        # (sofa + chair) - typically the door-side flank. Also avoids the TV wall (depends on focal_media).
         role("storage", "storage", "remaining_wall", ["not_block_door"],
-             depends_on=["primary_seating", "focal_media"]),
-        # Fallback conversation seating: a pair of accent chairs around the sofa. around_anchor
-        # skips these once an L-return sofa exists (a room gets the second sofa OR the chairs),
-        # and steers them to the side away from the storage.
-        role("companion_seating", "accent_chair", "around_anchor",
-             count=CountRule(mode="fill_available", per_area_m2=16, max=2),
-             depends_on=["primary_seating", "secondary_seating", "storage"]),
+             depends_on=["primary_seating", "focal_media", "companion_seating"]),
         # OPT-IN dining set (checklist piece 'dining_set', gated off by default) — a TABLE in its
         # OWN open pocket BESIDE the conversation group (never overlapping the sofa / rug / coffee /
         # L-return), with dining CHAIRS ringed around it. Declared AFTER the core seating (so the

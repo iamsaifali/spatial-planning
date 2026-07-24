@@ -52,6 +52,33 @@ def test_door_swing_detected(rect_room, catalog_repo):
     assert any(f.code == BLOCKS_DOOR_SWING for f in findings)
 
 
+def test_door_opening_block_detected(catalog_repo):
+    """A piece parked ACROSS the door OPENING (the doorway you walk through) is flagged even when it
+    clips little of the swing arc. Isolated with an OUTWARD door (no swing arc), so the only possible
+    door finding comes from the opening check; a piece beside the door must stay clear."""
+    from spatial_planning.models.geometry import Door, Room
+
+    tv = catalog_repo.in_category("tv_unit")[0]
+    # Outward door on the bottom wall (x 40..130): no swing arc, opening only.
+    room = Room(
+        vertices=[(0, 0), (480, 0), (480, 360), (0, 360)],
+        doors=[Door(id="d1", wall_index=0, offset_cm=40, width_cm=90, swing="outward", hinge="left")],
+    )
+    analysis = analyze_room(room)
+    assert not analysis.swing_arcs  # outward door -> arc check cannot fire
+
+    # Flush to the wall, centred on the doorway (door centre x=85; width fits from x=0): across the opening.
+    across = _item(tv, tv.width_cm / 2.0, tv.depth_cm / 2.0 + 2.0, 0.0, "across")
+    across_findings = validate_item(analysis, [], across, tv)
+    assert any(f.code == BLOCKS_DOOR_SWING and f.severity == "error" for f in across_findings)
+    assert not any(f.code == OUT_OF_BOUNDS for f in across_findings)  # genuinely inside the room
+
+    # Same wall but far to the side, clear of the doorway: no door finding.
+    beside = _item(tv, 480 - tv.width_cm / 2.0, tv.depth_cm / 2.0 + 2.0, 0.0, "beside")
+    beside_findings = validate_item(analysis, [], beside, tv)
+    assert not any(f.code == BLOCKS_DOOR_SWING for f in beside_findings)
+
+
 def test_rug_exempt_from_overlap(rect_room, catalog_repo):
     analysis = analyze_room(rect_room)
     sofa = _sofa(catalog_repo)

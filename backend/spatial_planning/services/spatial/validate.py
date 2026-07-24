@@ -38,6 +38,11 @@ PlacedProduct = tuple[PlacedItem, Product]
 OOB_TOLERANCE_RATIO = 0.01
 OVERLAP_RATIO = 0.02
 SWING_RATIO = 0.05
+# A piece parked ACROSS the door OPENING (the doorway you walk through) can clip little of the
+# quarter-disc swing arc yet still cover a big fraction of the opening - so also flag a piece that
+# covers this fraction of the door's entry-clearance strip (the door segment expanded into the room
+# for passage). Well below the ~60% a piece dumped over the doorway covers, well above a corner graze.
+DOOR_OPENING_RATIO = 0.15
 SEATING = {"sofa", "accent_chair"}
 FRONT_STRIP = {"tv_unit": 80.0, "storage": 60.0}
 # Placement-role pairs where one accent legitimately rests ON the other's surface, so their
@@ -65,6 +70,28 @@ def _is_on_surface_rest(a: Product, b: Product) -> bool:
 
 def build_poly(item: PlacedItem, product: Product) -> Polygon:
     return item_polygon(item.x, item.y, product.width_cm, product.depth_cm, item.rotation_deg)
+
+
+def blocked_door_geom(analysis: RoomAnalysis, product: Product, poly: Polygon) -> Polygon | None:
+    """Geometry of a door this footprint blocks (swing arc or opening), else None.
+
+    A piece blocks a door if it (a) intrudes into an inward door's swing ARC beyond
+    SWING_RATIO, or (b) - unless it is walkable (a flat rug you step over) - parks across the
+    door OPENING itself, covering more than DOOR_OPENING_RATIO of the entry-clearance strip.
+    Case (b) catches a piece dumped over the doorway that clips little of the quarter-disc arc.
+    """
+    for door_id in set(analysis.swing_arcs) | set(analysis.entry_clearances):
+        arc = analysis.swing_arcs.get(door_id)
+        if arc is not None and poly.intersection(arc).area > SWING_RATIO * arc.area:
+            return arc
+        opening = analysis.entry_clearances.get(door_id)
+        if (
+            opening is not None
+            and not product.is_walkable
+            and poly.intersection(opening).area > DOOR_OPENING_RATIO * opening.area
+        ):
+            return arc if arc is not None else opening
+    return None
 
 
 def _label(product: Product) -> str:
@@ -132,9 +159,8 @@ def must_fix_only(
             inter = poly.intersection(op)
             if not inter.is_empty and inter.area > OVERLAP_RATIO * min(poly.area, op.area):
                 return False
-    for arc in analysis.swing_arcs.values():
-        if poly.intersection(arc).area > SWING_RATIO * arc.area:
-            return False
+    if blocked_door_geom(analysis, product, poly) is not None:
+        return False
     if not product.is_walkable and analysis.corridors:
         blockers = unary_union(
             [poly] + [op for _i, p, op in other_polys if not p.is_walkable]
@@ -193,19 +219,18 @@ def validate_item(
                     )
                 )
 
-    # Door swings
-    for door_id, arc in analysis.swing_arcs.items():
-        inter = poly.intersection(arc)
-        if inter.area > SWING_RATIO * arc.area:
-            findings.append(
-                Finding(
-                    code=BLOCKS_DOOR_SWING,
-                    severity="error",
-                    message=f"The {_label(product).lower()} blocks the door from opening fully.",
-                    item_instance_id=item.instance_id,
-                    geometry=poly_pts(arc),
-                )
+    # Doors: block the swing ARC, or park across the door OPENING itself (see blocked_door_geom).
+    door_geom = blocked_door_geom(analysis, product, poly)
+    if door_geom is not None:
+        findings.append(
+            Finding(
+                code=BLOCKS_DOOR_SWING,
+                severity="error",
+                message=f"The {_label(product).lower()} blocks the door from opening fully.",
+                item_instance_id=item.instance_id,
+                geometry=poly_pts(door_geom),
             )
+        )
 
     # Walkways
     if not product.is_walkable and analysis.corridors:

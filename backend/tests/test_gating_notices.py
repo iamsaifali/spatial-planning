@@ -47,7 +47,7 @@ ALL_PIECES = ["rug", "coffee_table", "tv_unit", "floor_lamp", "chaise_lounge", "
 OPTIONALS = {"side_table", "console", "plant", "vases"}
 
 # essentials-only default: freshly blessed (a NEW scenario, not a re-bless of an old golden).
-GOLDEN_DEFAULT_PID = "lay_7ab3d93548"  # Phase 2: GAP-driven accent chairs add a 2nd flanking chair toward the seat target
+GOLDEN_DEFAULT_PID = "lay_c13e103b94"  # Phase 2: GAP-driven accent chairs add a 2nd flanking chair toward the seat target
 
 
 def _room(spec):

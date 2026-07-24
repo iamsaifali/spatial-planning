@@ -58,7 +58,7 @@ TINY = {  # too cramped for a standalone chaise: no 150cm-clear corner survives
     "doors": [{"id": "d1", "wall_index": 0, "offset_cm": 20, "width_cm": 80}],
     "windows": [],
 }
-GOLDEN_DEFAULT_PID = "lay_7ab3d93548"  # essentials-only default (unchanged by the opt-in chaise)
+GOLDEN_DEFAULT_PID = "lay_c13e103b94"  # essentials-only default (unchanged by the opt-in chaise)
 
 _CHAISE_PRODUCT = {
     "id": "chaise-test-001",

@@ -13,7 +13,7 @@ phrase but never extend.
 import math
 from dataclasses import dataclass
 
-from shapely.geometry import Polygon
+from shapely.geometry import Point, Polygon
 from shapely.ops import unary_union
 from shapely.prepared import prep
 
@@ -226,6 +226,14 @@ def _trim_band_extent(cands, analysis, depth, obstacles, min_len):
     return out or cands
 
 
+# A seating group floats forward only if the strip it leaves BEHIND is a genuine walkway - at least
+# a comfortable passage width. Below this the float just opens a dead, boxed-in sliver against the
+# wall (the pocket the guest can't use), so the sofa hugs the wall instead and accepts a farther TV.
+# (A true great room clears this easily - it floats ~200cm+ behind; a medium room clears ~100cm and
+# stays wall-hugged.) This is what separates the legitimate great-room float from a dead back strip.
+FLOAT_MIN_BACK_WALKWAY_CM = 120.0
+
+
 # --- per-category generators -------------------------------------------------
 
 
@@ -286,7 +294,12 @@ def _sofa_zones(
         float_cm = 0.0
         if facing_dist > TV_WALL_TOO_FAR:
             tv_front_depth = stats.get("tv_unit", {}).get("max_d", 48.0) + 8.0  # TV's reach off its wall
-            float_cm = max(0.0, facing_dist - tv_front_depth - TV_VIEWING_DISTANCE)
+            want_float = max(0.0, facing_dist - tv_front_depth - TV_VIEWING_DISTANCE)
+            # Float the group forward ONLY when doing so leaves a genuine WALKWAY behind the sofa
+            # (>= a comfortable passage). Otherwise floating just opens a DEAD sliver boxed against
+            # the wall - so the sofa hugs the wall and accepts a farther TV (honest) instead.
+            if want_float >= FLOAT_MIN_BACK_WALKWAY_CM:
+                float_cm = want_float
         reasons = []
         if cand.wall.is_longest_clear:
             reasons.append(R_LONGEST_CLEAR_WALL)
@@ -310,6 +323,7 @@ TV_VIEWING_DISTANCE = 330.0  # target gap: sofa front -> (wall-mounted) TV front
 TV_WALL_TOO_FAR = 450.0  # facing-wall distance beyond which the seating floats forward toward the TV
 SOFA_FRONT_CM = 95.0  # a typical sofa's front distance from its back wall (the exact sofa isn't chosen yet)
 TV_DOOR_CLEAR_CM = 25.0  # keep the TV unit this clear of a door swing on its wall (see _tv_zones)
+CONSOLE_TV_CLEAR_CM = 40.0  # keep a living console this clear of the TV unit at a shared wall corner (_storage_zones)
 
 
 def _tv_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
@@ -532,6 +546,27 @@ def _side_table_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats
         elif max(dv) < -20.0:
             door_side = -1.0
     blockers = _placed_blockers(placed)
+    # Furniture-clearance gate: the single side table must keep a sensible margin from OTHER placed
+    # furniture (e.g. a chaise-lounge occupying a sofa flank), not merely abut the sofa it serves.
+    # Build a clearance region from every placed non-walkable item EXCEPT the sofa(s) the table
+    # flanks, then reject a flank whose predicted table pose falls within the buffer of that region.
+    # If the preferred flank is crowded but the other is clear, the clear flank wins (its lower score
+    # keeps it a fallback); if BOTH flanks are crowded, no zone is returned and the (opt-in) side
+    # table is skipped - it yields to the higher-priority piece already there.
+    FURNITURE_CLEAR_CM = 20.0
+    rep = stats.get("side_table", {})
+    rep_half = max(rep.get("max_w", 70.0), rep.get("max_d", 70.0)) / 2.0
+    # Keep the side table off the DOOR as well as off other furniture: a table flush to (or inside)
+    # the door swing reads wrong and blocks the entry. Fold every door swing into the same clearance
+    # region so the flank whose predicted table pose falls within FURNITURE_CLEAR_CM of a swing is
+    # rejected - the table then takes the other (clear) flank, or is skipped if neither is clear.
+    clear_polys = [
+        item_polygon(i.x, i.y, p.width_cm, p.depth_cm, i.rotation_deg)
+        for i, p in placed
+        if not p.is_walkable and placement_group(p.category) != "sofa"
+    ]
+    clear_polys += list(analysis.swing_arcs.values())
+    clearance = unary_union(clear_polys) if clear_polys else Polygon()
     zones: list[ZoneData] = []
     for idx, side in enumerate((-1.0, 1.0)):
         origin = add((item.x, item.y), w, side * (product.width_cm / 2.0 + 4.0))
@@ -539,6 +574,12 @@ def _side_table_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats
         clipped = rect.intersection(analysis.polygon).difference(analysis.keep_clear_union).difference(blockers)
         piece = largest_piece(clipped)
         if piece is None or piece.area < 1_500.0:
+            continue
+        # Predicted table centre for this flank (mirrors anchor_pose for a "side" zone). Bound the
+        # table by a circle of radius rep_half; requiring centre-to-furniture >= buffer + rep_half
+        # keeps the nearest table edge at least the buffer off any other furniture.
+        center = add(origin, (w[0] * side, w[1] * side), rep_half + 2.0)
+        if not clearance.is_empty and Point(center).distance(clearance) < FURNITURE_CLEAR_CM + rep_half:
             continue
         if target_side != 0.0:
             # Strongly prefer the companion-seat side; the other side stays only as a fallback
@@ -556,6 +597,17 @@ def _side_table_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats
             )
         )
     return _rank(zones, limit=2)
+
+
+# The door-flank chair is dropped only when the SOFA (the whole conversation group's anchor) sits this
+# close to the door swing - i.e. a compromised layout where the group is jammed by the entry (e.g. a
+# wide room whose long walls are windowed, forcing the sofa onto a short wall by the door). Then a
+# second chair on the door flank boxes in the walk-in path. In an OPEN layout (sofa well clear of the
+# door, e.g. on a long wall) the group isn't crowding the entry, so BOTH flanks are kept. Per-chair
+# distance can't tell the two apart (the chair to keep can sit closer to the door than the one to drop);
+# the anchor's proximity is what marks the crowded layout. (Compromised layouts sit ~20-30 cm off the
+# swing; open long-wall layouts ~230 cm - so this sits safely in the middle of that gap.)
+_GROUP_NEAR_DOOR_CM = 120.0
 
 
 def _accent_chair_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
@@ -601,22 +653,37 @@ def _accent_chair_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], sta
     CHAIR_HALF = 42.0  # ~half an accent-chair footprint
     coffee = _find_placed(placed, "coffee_table")
     gc = (coffee[0].x, coffee[0].y) if coffee is not None else add((item.x, item.y), f, product.depth_cm / 2.0 + 80.0)
-    # steer a single chair to the side AWAY from a placed storage/console (balances the group)
-    storage = _find_placed(placed, "storage")
-    storage_side = 0.0
-    if storage is not None:
-        storage_side = 1.0 if dot(sub2((storage[0].x, storage[0].y), (item.x, item.y)), w) >= 0 else -1.0
+    # Steer a single chair to the door-FREE flank. The console is now placed AFTER the chair (recipe:
+    # companion_seating -> storage), so the chair claims the side away from the entry first; the console
+    # then takes the remaining door-side wall. `door_side` is the flank (+1/-1 along the sofa's width
+    # axis) the door swing sits on, or 0 if it isn't clearly to one side (door behind/in front of the sofa).
+    door_side = 0.0
+    door_pts = [sw.centroid for sw in analysis.swing_arcs.values()]
+    if door_pts:
+        dv = [dot(sub2((p.x, p.y), (item.x, item.y)), w) for p in door_pts]
+        if min(dv) > 20.0:
+            door_side = 1.0
+        elif max(dv) < -20.0:
+            door_side = -1.0
+    # Is the whole conversation group jammed by the entry? (sofa anchor near the door swing). Only then
+    # is a second chair on the door flank dropped - see `_GROUP_NEAR_DOOR_CM`.
+    sofa_poly = item_polygon(item.x, item.y, product.width_cm, product.depth_cm, item.rotation_deg)
+    group_near_door = bool(analysis.swing_arcs) and min(
+        sofa_poly.distance(arc) for arc in analysis.swing_arcs.values()
+    ) < _GROUP_NEAR_DOOR_CM
     # cap how far FORWARD (toward the TV) the chair may sit, so it stays clear of the TV
     tv_front = add((tv[0].x, tv[0].y), front_vector(tv[0].rotation_deg), tv[1].depth_cm / 2.0)
     max_fwd_extra = min(80.0, dot(sub2(tv_front, (item.x, item.y)), f) - product.depth_cm / 2.0 - CHAIR_HALF - 60.0)
     zones = []
+    door_side_zones = []  # the flank the door opens onto - a chair here crowds the entry (fallback only)
     for idx, side in enumerate((-1.0, 1.0)):
-        # Never flank the sofa with a chair on the CONSOLE's side - it just crowds the console.
-        # The chair goes on the clear side instead (a room with a console gets one accent chair).
-        if storage_side != 0.0 and side == storage_side:
-            continue
         wall_dist = first_boundary_hit(analysis.polygon, (item.x, item.y), (side * w[0], side * w[1]))
-        lat = wall_dist - CHAIR_HALF - 14.0
+        # Bring the chair FLUSH to the conversation group: its inner edge touches the sofa's side line
+        # (and the carpet edge), forming a tight group - not stranded against the far side wall. A 2 cm
+        # hair of clearance keeps it off the sofa itself. Capped by the wall so a small room (wall nearer
+        # than that) still tucks it against the wall rather than into the sofa.
+        close_lat = product.width_cm / 2.0 + CHAIR_HALF + 2.0
+        lat = min(close_lat, wall_dist - CHAIR_HALF - 14.0)
         fwd = product.depth_cm / 2.0 + max(0.0, min(70.0, max_fwd_extra))
         center = add(add((item.x, item.y), w, side * lat), f, fwd)
         toward = unit(*sub2(gc, center))
@@ -627,13 +694,19 @@ def _accent_chair_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], sta
         if piece is None or piece.area < 3_500.0:
             continue
         corridor_pen = _corridor_overlap_ratio(analysis, piece)
-        zones.append(
-            _frame_zone(
-                "accent_chair", idx, piece, 0.8 - 0.2 * corridor_pen, rotation,
-                center, toward, w, 100.0, 100.0,
-                [R_CONVERSATION_ANGLE], "beside_seating", kind="free",
-            )
+        z = _frame_zone(
+            "accent_chair", idx, piece, 0.8 - 0.2 * corridor_pen, rotation,
+            center, toward, w, 100.0, 100.0,
+            [R_CONVERSATION_ANGLE], "beside_seating", kind="free",
         )
+        # Drop a chair on the door flank ONLY in a group-jammed-by-the-entry layout (`group_near_door`):
+        # there a second door-flank chair boxes in the walk-in path. Hold it back (use it only if the
+        # door-FREE flank can't seat a chair, so the room isn't left chairless). In an open layout both
+        # flanks are kept.
+        crowds_entry = group_near_door and door_side != 0.0 and side == door_side
+        (door_side_zones if crowds_entry else zones).append(z)
+    if not zones:
+        zones = door_side_zones
     # A living-room accent chair is COMPANION seating - it only belongs BESIDE the sofa (a
     # conversation group). If neither flank is available it is simply SKIPPED - NO corner fallback: a
     # chair marooned in a corner isn't a living-room grouping (that's a bedroom reading-nook idea). The
@@ -838,6 +911,14 @@ def _storage_zones(
     if room_type == "bedroom" or (target == "console" and has_tv):
         obs = [blockers] if (room_type == "bedroom" and blockers is not None and not blockers.is_empty) else []
         obs += [sw.buffer(TV_DOOR_CLEAR_CM) for sw in analysis.swing_arcs.values()]
+        # A living console on the wall ADJACENT to the TV wall can crowd the TV at their shared corner
+        # (each hugs the corner from its own wall - a cramped, clashing pair). Trim the console's run
+        # clear of the TV's footprint + a real gap, so it slides along the wall away from the TV (or
+        # takes another wall / is skipped) - the same corner-shadow trim we use for door swings.
+        tv_placed = _find_placed(placed, "tv_unit")
+        if target == "console" and tv_placed is not None:
+            tv_it, tv_pr = tv_placed
+            obs.append(item_polygon(tv_it.x, tv_it.y, tv_pr.width_cm, tv_pr.depth_cm, tv_it.rotation_deg).buffer(CONSOLE_TV_CLEAR_CM))
         if obs:
             cands = _trim_band_extent(cands, analysis, depth, unary_union(obs), min_w)
 
@@ -895,6 +976,13 @@ def _storage_zones(
         if placement_group(pr.category) == "storage":
             sf = front_vector(it.rotation_deg)
             storage_walls.add(max(range(len(analysis.walls)), key=lambda i: dot(analysis.walls[i].normal, sf)))
+    # The accent chair is now placed BEFORE the console (recipe: companion_seating -> storage) and has
+    # taken one (or both) flank(s) of the seating group. The console must land on a wall AWAY from it,
+    # never crowding the chair's side. Living-room console only (keyed on has_tv, like the other console
+    # rules) - a majlis has no chair-vs-console balance.
+    chair_items = [
+        (it, pr) for it, pr in placed if placement_group(pr.category) == "accent_chair"
+    ] if (target == "console" and has_tv) else []
     max_extent = max(c.extent for c in cands)
 
     def region(cand, extra):  # the band, extended `extra` cm forward - a clearance/approach test
@@ -911,6 +999,27 @@ def _storage_zones(
         blocks_walkway = _corridor_overlap_ratio(analysis, cand.piece) > 0.05
         pen = 0.0
         if target == "console":
+            # Keep a real GAP off any accent CHAIR: carve the run clear of each chair whose approach
+            # falls on this wall (a chair placed IN FRONT of the console violates the chair<->console
+            # gap - the 7+ seat case, where an extra chair lands by the console), keeping the LARGER clear
+            # stretch so the console SLIDES ALONG the wall to a spot that isn't jammed against a chair.
+            # A whole-wall reject would waste the wall's clear far end; carving relocates instead. If no
+            # stretch survives, the wall is skipped below.
+            lo, hi = cand.lo, cand.hi
+            for it, pr in chair_items:
+                rel = sub2((it.x, it.y), w.start)
+                if not (0.0 < dot(rel, w.normal) < depth + 80.0):
+                    continue  # chair not near this wall's approach
+                proj = dot(rel, w.dir)
+                clr = max(pr.width_cm, pr.depth_cm) / 2.0 + 45.0  # chair half + a real walk-past gap
+                aa, bb = proj - clr, proj + clr
+                if bb <= lo or aa >= hi:
+                    continue
+                left, right = (lo, min(hi, aa)), (max(lo, bb), hi)
+                lo, hi = left if (left[1] - left[0]) >= (right[1] - right[0]) else right
+            if hi - lo < min_w:
+                continue  # no stretch of this wall keeps a gap from a chair
+            cand = _BandCandidate(wall=w, lo=lo, hi=hi, piece=cand.piece, extent=hi - lo)
             # Not the TV/door wall, no walkway. Reject a sofa in the band OR jammed so close in front
             # that the console becomes a 40cm SLIVER with no room to pass - but a sofa FLOATED well
             # forward (great-room seating pulled toward the TV) leaves the wall behind it free, and a
@@ -1076,6 +1185,11 @@ def _reading_chair_zones(
     )
 
 
+# Circulation walkway the chaise-lounge must keep clear of every placed piece (it's a lounge spot you
+# walk to/around) - larger than the plain no-overlap margin. No wall run affords it -> the chaise skips.
+_CHAISE_CIRCULATION_CM = 60.0
+
+
 def _chaise_zones(
     analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats
 ) -> list[ZoneData]:
@@ -1096,9 +1210,12 @@ def _chaise_zones(
     s = stats.get("chaise", {})
     depth = s.get("max_d", 80.0) + 8.0
     min_w = min(s.get("min_w", 140.0), 140.0)
-    # Keep a real gap off the seating group (sofa / L-return / coffee table / any placed piece); the
-    # walkable rug is excluded automatically, so the chaise may kiss the rug's edge but never a sofa.
-    blockers = _placed_blockers(placed, buffer_cm=20.0)
+    # Keep a real CIRCULATION gap around the chaise, not just a no-overlap margin: it must sit a walkway
+    # off every placed piece (sofa / L-return / coffee table / the accent chairs, which are placed
+    # BEFORE it now), so you can actually walk to and around it. If no wall run clears that, the chaise
+    # is skipped ('didn't fit') rather than jammed against a chair. The walkable rug is excluded, so the
+    # chaise may still kiss the rug's edge.
+    blockers = _placed_blockers(placed, buffer_cm=_CHAISE_CIRCULATION_CM)
     # Hug a SOLID wall stretch (like the console / TV), holding the standard 30cm clear of any swing.
     cands = _wall_band_candidates(analysis, depth, min_w, use_solid=True, blockers=blockers, door_clearance=30.0)
     if not cands:
@@ -1151,6 +1268,12 @@ def _chaise_zones(
         )
         zones.append(_band_zone(analysis, cand, "chaise", i, score, [R_FLEXIBLE_SPOT], depth))
     return _rank(zones)
+
+
+# The dining chair ring sits ~a chair (≈68 cm) off the table edge; the table pocket is tested against
+# the seating buffered by this much LESS the 25 cm already on the seating blockers, so the whole dining
+# group (table + ring) clears the conversation group, not just the table.
+_DINING_RING_CLEAR_CM = 45.0
 
 
 def _dining_zones(
@@ -1212,7 +1335,10 @@ def _dining_zones(
             cy = miny + hd
             while cy <= maxy - hd + 1e-6:
                 rect = item_polygon(cx, cy, pw, pd, 0.0)
-                if pclear.contains(rect) and rect.disjoint(blockers):
+                # Reserve room for the CHAIR RING too, not just the table: the ring sits ~a chair off
+                # each table edge, so test the table buffered by that ring reach against the seating -
+                # otherwise a ring chair can clip the sofa / L-return even though the table itself clears.
+                if pclear.contains(rect) and rect.buffer(_DINING_RING_CLEAR_CM).disjoint(blockers):
                     d = math.hypot(cx - sx, cy - sy)
                     # farthest-from-seating first; deterministic tie-break by position.
                     key = (round(d, 1), -round(cx, 1), -round(cy, 1))

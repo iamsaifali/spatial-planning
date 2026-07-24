@@ -55,6 +55,7 @@ from spatial_planning.services.recipe.models import CountRule, Recipe, RoleDefin
 from spatial_planning.services.recipe.predicates import resolve_predicate
 from spatial_planning.services.recipe.registry import get_recipe
 from spatial_planning.services.recipe.strategies import resolve_strategy
+from spatial_planning.services.spatial.geometry_utils import item_polygon
 from spatial_planning.services.spatial.zones import (
     CategoryStats,
     anchor_pose,
@@ -590,7 +591,12 @@ def _execute_fill_available(role: RoleDefinition, st: _PlanState) -> None:
         # couldn't reach - cap = clamp(target - seats already placed, 0, max) - so a room that
         # the sofas already seat gets zero chairs, and an odd +1 tops up (CLAUDE.md 5.1).
         target = st.preferences.seating_capacity or _default_seat_target(st.analysis)
-        seated = sum(_metric_of(p, "seating_capacity") for _i, p in st.working if _metric_of(p, "seating_capacity") > 0)
+        # The chaise-lounge is a standalone LOUNGE piece, not conversation seating - exclude it from the
+        # seat tally so opting it in never shrinks the sofa/chair set toward the target.
+        seated = sum(
+            _metric_of(p, "seating_capacity") for _i, p in st.working
+            if _metric_of(p, "seating_capacity") > 0 and placement_group(p.category) != "chaise"
+        )
         cap = max(0, min(role.count.max or 2, target - seated))
     else:
         area_m2 = st.analysis.area_cm2 / 10_000.0
@@ -718,7 +724,12 @@ def _apply_seating_notices(
     Only surfaced when the user gave an EXPLICIT count and the placed seating fell short."""
     if room_type != "living_room" or preferences.seating_capacity is None:
         return
-    seated = sum(p.product.seating_capacity for p in resp.placements if p.product.seating_capacity > 0)
+    # The chaise-lounge is a standalone lounge piece, not conversation seating - it doesn't count toward
+    # "comfortably seats N".
+    seated = sum(
+        p.product.seating_capacity for p in resp.placements
+        if p.product.seating_capacity > 0 and placement_group(p.category) != "chaise"
+    )
     if 0 < seated < preferences.seating_capacity:
         resp.notices.append(f"This room comfortably seats {seated}.")
 
@@ -776,7 +787,16 @@ def plan_layout_from_recipe(
     # L-return (a narrow room, or windows on both long walls) re-plans ONCE with a COMPACT 2-seater
     # primary - which pairs with an accent chair (or a 2-seater L-return where the slimmer piece fits).
     # A room thus always resolves to (3-seater + L-return) or (2-seater + chair), never a lone sofa.
-    if effective_room_type == "living_room" and not preferences.compact_seating:
+    # This "never lone" rule only applies to the AUTO sofa path (the SYSTEM chose the 3-seater, so a
+    # lone one would look sparse). When the user EXPLICITLY pinned a sofa type (sofa_type != "auto"),
+    # honour it: a lone 3-seater that physically fits stays - it is not compacted to a 2-seater just
+    # because there is no room for an L-return. (A genuine physical non-fit is still handled earlier by
+    # the honour-then-size-down ladder in _execute_primary_sofa.)
+    if (
+        effective_room_type == "living_room"
+        and not preferences.compact_seating
+        and preferences.sofa_type == "auto"
+    ):
         sofas = [p for p in resp.placements if p.category == "sofa"]
         if len(sofas) == 1 and sofas[0].product.category == "3-seater-sofa":
             return plan_layout_from_recipe(
@@ -904,6 +924,27 @@ def _template_layout_score(
     if chairs:
         cd = min(((c.pose.x - sofa.pose.x) ** 2 + (c.pose.y - sofa.pose.y) ** 2) ** 0.5 for c in chairs)
         score -= min(2.0, max(0.0, (cd - 250.0) / 120.0))
+    # Penalise a primary sofa FLOATED far off its back wall with DEAD (empty) space behind it: that strip
+    # is unreachable, wasted, and the floated sofa eats into the walking space (the "dead back area"). A
+    # sofa hugging its wall - or one with a console/storage tucked into the gap (a deliberate great-room
+    # move that USES the space) - is NOT penalised. This favours the hugging long-wall layout over one
+    # that floats a sofa off a short wall (common in a wide room) just to shorten the viewing distance.
+    back_wall = max(analysis.walls, key=lambda wl: wl.normal[0] * f[0] + wl.normal[1] * f[1])
+    back_gap = (
+        (sofa.pose.x - back_wall.start[0]) * back_wall.normal[0]
+        + (sofa.pose.y - back_wall.start[1]) * back_wall.normal[1]
+        - sofa.product.depth_cm / 2.0
+    )
+    if back_gap > 45.0:
+        wperp = (-f[1], f[0])  # along the sofa's width (the wall direction)
+        behind_used = any(
+            (not p.product.is_walkable) and p.category != "sofa"
+            and ((p.pose.x - sofa.pose.x) * (-f[0]) + (p.pose.y - sofa.pose.y) * (-f[1])) > sofa.product.depth_cm / 2.0
+            and abs((p.pose.x - sofa.pose.x) * wperp[0] + (p.pose.y - sofa.pose.y) * wperp[1]) < sofa.product.width_cm / 2.0 + 30.0
+            for p in resp.placements
+        )
+        if not behind_used:
+            score -= min(2.0, (back_gap - 45.0) / 40.0)
     score -= score_long_axis_penalty
     return score
 
@@ -914,9 +955,145 @@ def _template_layout_score(
 # only (rounding / a few cm of zone drift), NOT the sofa's half-width.
 _TV_SOFA_CENTER_TOL_CM = 30.0
 
+# A surfaced template must keep the primary seating and the TV genuinely CLEAR of every door
+# swing arc - not merely under the per-item validator's lenient 5% overlap tolerance (that slack
+# exists for autofix leniency, not for what we RECOMMEND). Drop a template whose sofa/tv overlaps
+# a swing arc at all, or hovers within this clearance of one (flush-at-0 and a few-cm sliver both
+# read as "in the way of the door"). TEMPLATE-gate only; the per-item validate_item tolerance is
+# untouched. Calibrated to KEEP a TV ~20 cm off the swing but DROP a flush/overlapping one.
+_TEMPLATE_DOOR_CLEAR_CM = 10.0
+
+
+# Roles whose collision with a door swing dooms a template: the substantial, non-walkable pieces a
+# guest must NOT find parked across the entry - the sofa, the TV unit, the side table, and a
+# console/storage cabinet. Small walkable/accent items (the rug is walkable; a plant or vases are
+# minor) are deliberately excluded so they never drop an otherwise-clean template.
+_DOOR_BLOCKING_ROLES = frozenset({"sofa", "tv_unit", "side_table", "storage"})
+
+# The primary sofa must stay out of the door's straight-in WALK-IN lane - the rectangle you step into
+# on entering. A sofa on the DOOR WALL crowds the entrance even when it clears the swing arc itself:
+# a corner door makes the sofa overlap the swing (caught as a hard block), but a MID-wall door leaves
+# the sofa just above the swing yet still jammed across the entry. Keyed on the walk-in LANE (not the
+# swing, and NOT a corridor-width metric - that falsely fails a FLIP no-TV layout whose corridor a
+# CHAIR legitimately pinches), so both door positions drop the same way. Only the deep ANCHOR (sofa)
+# blocking the straight-in lane counts; small/flat pieces near a door don't obstruct a walk.
+_ENTRY_APPROACH_DEPTH_CM = 150.0  # how far the walk-in lane reaches into the room from the door opening
+_ENTRY_APPROACH_MARGIN_CM = 10.0  # widen the lane this much past each jamb
+_SOFA_ENTRY_OVERLAP_CM2 = 500.0   # sofa footprint over the lane beyond this = crowds the entry
+_SOFA_ENTRY_SIDE_CLEAR_CM = 60.0  # a sofa backing onto the DOOR wall within this of the swing = you enter alongside it
+
+# When NO surfaced template can put the TV on a genuinely clear wall (solid, >=25cm off the door, and
+# facing the sofa - see `_tv_is_clean`), the room simply has no TV wall. Rather than cram the TV onto
+# glass or against the door, the engine SKIPS it and re-plans the room conversation-focal. This distinct
+# notice tells the user WHY the TV is absent (vs the generic "didn't fit").
+_NOTICE_TV_NO_CLEAR_WALL = (
+    "TV skipped - no clear wall (solid, clear of the door, and facing the sofa) was available, "
+    "so we arranged the room around conversation instead."
+)
+
+
+def _annotate_tv_skipped(resp: AssistLayoutResponse) -> None:
+    """Mark a conversation-focal (Pass-2) template as an INTENTIONAL TV skip: the distinct notice plus
+    an explicit skip record, so the frontend can show why the TV is absent."""
+    resp.notices.append(_NOTICE_TV_NO_CLEAR_WALL)
+    resp.skipped.append(AssistSkip(category="tv_unit", reason=SKIP_DID_NOT_FIT))
+
+
+def _furniture_hits_door(resp: AssistLayoutResponse, analysis: RoomAnalysis) -> bool:
+    """True when a SUBSTANTIAL piece in this template (sofa, TV, side table, or console/storage -
+    see `_DOOR_BLOCKING_ROLES`) collides with a door: it intrudes on the swing arc / parks across
+    the door OPENING (`blocked_door_geom`), OR it overlaps or hugs a swing arc within
+    `_TEMPLATE_DOOR_CLEAR_CM` (a flush-at-0 touch or a sub-5%-overlap sliver that still slips past
+    `validate_item`'s lenient per-item tolerance). A template like this must NEVER be surfaced, so
+    this is checked BOTH in `_template_issues` (the normal gate) AND as a hard final filter on the
+    surfaced rows (so a door-colliding option can't leak through the last-resort fallback when
+    every template has some other issue). TEMPLATE-gate only - the per-item `validate_item` 5% swing
+    tolerance is untouched."""
+    from spatial_planning.services.spatial.geometry_utils import item_polygon
+    from spatial_planning.services.spatial.validate import blocked_door_geom
+
+    arcs = list(analysis.swing_arcs.values()) if analysis.swing_arcs else []
+    for p in resp.placements:
+        if placement_group(p.category) in _DOOR_BLOCKING_ROLES:
+            ppoly = item_polygon(p.pose.x, p.pose.y, p.product.width_cm, p.product.depth_cm, p.pose.rotation_deg)
+            if blocked_door_geom(analysis, p.product, ppoly) is not None:
+                return True
+            if arcs and min(ppoly.distance(a) for a in arcs) < _TEMPLATE_DOOR_CLEAR_CM:
+                return True
+    return False
+
+
+def _furniture_blocks_door_hard(resp: AssistLayoutResponse, analysis: RoomAnalysis) -> bool:
+    """The SEVERE half of `_furniture_hits_door`: a substantial piece that actually OVERLAPS the door
+    swing (the door physically can't open past it) or parks across the door OPENING - as opposed to
+    merely hovering within the comfort-clearance margin (`_TEMPLATE_DOOR_CLEAR_CM`) with the door
+    still swinging free. Both are undesirable, but a sofa sitting IN the swing is categorically worse
+    than a TV a few cm off it, so the surfaced-row filter drops these hard blockers first, keeping a
+    softer template when one survives (see `plan_layout_variants`)."""
+    from spatial_planning.services.spatial.geometry_utils import item_polygon
+    from spatial_planning.services.spatial.validate import blocked_door_geom
+
+    arcs = list(analysis.swing_arcs.values()) if analysis.swing_arcs else []
+    for p in resp.placements:
+        if placement_group(p.category) in _DOOR_BLOCKING_ROLES:
+            ppoly = item_polygon(p.pose.x, p.pose.y, p.product.width_cm, p.product.depth_cm, p.pose.rotation_deg)
+            if blocked_door_geom(analysis, p.product, ppoly) is not None:
+                return True
+            if any(ppoly.intersection(a).area > 25.0 for a in arcs):  # actually intrudes into the swing
+                return True
+    return False
+
+
+def _sofa_blocks_entry(resp: AssistLayoutResponse, analysis: RoomAnalysis) -> bool:
+    """The primary sofa sits across the door's straight-in WALK-IN lane, crowding the entrance - you
+    squeeze past it stepping in. This is the general form of the "sofa on the entry" defect: a CORNER
+    door makes the sofa overlap the swing (caught by `_furniture_blocks_door_hard`), but a MID-wall
+    door leaves the sofa just above the swing yet still jammed across the walk-in. Build each door's
+    approach lane (a rectangle from the opening, `_ENTRY_APPROACH_DEPTH_CM` deep along the inward
+    normal, a margin past each jamb) and drop when the SOFA footprint overlaps it beyond
+    `_SOFA_ENTRY_OVERLAP_CM2`. Only the deep anchor counts - a corridor-WIDTH metric was a dead end
+    (it falsely fails a FLIP no-TV layout whose corridor a chair legitimately pinches). Checked as a
+    HARD surfaced-row filter (the last-resort `_tv_in_front` pool bypasses `_template_issues`);
+    dropped only when a clearer template survives, so the panel is never emptied.
+
+    Two ways the sofa fouls the entry: (a) it sits ACROSS the straight-in lane (a corner/opposite-wall
+    door), or (b) it BACKS ONTO the door wall right beside the swing - a mid-wall door on the sofa's own
+    wall, so you step in alongside the sofa's back. The lane test catches (a); (b) needs its own check
+    (the sofa is offset ALONG the wall from the door, not in front of it)."""
+    from shapely.geometry import Polygon
+
+    from spatial_planning.services.spatial.geometry_utils import front_vector, item_polygon
+
+    sofas = [p for p in resp.placements if p.category == "sofa"]
+    if not sofas or not analysis.room.doors:
+        return False
+    prim = max(sofas, key=lambda p: p.product.width_cm)
+    ppoly = item_polygon(prim.pose.x, prim.pose.y, prim.product.width_cm, prim.product.depth_cm, prim.pose.rotation_deg)
+    door_walls = {d.wall_index for d in analysis.room.doors}
+    # (a) sofa across the door's straight-in walk-in lane
+    for d in analysis.room.doors:
+        w = analysis.walls[d.wall_index]
+        p0 = w.point_at(d.offset_cm - _ENTRY_APPROACH_MARGIN_CM)
+        p1 = w.point_at(d.offset_cm + d.width_cm + _ENTRY_APPROACH_MARGIN_CM)
+        n, dep = w.normal, _ENTRY_APPROACH_DEPTH_CM
+        lane = Polygon([
+            (p0[0], p0[1]), (p1[0], p1[1]),
+            (p1[0] + n[0] * dep, p1[1] + n[1] * dep),
+            (p0[0] + n[0] * dep, p0[1] + n[1] * dep),
+        ]).intersection(analysis.polygon)
+        if not lane.is_empty and ppoly.intersection(lane).area > _SOFA_ENTRY_OVERLAP_CM2:
+            return True
+    # (b) sofa backs onto the DOOR wall, right beside the swing (you enter alongside its back)
+    if analysis.swing_arcs:
+        f = front_vector(prim.pose.rotation_deg)
+        back_wall = max(range(len(analysis.walls)), key=lambda i: analysis.walls[i].normal[0] * f[0] + analysis.walls[i].normal[1] * f[1])
+        if back_wall in door_walls and min(ppoly.distance(a) for a in analysis.swing_arcs.values()) < _SOFA_ENTRY_SIDE_CLEAR_CM:
+            return True
+    return False
+
 
 def _template_issues(
-    resp: AssistLayoutResponse, analysis: RoomAnalysis, tv_requested: bool = True
+    resp: AssistLayoutResponse, analysis: RoomAnalysis, tv_requested: bool = True, sofa_explicit: bool = False
 ) -> bool:
     """A template we should NOT surface at all: it has a layout warning, the TV isn't really in
     front of the sofa, the TV is shoved onto a WINDOW wall (squeezed beside/below the window),
@@ -972,12 +1149,26 @@ def _template_issues(
         bpoly = item_polygon(b.pose.x, b.pose.y, b.product.width_cm, b.product.depth_cm, b.pose.rotation_deg)
         if min(bpoly.distance(arc) for arc in analysis.swing_arcs.values()) < 30.0:
             return True  # bed crammed against the door swing
+    # A TV or a sofa that COLLIDES WITH the door swing - intruding on the arc, parked across the
+    # door OPENING (the doorway you walk through), or merely FLUSH AGAINST / a sliver into the swing
+    # (a sub-5%-overlap or 0 cm touch that slips past validate_item's lenient per-item tolerance) -
+    # must never surface. This mirrors the window-wall drop and backstops the BLOCKS_DOOR_SWING error.
+    if _furniture_hits_door(resp, analysis):
+        return True  # a sofa/tv/side-table/console that collides with (or hugs) a door swing
     # "Does this look right?" size backstop: reject a template that still contains a piece clearly
     # bigger than the room warrants for its role - a safety net for the selection size-cap's
     # last-resort fallback (or any future path that skips it). 1.2x the room-proportional max, so
     # only a CLEARLY-oversized piece drops; a slightly-large one is tolerated.
     for p in resp.placements:
-        cap = expected_max_width(placement_group(p.category), analysis.area_cm2)
+        role = placement_group(p.category)
+        # A sofa the USER explicitly pinned (Q2 sofa_type != "auto") is honoured by the selector -
+        # it relaxes the room-proportional MAX WIDTH for that choice (selector: `store_category is not
+        # None and not compact_seating`). So an explicit 3-seater legitimately exceeds this cap; the
+        # oversized backstop must NOT then drop the whole template. It still guards the AUTO/fallback
+        # sofa (its original purpose) and every non-sofa piece.
+        if role == "sofa" and sofa_explicit:
+            continue
+        cap = expected_max_width(role, analysis.area_cm2)
         if cap is not None and p.product.width_cm > cap * 1.2:
             return True  # a piece too big for the room slipped through
     return False
@@ -1028,6 +1219,37 @@ def _tv_in_front(
     return (f[0] * vx + f[1] * vy) / d >= 0.4 and lateral <= _TV_SOFA_CENTER_TOL_CM
 
 
+def _tv_is_clean(resp: AssistLayoutResponse, analysis: RoomAnalysis) -> bool:
+    """The TV is placed on a genuinely CLEAR wall - the strict bar for keeping it: SOLID (no window on
+    the TV's back wall), at least `TV_DOOR_CLEAR_CM` off every door swing (and never across a door
+    opening), AND directly IN FRONT of the sofa (facing + laterally centered). When NO surfaced template
+    clears this bar the room has no TV wall, so the engine skips the TV and re-plans conversation-focal
+    (see `plan_layout_variants`). Positive predicate; reuses `_tv_in_front` (facing/lateral) and
+    `blocked_door_geom` (door opening)."""
+    from spatial_planning.services.spatial.geometry_utils import front_vector, item_polygon
+    from spatial_planning.services.spatial.validate import blocked_door_geom
+
+    tvs = [p for p in resp.placements if p.category == "tv_unit"]
+    sofas = [p for p in resp.placements if p.category == "sofa"]
+    if not tvs or not sofas:
+        return False
+    if not _tv_in_front(resp, analysis, tv_requested=True):
+        return False  # not facing / not centered on the sofa
+    tv = tvs[0]
+    tv_poly = item_polygon(tv.pose.x, tv.pose.y, tv.product.width_cm, tv.product.depth_cm, tv.pose.rotation_deg)
+    if blocked_door_geom(analysis, tv.product, tv_poly) is not None:
+        return False  # parks across the door opening
+    # CRAMMED against the door (the codebase's "in the way of the swing" bar) - not merely short of the
+    # ideal 25cm target. A TV ~20cm off the swing opens the door fine and is kept; ~7cm is crammed -> skip.
+    if analysis.swing_arcs and min(tv_poly.distance(a) for a in analysis.swing_arcs.values()) < _TEMPLATE_DOOR_CLEAR_CM:
+        return False
+    tv_f = front_vector(tv.pose.rotation_deg)
+    tv_wall = max(analysis.walls, key=lambda w: w.normal[0] * tv_f[0] + w.normal[1] * tv_f[1])
+    if any(o.kind == "window" for o in tv_wall.openings):
+        return False  # TV on a window wall (glare / can't wall-mount)
+    return True
+
+
 def plan_layout_variants(
     room: Room,
     preferences: Preferences,
@@ -1061,12 +1283,42 @@ def plan_layout_variants(
     # _template_issues / _tv_in_front) so a conversation-focal room is never down-ranked or dropped
     # for an absent TV. True for the default and all goldens -> the TV path is byte-identical.
     has_tv = _tv_requested(prefs, effective_room_type)
+    # Did the USER explicitly pick the sofa size (Q2 sofa_type != "auto")? If so the selector honours
+    # it and relaxes the room-proportional width cap, so the oversized-piece backstop in
+    # _template_issues must exempt that sofa (mirrors the selector's `store_category is not None and
+    # not compact_seating`). The compact re-plan sets compact_seating without the user asking, so it
+    # is NOT treated as explicit - it stays room-proportional.
+    sofa_explicit = prefs.sofa_type != "auto" and not prefs.compact_seating
 
     primary = _primary_role(recipe) if recipe is not None else None
     if primary is None:  # no single anchor -> one honest layout
         return [("Suggested layout", plan_layout_from_recipe(room, prefs, placed_items, room_type))]
 
     analysis = analyze_room(room)
+
+    def _conversation_focal_fallback(panel: list[tuple[str, AssistLayoutResponse]]):
+        # NO CLEAR TV WALL -> skip the TV, re-plan conversation-focal. Keep the TV only when some
+        # surfaced template places it on a genuinely CLEAR wall (solid, off the door, facing the sofa -
+        # `_tv_is_clean`) WHILE keeping the sofa off the entry (`not _sofa_blocks_entry`): a clean TV
+        # bought by parking the sofa on the DOOR wall doesn't count - sofa-off-entry outranks the TV.
+        # Otherwise a crammed / misaligned TV is worse than none, so re-run the panel with the TV dropped
+        # from the checklist. That flips `_tv_requested` -> False, re-freeing the sofa from its window-
+        # avoidance and treating a TV-less room as valid (not degenerate). The recursive call has
+        # has_tv=False so it never re-enters. Wraps EVERY living-room return - including the all-broken
+        # single-layout fallback below, which otherwise surfaces a crammed/off-centre TV. Living-room only.
+        if not (has_tv and effective_room_type == "living_room"):
+            return panel
+        if any(_tv_is_clean(resp, analysis) and not _sofa_blocks_entry(resp, analysis) for _name, resp in panel):
+            return panel
+        reduced = sorted(pieces.resolve_active_pieces(preferences.included_pieces) - {"tv_unit"})
+        no_tv_prefs = preferences.model_copy(update={"included_pieces": reduced})
+        pass2 = plan_layout_variants(room, no_tv_prefs, placed_items, room_type, max_variants)
+        if not pass2:  # impossible-empty guard - keep the original panel rather than empty it
+            return panel
+        for _name, resp in pass2:
+            _annotate_tv_skipped(resp)
+        return pass2
+
     stats = get_repository().category_stats()
     strategy = resolve_strategy(primary.zone_strategy.name)
     # Phase 4: relax the sofa's window-wall avoidance for candidate-WALL ranking too when no TV was
@@ -1115,17 +1367,22 @@ def plan_layout_variants(
     scored = sorted(
         ((_template_layout_score(r[2], analysis, has_tv), r) for r in good_rows), key=lambda x: x[0], reverse=True
     )
-    kept = [sr for sr in scored if not _template_issues(sr[1][2], analysis, has_tv)]
+    kept = [sr for sr in scored if not _template_issues(sr[1][2], analysis, has_tv, sofa_explicit)]
     if not kept:
         # Every design-sound wall has a real issue (e.g. the TV forced onto a window). Prefer a
         # weaker wall that is at least ISSUE-FREE - a sofa under a window with the TV on a CLEAR
         # wall beats a "better" wall whose TV is broken. Never surface a broken layout if a
         # clean one exists anywhere.
         kept = sorted(
-            ((_template_layout_score(r[2], analysis, has_tv), r) for r in other_rows if not _template_issues(r[2], analysis, has_tv)),
+            ((_template_layout_score(r[2], analysis, has_tv), r) for r in other_rows if not _template_issues(r[2], analysis, has_tv, sofa_explicit)),
             key=lambda x: x[0],
             reverse=True,
         )
+    # NB: we deliberately do NOT pad a single good wall up to two by pulling a weak `other_rows`
+    # template. A weak wall means a wall a designer wouldn't offer (a sofa on the DOOR wall, crammed
+    # beside the entry) - surfacing it as a second "choice" renders a bad template. One good wall ->
+    # one good template. `other_rows` is used ONLY when NO good wall survives (the `if not kept:`
+    # branch above), never to fill a thin panel.
     if kept:
         pool = kept
     else:
@@ -1139,6 +1396,21 @@ def plan_layout_variants(
             key=lambda x: x[0], reverse=True,
         )
     rows = [r for _sc, r in pool[:max_variants]]
+    # Door/entry safety net - these must NEVER be surfaced, even when the last-resort pool above (which
+    # ranks by _tv_in_front only, not the full _template_issues gate) filled `rows`. Three failure modes
+    # that can DISAGREE about which template to keep (a door on a short wall forces either the sofa or
+    # the TV onto the entry wall), so resolve them by SEVERITY, worst-first, applying each only while it
+    # leaves something (the panel is never emptied):
+    #   1. hard door block  - a substantial piece OVERLAPS the swing: the door physically can't open.
+    #   2. sofa blocks entry - the anchor sits across / beside the walk-in path (you squeeze past it).
+    #   3. soft door proximity - a piece within the door's comfort margin, but the door still swings free.
+    # Order matters: a soft TV-a-few-cm-off-the-door issue must NOT outrank (and drop) a sofa-on-the-
+    # entry-wall template - the reason the door-on-a-short-wall room used to surface the sofa jammed
+    # beside the entry.
+    for _drop in (_furniture_blocks_door_hard, _sofa_blocks_entry, _furniture_hits_door):
+        cleaner = [r for r in rows if not _drop(r[2], analysis)]
+        if cleaner:
+            rows = cleaner
     # Prefer templates that seat companion seating as a GROUP - an L-return sofa, or an accent chair
     # BESIDE the sofa. Drop a template that is a lone sofa (the chair couldn't flank and was skipped)
     # whenever a grouped alternative exists, so we never surface a lonely single sofa next to a proper
@@ -1159,7 +1431,9 @@ def plan_layout_variants(
     if grouped_rows:
         rows = grouped_rows
     if not rows:  # every option is broken/misaligned - fall back to the single natural layout
-        return [(f"{piece} layout", plan_layout_from_recipe(room, prefs, placed_items, room_type))]
+        return _conversation_focal_fallback(
+            [(f"{piece} layout", plan_layout_from_recipe(room, prefs, placed_items, room_type))]
+        )
 
     # Re-apply the palette: re-plan each surfaced template with the FULL preferences pinned to its
     # already-chosen wall, so the products match the style/colour while the ARRANGEMENT stays exactly
@@ -1187,7 +1461,8 @@ def plan_layout_variants(
             n += 1
         used.add(name)
         out.append((name, resp))
-    return out
+
+    return _conversation_focal_fallback(out)
 
 
 def plan_assist_templates(

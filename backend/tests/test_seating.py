@@ -108,14 +108,31 @@ def test_lshape_unavailable_for_living_room_sizes_down_with_notice(store_repo):
 # --- Q2: honour-then-size-down when the chosen sofa can't be placed ---------------
 
 
-def test_honour_then_size_down_small_room_3_seater(store_repo):
-    """A small room + an explicit 3-seater falls back DOWN the ladder to a fitting sofa and
-    appends a size-down notice (never leaves the room sofa-less)."""
-    resp = _plan(_square(300, 280), sofa_type="3-seater")
+def test_honour_then_size_down_genuine_nonfit_3_seater(store_repo):
+    """A GENUINELY too-short wall (no 3-seater physically fits) + an explicit 3-seater falls
+    back DOWN the ladder to a fitting sofa and appends a size-down notice (never leaves the room
+    sofa-less). This is the honour-then-size-down ladder - a real physical non-fit, distinct from
+    the compact two-pass."""
+    resp = _plan(_square(180, 180), sofa_type="3-seater")
     assert _sofa_cats(resp)  # a sofa was still placed
     assert _sofa_cats(resp)[0] != "3-seater-sofa"  # sized down to what fits
     assert any("3-seater" in n and "wouldn't fit" in n for n in resp.notices)
     assert _no_hard_errors(resp)
+
+
+def test_explicit_3_seater_honoured_as_lone_when_wall_fits(store_repo):
+    """The bug fix: a user who EXPLICITLY picks a 3-seater in a room whose wall physically holds
+    one (480x360, 17.3 m2 - the 4.80 m wall easily fits a ~2.1 m 3-seater) gets a LONE 3-seater,
+    even though the room can't ALSO fit an L-return. The "never a lone 3-seater" compact two-pass
+    is AUTO-only, so an explicit pick is honoured - no downgrade, no misleading "wouldn't fit" notice.
+    The same room on AUTO still resolves to a 2-seater (area-based default / never-lone intact)."""
+    resp = _plan(_square(480, 360), sofa_type="3-seater")
+    assert _sofa_cats(resp) == ["3-seater-sofa"]  # a single, lone 3-seater - honoured, not compacted
+    assert not any("wouldn't fit" in n for n in resp.notices)  # NOT the misleading non-fit message
+    assert _no_hard_errors(resp)
+
+    auto = _plan(_square(480, 360), sofa_type="auto")
+    assert _sofa_cats(auto)[0] == "2-seater-sofa"  # AUTO unchanged: small/medium -> 2-seater
 
 
 # --- Q1: seat count drives the sofa-first fill ladder -----------------------------
@@ -154,23 +171,23 @@ def test_gap_driven_chairs_never_exceed_two(store_repo):
 
 
 def test_hard_combo_rule_holds_across_sweep(store_repo):
-    """Across a sweep of rooms x seat counts x sofa types, a room NEVER resolves to a lone
+    """Across a sweep of rooms x seat counts, the AUTO sofa path NEVER resolves to a lone
     3-seater (with or without chairs). It is always (3-seater + L-return) or a 2-seater
-    primary - the compact two-pass guarantees this."""
+    primary - the compact two-pass guarantees this. The never-lone rule is AUTO-only: an
+    EXPLICIT pick (sofa_type != "auto") is honoured, so a lone 3-seater there is allowed."""
     violations = []
     for w in (320, 420, 520, 620, 720):
         for h in (280, 360, 460, 560):
             room = _square(w, h)
-            for sofa_type in ("auto", "2-seater", "3-seater", "l-shape"):
-                for cap in (None, 2, 4, 6, 8, 10):
-                    resp = plan_layout_from_recipe(
-                        room, Preferences(sofa_type=sofa_type, seating_capacity=cap), []
-                    )
-                    sofas = _sofa_cats(resp)
-                    # a lone 3-seater / l-shape (single sofa) is the forbidden combo
-                    if len(sofas) == 1 and sofas[0] in ("3-seater-sofa", "l-shape-sofa"):
-                        violations.append((w, h, sofa_type, cap, sofas, _chairs(resp)))
-    assert violations == [], f"lone-3-seater combos: {violations[:5]}"
+            for cap in (None, 2, 4, 6, 8, 10):
+                resp = plan_layout_from_recipe(
+                    room, Preferences(sofa_type="auto", seating_capacity=cap), []
+                )
+                sofas = _sofa_cats(resp)
+                # a lone 3-seater / l-shape (single sofa) is the forbidden combo for AUTO
+                if len(sofas) == 1 and sofas[0] in ("3-seater-sofa", "l-shape-sofa"):
+                    violations.append((w, h, cap, sofas, _chairs(resp)))
+    assert violations == [], f"lone-3-seater combos (auto): {violations[:5]}"
 
 
 def test_safety_sweep_no_hard_geometry_findings(store_repo):
@@ -204,22 +221,42 @@ def test_cannot_reach_target_seats_fewer_with_notice(store_repo):
     assert _no_hard_errors(resp)
 
 
-def test_compact_two_pass_still_fires(store_repo):
-    """A 3-seater primary that can't get an L-return (windows on both long walls) re-plans as a
-    compact 2-seater + chair - never a lone 3-seater - and surfaces the size-down notice."""
-    room = Room.model_validate(
+def _large_no_lreturn_room() -> Room:
+    """A large room (820x300 = 24.6 m2 -> AUTO would pick a 3-seater) whose short walls carry
+    windows, so no L-return can be placed. AUTO thus produces a lone 3-seater on the first pass
+    and the compact two-pass fires."""
+    return Room.model_validate(
         {
-            "vertices": [[0, 0], [600, 0], [600, 300], [0, 300]],
-            "doors": [{"id": "d", "wall_index": 0, "offset_cm": 250, "width_cm": 90}],
+            "vertices": [[0, 0], [820, 0], [820, 300], [0, 300]],
+            "doors": [{"id": "d", "wall_index": 0, "offset_cm": 680, "width_cm": 90}],
             "windows": [
-                {"id": "w1", "wall_index": 1, "offset_cm": 60, "width_cm": 180},
-                {"id": "w2", "wall_index": 3, "offset_cm": 60, "width_cm": 180},
+                {"id": "w1", "wall_index": 1, "offset_cm": 50, "width_cm": 200},
+                {"id": "w2", "wall_index": 3, "offset_cm": 50, "width_cm": 200},
             ],
         }
     )
-    resp = plan_layout_from_recipe(room, Preferences(sofa_type="3-seater"), [])
+
+
+def test_compact_two_pass_still_fires_for_auto(store_repo):
+    """AUTO in a large room (>=24 m2, so the raw default is a 3-seater) that can't get an L-return
+    re-plans as a compact 2-seater - never a lone 3-seater. The never-lone compact two-pass is
+    fully preserved for the AUTO path."""
+    resp = plan_layout_from_recipe(_large_no_lreturn_room(), Preferences(sofa_type="auto"), [])
     sofas = _sofa_cats(resp)
     assert len(sofas) == 1
     assert sofas[0] == "2-seater-sofa"  # compact re-plan replaced the lone 3-seater
-    assert _chairs(resp) >= 1  # paired with a flanking chair
     assert _no_hard_errors(resp)
+
+
+def test_explicit_3_seater_not_compacted_in_lone_room(store_repo):
+    """In the SAME large no-L-return room, an EXPLICIT 3-seater is honoured as a lone 3-seater
+    (the compact two-pass does NOT fire for an explicit pick), while AUTO still compacts to a
+    2-seater. This is the crux of the fix: the never-lone rule is AUTO-only."""
+    room = _large_no_lreturn_room()
+    explicit = plan_layout_from_recipe(room, Preferences(sofa_type="3-seater"), [])
+    assert _sofa_cats(explicit) == ["3-seater-sofa"]  # lone 3-seater, not compacted
+    assert not any("wouldn't fit" in n for n in explicit.notices)
+    assert _no_hard_errors(explicit)
+
+    auto = plan_layout_from_recipe(room, Preferences(sofa_type="auto"), [])
+    assert _sofa_cats(auto) == ["2-seater-sofa"]  # auto still compacts (never-lone intact)

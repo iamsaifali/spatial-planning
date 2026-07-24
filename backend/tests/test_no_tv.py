@@ -21,9 +21,12 @@ from spatial_planning.models.geometry import Room
 from spatial_planning.models.preferences import Preferences
 from spatial_planning.services.spatial.analyze import analyze_room
 from spatial_planning.services.recommend.orchestrator import (
+    _NOTICE_TV_NO_CLEAR_WALL,
+    _sofa_blocks_entry,
     _template_layout_score,
     _template_issues,
     _tv_in_front,
+    _tv_is_clean,
     _tv_requested,
     plan_assist_templates,
     plan_layout_from_recipe,
@@ -33,7 +36,7 @@ from spatial_planning.services.recommend.orchestrator import (
 UNSAFE_CODES = {"OVERLAP_ITEM", "OUT_OF_BOUNDS", "BLOCKS_DOOR_SWING", "BLOCKS_WALKWAY"}
 
 # The essentials-only default golden (TV included) — must reproduce byte-identically.
-GOLDEN_DEFAULT_PID = "lay_7ab3d93548"
+GOLDEN_DEFAULT_PID = "lay_c13e103b94"
 
 # The essentials checklist WITHOUT the TV (rug + coffee table + floor lamp) — TV unchecked.
 NO_TV = ["rug", "coffee_table", "floor_lamp"]
@@ -217,3 +220,60 @@ def test_no_tv_safety_sweep(catalog_repo):
         assert not [f for f in resp.findings if f.severity == "error"], name
         checked += 1
     assert checked == len(SWEEP_ROOMS)
+
+
+# --- 6. TV REQUESTED but no clear wall -> auto-skip + conversation-focal re-plan ----------
+# Distinct from the TV-UNCHECKED case above: here the TV WAS requested (essentials default) but the
+# room offers no clear wall for it. Both long walls are windowed and a door sits on the right short
+# wall, so every arrangement that keeps the sofa OFF the entry forces the TV onto glass or across the
+# door swing; a clean TV is reachable only by parking the sofa ON the door wall - which we refuse. So
+# the TV is auto-skipped and the room re-plans conversation-focal (the sofa freed to sit under a window).
+NO_TV_WALL_ROOMS = {
+    # Both long walls windowed -> the skip fires on the RANKED-panel path (`return out`).
+    "two_windows": {
+        "vertices": [[0, 0], [480, 0], [480, 460], [0, 460]],
+        "doors": [{"id": "d", "wall_index": 1, "offset_cm": 180, "width_cm": 90, "swing": "inward", "hinge": "left"}],
+        "windows": [
+            {"id": "w1", "wall_index": 2, "offset_cm": 165, "width_cm": 150},
+            {"id": "w2", "wall_index": 0, "offset_cm": 170, "width_cm": 150},
+        ],
+        "wall_height_cm": 270,
+    },
+    # + the left short wall windowed -> EVERY wall-pinned template breaks, so the skip must also fire on
+    # the `if not rows:` single-layout FALLBACK path (else it leaks a crammed/off-centre TV).
+    "three_windows": {
+        "vertices": [[0, 0], [480, 0], [480, 460], [0, 460]],
+        "doors": [{"id": "d", "wall_index": 1, "offset_cm": 180, "width_cm": 90, "swing": "inward", "hinge": "left"}],
+        "windows": [
+            {"id": "w1", "wall_index": 2, "offset_cm": 165, "width_cm": 150},
+            {"id": "w2", "wall_index": 0, "offset_cm": 160, "width_cm": 150},
+            {"id": "w3", "wall_index": 3, "offset_cm": 175, "width_cm": 150},
+        ],
+        "wall_height_cm": 270,
+    },
+}
+
+
+def test_no_clear_tv_wall_auto_skips_and_goes_conversation_focal(catalog_repo):
+    for name, spec in NO_TV_WALL_ROOMS.items():
+        room = _room(spec)
+        analysis = analyze_room(room)
+        templates = plan_assist_templates(room, _prefs(), [])  # _prefs() -> included_pieces=None -> TV REQUESTED
+        assert templates, name
+        for _lbl, _rec, resp in templates:
+            assert "tv_unit" not in _cats(resp), name  # TV auto-skipped (no clear wall)
+            assert "sofa" in _cats(resp), name  # core seating still placed
+            assert _NOTICE_TV_NO_CLEAR_WALL in resp.notices, name  # the distinct "no clear wall" notice
+            assert not _sofa_blocks_entry(resp, analysis), name  # never bought a clean TV by blocking the entry
+            assert not [f for f in resp.findings if f.severity == "error"], name
+            assert not _unsafe(resp), name
+        _lbl, rec, top = templates[0]
+        assert rec is True and "tv_unit" not in _cats(top), name  # the recommendation is conversation-focal
+
+
+def test_clear_tv_wall_keeps_the_tv(catalog_repo):
+    # Positive control: a room WITH a clear TV wall keeps the TV and never emits the skip notice.
+    templates = plan_assist_templates(_room(LIVING_ROOM), _prefs(), [])
+    _lbl, _rec, top = templates[0]
+    assert "tv_unit" in _cats(top)
+    assert _NOTICE_TV_NO_CLEAR_WALL not in top.notices

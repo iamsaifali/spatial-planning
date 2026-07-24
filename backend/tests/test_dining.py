@@ -47,7 +47,7 @@ TINY = {  # too cramped for a separate dining pocket beside the seating
     "doors": [{"id": "d1", "wall_index": 0, "offset_cm": 20, "width_cm": 80}],
     "windows": [],
 }
-GOLDEN_DEFAULT_PID = "lay_7ab3d93548"  # essentials-only default (unchanged by the opt-in dining set)
+GOLDEN_DEFAULT_PID = "lay_c13e103b94"  # essentials-only default (unchanged by the opt-in dining set)
 
 _TABLE = {
     "id": "dining-table-001", "name": "Test Dining Table", "brand": "Test Brand",

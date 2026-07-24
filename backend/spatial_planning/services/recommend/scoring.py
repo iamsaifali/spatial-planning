@@ -2,7 +2,7 @@
 
 from spatial_planning.models.geometry import PlacedItem
 from spatial_planning.models.preferences import Preferences
-from spatial_planning.models.products import Product
+from spatial_planning.models.products import Product, placement_group
 from spatial_planning.services.catalog.repository import CatalogRepository
 from spatial_planning.services.recommend.compat_rules import color_harmony, compat_score
 from spatial_planning.services.spatial.core import ZoneData
@@ -153,9 +153,14 @@ _PLACEMENT_ZONE_COMPAT: dict[str, set[str]] = {
 
 def _seating_bonus(product: Product, prefs: Preferences, placed: list[PlacedProduct]) -> float:
     """Reward seating that helps reach the target capacity; damp overshoot."""
-    if prefs.seating_capacity is None or product.seating_capacity <= 0:
+    # The chaise-lounge is a standalone LOUNGE piece, not conversation seating - it never counts toward
+    # (or is scored against) the seating target, so opting it in doesn't shrink the sofa/chair set.
+    if prefs.seating_capacity is None or product.seating_capacity <= 0 or placement_group(product.category) == "chaise":
         return 0.0  # non-seating items are never penalised
-    already = sum(p.seating_capacity for _i, p in placed if p.seating_capacity > 0)
+    already = sum(
+        p.seating_capacity for _i, p in placed
+        if p.seating_capacity > 0 and placement_group(p.category) != "chaise"
+    )
     remaining = prefs.seating_capacity - already
     if remaining <= 0:
         return 0.0  # target already met - don't pile on more seats
