@@ -17,6 +17,8 @@ import {
   Archive,
   Sprout,
   Flower2,
+  Lamp,
+  Shirt,
   type LucideIcon,
 } from "lucide-react";
 
@@ -50,6 +52,39 @@ export function defaultIncludedPieces(): string[] {
   return LIVING_ROOM_PIECES.filter((p) => p.tier === "essential").map((p) => p.key);
 }
 
+/**
+ * Bedroom piece checklist — mirrors the backend bedroom piece table in `pieces.py`.
+ * The bed is core (always placed, not a checklist row). Essentials are pre-checked;
+ * the dressing table and reading chair are opt-in add-ons.
+ */
+export const BEDROOM_PIECES: PieceOption[] = [
+  // Essentials — pre-checked by default.
+  { key: "nightstands", label: "Nightstands", tier: "essential", icon: SquareStack },
+  { key: "wardrobe", label: "Wardrobe", tier: "essential", icon: Shirt },
+  { key: "rug", label: "Rug", tier: "essential", icon: Grid2x2 },
+  { key: "bedside_lamp", label: "Bedside Lamp", tier: "essential", icon: Lamp },
+  // Optional — opt-in.
+  { key: "dressing_table", label: "Dressing Table", tier: "optional", icon: Table },
+  { key: "reading_chair", label: "Reading Chair", tier: "optional", icon: Armchair },
+  { key: "plant", label: "Plant", tier: "optional", icon: Sprout },
+];
+
+/** Bedroom default checklist (essentials only) as backend keys. */
+export function defaultIncludedBedroomPieces(): string[] {
+  return BEDROOM_PIECES.filter((p) => p.tier === "essential").map((p) => p.key);
+}
+
+/** The piece checklist + its essentials-only default for a room type. */
+export function piecesForRoom(roomType: string | null): {
+  pieces: PieceOption[];
+  defaults: string[];
+} {
+  if (roomType === "bedroom") {
+    return { pieces: BEDROOM_PIECES, defaults: defaultIncludedBedroomPieces() };
+  }
+  return { pieces: LIVING_ROOM_PIECES, defaults: defaultIncludedPieces() };
+}
+
 // --- sofa footprint choice (Preferences.sofa_type) ---
 
 export type SofaType = "auto" | "2-seater" | "3-seater" | "l-shape";
@@ -64,6 +99,23 @@ export const SOFA_TYPE_OPTIONS: SofaTypeOption[] = [
   { value: "2-seater", label: "2-Seater" },
   { value: "3-seater", label: "3-Seater" },
   { value: "l-shape", label: "L-Shape" },
+];
+
+// --- bed size choice (Preferences.bed_size) ---
+
+export type BedSize = "auto" | "single" | "double" | "queen" | "king";
+
+export interface BedSizeOption {
+  value: BedSize;
+  label: string;
+}
+
+export const BED_SIZE_OPTIONS: BedSizeOption[] = [
+  { value: "auto", label: "Auto" },
+  { value: "single", label: "Single" },
+  { value: "double", label: "Double" },
+  { value: "queen", label: "Queen" },
+  { value: "king", label: "King" },
 ];
 
 // --- seating capacity bounds (Preferences.seating_capacity) ---

@@ -337,18 +337,18 @@ def active_roles(recipe: Recipe, preferences: Preferences, room_type: str) -> li
     CORE roles (a role that maps to a core piece, or to NO checklist piece at all — e.g.
     the L-return `secondary_seating`) ALWAYS run. CHECKLIST roles (essentials + optionals)
     run only when their piece key is in the active set: `preferences.included_pieces` if
-    given, else the essentials-only default. Gating is scoped to living_room (the checklist
-    feature); every other room type runs its recipe unchanged.
+    given, else the essentials-only default. Gating applies to any room type WITH a piece
+    table (living_room, bedroom); every other room type runs its recipe unchanged.
 
     Pure filter over `recipe.roles` (declared order preserved) — it never reorders, so
     opting in every mapped piece reproduces the ungated layout byte-for-byte.
     """
-    if room_type != "living_room":
+    if room_type not in pieces._ROOM_PIECES:
         return list(recipe.roles)
-    active = pieces.resolve_active_pieces(preferences.included_pieces)
+    active = pieces.resolve_active_pieces(preferences.included_pieces, room_type)
     kept: list[RoleDefinition] = []
     for role in recipe.roles:
-        pc = pieces.piece_for_role(role.role)
+        pc = pieces.piece_for_role(role.role, room_type)
         if pc is None or pc.tier == "core" or pc.key in active:
             kept.append(role)
     return kept
@@ -789,18 +789,20 @@ def _execute_role(role: RoleDefinition, st: _PlanState) -> None:
 def _apply_gating_notices(
     resp: AssistLayoutResponse, preferences: Preferences, room_type: str, st: _PlanState
 ) -> None:
-    """Honest 'didn't fit' notices (Phase 1), scoped to living_room.
+    """Honest 'didn't fit' notices, for any room type WITH a piece table (living_room, bedroom).
 
     For every checklist piece the user REQUESTED (in the active set) whose role ran but
     placed zero instances, mark its skip `SKIP_DID_NOT_FIT` and append a human-readable
-    line to `resp.notices`. Excluded pieces produce no skip (their role never ran) and
-    core seating shortfall is out of scope (Phase 2), so neither is ever notified. A piece
-    the user already placed themselves (ALREADY_PRESENT) is present, not unfit — no notice.
+    line to `resp.notices` (e.g. "The reading chair didn't fit this room." when the user
+    opted into both a dressing table and a reading chair in a room that only holds one).
+    Excluded pieces produce no skip (their role never ran) and core shortfall is out of
+    scope, so neither is notified. A piece the user already placed (ALREADY_PRESENT) is
+    present, not unfit — no notice.
     """
-    if room_type != "living_room":
+    if room_type not in pieces._ROOM_PIECES:
         return
-    for key in pieces.resolve_active_pieces(preferences.included_pieces):
-        pc = pieces.piece(key)
+    for key in pieces.resolve_active_pieces(preferences.included_pieces, room_type):
+        pc = pieces.piece(key, room_type)
         if pc is None or pc.tier == "core" or pc.role is None:
             continue  # core / role-less (dining_set) — nothing ran to notice
         if st.placed_by_role.get(pc.role, 0) > 0:

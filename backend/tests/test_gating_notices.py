@@ -203,8 +203,31 @@ def test_active_roles_helper_filters_by_active_set(catalog_repo):
     # opt in everything -> every role returns
     all_roles = {r.role for r in active_roles(recipe, Preferences(included_pieces=ALL_PIECES), "living_room")}
     assert all_roles == {r.role for r in recipe.roles}
-    # non-living_room room types are never gated
-    assert active_roles(recipe, Preferences(included_pieces=[]), "bedroom") == list(recipe.roles)
+    # the bedroom is ALSO gated now (it has its own piece table): the default keeps the
+    # bed (core) + the essential roles, and drops the optional dressing-table / reading-chair.
+    br = get_recipe("bedroom")
+    bedroom_default = {r.role for r in active_roles(br, Preferences(room_type="bedroom"), "bedroom")}
+    assert "primary_sleeping" in bedroom_default  # core (bed) always
+    assert "bedside_support" in bedroom_default  # nightstands (essential)
+    assert "clothing_storage" in bedroom_default  # wardrobe (essential)
+    assert "floor_anchor" in bedroom_default  # rug (essential)
+    assert "vanity" not in bedroom_default  # dressing table (optional) -> off by default
+    assert "reading_nook" not in bedroom_default  # reading chair (optional) -> off by default
+    # opting the optionals in returns their roles too
+    bedroom_all = {
+        r.role
+        for r in active_roles(
+            br,
+            Preferences(
+                room_type="bedroom",
+                included_pieces=["nightstands", "wardrobe", "rug", "bedside_lamp", "dressing_table", "reading_chair"],
+            ),
+            "bedroom",
+        )
+    }
+    assert "vanity" in bedroom_all and "reading_nook" in bedroom_all
+    # a room type WITHOUT a piece table is still never gated
+    assert active_roles(recipe, Preferences(included_pieces=[]), "office") == list(recipe.roles)
 
 
 # --- safety: gating never weakens the validation gate ------------------------------

@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { COLOR_FAMILIES, FAMILY_SWATCH, STYLES, styleLabel } from "@/lib/styleMetadata";
 import {
-  LIVING_ROOM_PIECES,
+  BED_SIZE_OPTIONS,
   SEAT_COUNT_MAX,
   SEAT_COUNT_MIN,
   SOFA_TYPE_OPTIONS,
-  defaultIncludedPieces,
+  piecesForRoom,
+  type BedSize,
   type SofaType,
 } from "@/lib/pieces";
 import { usePrefsStore } from "@/stores/prefsStore";
@@ -37,28 +38,40 @@ export function StylePrefsDialog({
   const roomType = usePrefsStore((s) => s.preferences.room_type ?? null);
   const seatCount = usePrefsStore((s) => s.preferences.seating_capacity ?? null);
   const sofaType = usePrefsStore((s) => s.preferences.sofa_type ?? "auto");
+  const bedSize = usePrefsStore((s) => s.preferences.bed_size ?? "auto");
   const includedPieces = usePrefsStore((s) => s.preferences.included_pieces ?? null);
   const setPreferences = usePrefsStore((s) => s.setPreferences);
 
-  // The living-room extras (seats / sofa / pieces) only apply to living rooms; a bedroom keeps the
-  // plain style+colour flow (the backend ignores these fields there).
+  // Seats + main-sofa apply to living rooms only; bed size applies to bedrooms only. The pieces
+  // checklist applies to BOTH (each has its own list); the backend gates on the room-specific keys.
   const isLivingRoom = roomType === null || roomType === "living_room";
+  const isBedroom = roomType === "bedroom";
+  const { pieces: roomPieces, defaults: roomDefaults } = piecesForRoom(roomType);
 
   const patch = (p: Partial<Preferences>) =>
     setPreferences({ ...usePrefsStore.getState().preferences, ...p });
 
-  // Seed the living-room defaults once the dialog opens: essentials pre-checked, 4 seats, auto sofa.
-  // Only fill fields that are unset so a user's earlier explicit choices are never clobbered.
+  // Seed this room's defaults when the dialog opens: essentials pre-checked, plus seats/sofa
+  // for a living room. Re-seed the checklist when the current selection belongs to a DIFFERENT
+  // room type (e.g. the user switched living <-> bedroom), so a bedroom never inherits TV/sofa
+  // keys. Only fills unset fields otherwise, so explicit choices are never clobbered.
   useEffect(() => {
-    if (!open || !isLivingRoom) return;
+    if (!open) return;
     const prefs = usePrefsStore.getState().preferences;
     const seed: Partial<Preferences> = {};
-    if (prefs.included_pieces == null) seed.included_pieces = defaultIncludedPieces();
-    if (prefs.seating_capacity == null) seed.seating_capacity = DEFAULT_SEAT_COUNT;
-    if (prefs.sofa_type == null) seed.sofa_type = "auto";
+    const validKeys = new Set(roomPieces.map((p) => p.key));
+    const cur = prefs.included_pieces;
+    // Reseed when unset OR when the list carries any key FOREIGN to this room (a stale
+    // cross-room selection, e.g. living-room "tv_unit" left over after switching to bedroom).
+    // A valid subset (the user unchecked some of this room's pieces) is preserved.
+    if (cur == null || cur.some((k) => !validKeys.has(k))) seed.included_pieces = roomDefaults;
+    if (isLivingRoom) {
+      if (prefs.seating_capacity == null) seed.seating_capacity = DEFAULT_SEAT_COUNT;
+      if (prefs.sofa_type == null) seed.sofa_type = "auto";
+    }
     if (Object.keys(seed).length > 0) setPreferences({ ...prefs, ...seed });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, isLivingRoom]);
+  }, [open, roomType]);
 
   const pickStyle = (s: string) => patch({ style: style === s ? null : s });
   const toggleFamily = (f: string) =>
@@ -69,8 +82,9 @@ export function StylePrefsDialog({
     patch({ seating_capacity: Math.min(SEAT_COUNT_MAX, Math.max(SEAT_COUNT_MIN, n)) });
 
   const pickSofa = (value: SofaType) => patch({ sofa_type: value });
+  const pickBed = (value: BedSize) => patch({ bed_size: value });
 
-  const checked = includedPieces ?? defaultIncludedPieces();
+  const checked = includedPieces ?? roomDefaults;
   const togglePiece = (key: string) =>
     patch({
       included_pieces: checked.includes(key) ? checked.filter((k) => k !== key) : [...checked, key],
@@ -191,46 +205,73 @@ export function StylePrefsDialog({
                 ))}
               </div>
             </div>
-
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-soft">
-                Pieces to include
-              </p>
-              {(["essential", "optional"] as const).map((tier) => {
-                const rows = LIVING_ROOM_PIECES.filter((p) => p.tier === tier);
-                if (rows.length === 0) return null;
-                return (
-                  <div key={tier} className="mb-2 last:mb-0">
-                    <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-ink-faint">
-                      {tier === "essential" ? "Essential" : "Add more"}
-                    </p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {rows.map((piece) => {
-                        const Icon = piece.icon;
-                        const on = checked.includes(piece.key);
-                        return (
-                          <button
-                            key={piece.key}
-                            type="button"
-                            onClick={() => togglePiece(piece.key)}
-                            aria-pressed={on}
-                            className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs transition-colors ${
-                              on
-                                ? "border-ink bg-surface-2 text-ink"
-                                : "border-line bg-surface text-ink-soft hover:border-ink-faint"
-                            }`}
-                          >
-                            <Icon className="h-4 w-4 shrink-0" aria-hidden />
-                            <span className="truncate">{piece.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           </>
+        )}
+
+        {isBedroom && (
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-soft">
+              Bed size
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {BED_SIZE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => pickBed(opt.value)}
+                  aria-pressed={bedSize === opt.value}
+                  className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                    bedSize === opt.value
+                      ? "border-ink bg-ink text-surface"
+                      : "border-line bg-surface text-ink hover:border-ink-faint"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {roomPieces.length > 0 && (
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-soft">
+              Pieces to include
+            </p>
+            {(["essential", "optional"] as const).map((tier) => {
+              const rows = roomPieces.filter((p) => p.tier === tier);
+              if (rows.length === 0) return null;
+              return (
+                <div key={tier} className="mb-2 last:mb-0">
+                  <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-ink-faint">
+                    {tier === "essential" ? "Essential" : "Add more"}
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {rows.map((piece) => {
+                      const Icon = piece.icon;
+                      const on = checked.includes(piece.key);
+                      return (
+                        <button
+                          key={piece.key}
+                          type="button"
+                          onClick={() => togglePiece(piece.key)}
+                          aria-pressed={on}
+                          className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs transition-colors ${
+                            on
+                              ? "border-ink bg-surface-2 text-ink"
+                              : "border-line bg-surface text-ink-soft hover:border-ink-faint"
+                          }`}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                          <span className="truncate">{piece.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
 
         <div className="flex items-center justify-between gap-2 pt-1">

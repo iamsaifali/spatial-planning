@@ -53,6 +53,9 @@ class Preferences(StrictModel):
     # `sofa_type`: the Q2 main-sofa choice. "auto" preserves today's behaviour (the planner
     # picks the sofa size from room area). Phase 2 consumes the explicit choices.
     sofa_type: Literal["auto", "2-seater", "3-seater", "l-shape"] = "auto"
+    # `bed_size`: the bedroom main-bed choice. "auto" keeps the room-proportional auto-size;
+    # an explicit size pins the bed's width to that band (the selector filters to it).
+    bed_size: Literal["auto", "single", "double", "queen", "king"] = "auto"
 
     # INTERNAL (set by the planner, not the UI): force a COMPACT (2-seater) primary sofa + accent chair
     # instead of a 3-seater. The planner re-plans with this on when a 3-seater primary couldn't get its

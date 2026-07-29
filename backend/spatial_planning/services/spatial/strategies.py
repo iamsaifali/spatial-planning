@@ -22,6 +22,7 @@ from typing import Any
 
 from spatial_planning.models.products import seat_target_for_area
 from spatial_planning.services.spatial.core import RoomAnalysis, ZoneData
+from spatial_planning.services.spatial.geometry_utils import front_vector
 from spatial_planning.services.spatial.zones import (
     CategoryStats,
     PlacedProduct,
@@ -33,6 +34,7 @@ from spatial_planning.services.spatial.zones import (
     _decor_zones,
     _dining_chair_zones,
     _dining_zones,
+    _find_placed,
     _free_zone_center,
     _l_return_sofa_zones,
     _lamp_on_table_zones,
@@ -149,6 +151,14 @@ def corners(category, room_type, analysis, placed, stats, params):
     if category == "lighting":
         return _lighting_zones(analysis, placed, stats)
     if category == "decor":
+        if room_type == "bedroom":
+            # A bedroom plant tucks closer to furniture than a living-room plant beside the sofa
+            # group (tighter buffer -> frees a second corner in a large room), and its footprint
+            # SCALES WITH THE ROOM so a big bedroom gets a substantial floor plant, not a tiny pot
+            # lost in the space (a 60cm zone -> ~45cm pot; a 105cm zone -> a ~80cm planter).
+            area_m2 = analysis.area_cm2 / 10_000.0
+            size = max(65.0, min(100.0, 65.0 + (area_m2 - 15.0) * 2.3))
+            return _decor_zones(analysis, placed, stats, blocker_buffer=18.0, size=size)
         return _decor_zones(analysis, placed, stats)
     return _fallback(category, room_type, analysis, placed, stats, params)
 
@@ -228,8 +238,24 @@ def center_area(category, room_type, analysis, placed, stats, params):
     cat_stats = stats.get(category, {})
     if category == "rug":
         if room_type == "bedroom":
-            # A bedroom rug is sized to the ROOM (leaving a comfortable border), not floor-filling
-            # like a majlis rug: request ~62% of the room so a small room gets a smaller carpet.
+            # A bedroom rug GROUNDS the bed the way a designer does it: it sits under the LOWER
+            # ~2/3 of the bed and EXTENDS PAST THE FOOT, so a big expanse of rug shows where you
+            # step out - the head of the bed comes OFF the rug. (Centring it under the bed hides
+            # it: the mattress covers all but a thin frame.) ~45 cm reveal on each side.
+            bed = _find_placed(placed, "bed")
+            if bed is not None:
+                bitem, bprod = bed
+                fx, fy = front_vector(bitem.rotation_deg)  # headboard -> foot (into the room)
+                w, d = bprod.width_cm, bprod.depth_cm      # headboard width, bed length
+                along = (2.0 * d / 3.0) + 70.0             # lower ~2/3 of the bed + ~70 cm past the foot
+                perp = w + 90.0                            # ~45 cm reveal each side
+                shift = (d / 3.0 + 70.0) / 2.0             # centre shifted toward the foot
+                cx, cy = bitem.x + fx * shift, bitem.y + fy * shift
+                # The bed is wall-aligned (rotation is a multiple of 90), so `along` runs on the
+                # axis the bed faces and `perp` on the other.
+                size_w, size_d = (along, perp) if fx != 0.0 else (perp, along)
+                return _free_zone_center(analysis, "rug", size_w, size_d, center=(cx, cy))
+            # No bed placed (the rug depends on the bed, so rare): a room-centred rug at ~62%.
             minx, miny, maxx, maxy = analysis.polygon.bounds
             default_w, default_d = (maxx - minx) * 0.62, (maxy - miny) * 0.62
         else:

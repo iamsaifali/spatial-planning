@@ -189,7 +189,9 @@ def size_bounds(
         # depth = length (a bed is always ~2 m long, regardless of room size).
         return (cl(90.0, 150.0, 90.0, 150.0), cl(155.0, 210.0, 155.0, 215.0), 185.0, 215.0)
     if store_category == "dressing-table":
-        return (80.0, 140.0, 0.0, inf)   # a vanity you SIT at - not a 220cm sideboard
+        # a vanity you SIT at (not a 220cm sideboard) - but it GROWS with the room so it isn't
+        # doll-sized next to a full-size chair in a big bedroom: both min and max scale with area.
+        return (cl(80.0, 130.0, 80.0, 130.0), cl(115.0, 160.0, 105.0, 160.0), 0.0, inf)
     if store_category == "console":
         return (100.0, 220.0, 0.0, inf)  # a media console / sideboard
     if store_category == "wardrobe":

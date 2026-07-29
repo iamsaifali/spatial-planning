@@ -162,6 +162,8 @@ export interface Preferences {
   // living-room piece checklist (backend `included_pieces`) + sofa footprint choice
   included_pieces?: string[] | null;
   sofa_type?: "auto" | "2-seater" | "3-seater" | "l-shape";
+  // bedroom main-bed size choice (backend `bed_size`)
+  bed_size?: "auto" | "single" | "double" | "queen" | "king";
   formality?: Formality | null;
   luxury_tier?: LuxuryTier | null;
   materials?: string[];
@@ -182,6 +184,7 @@ export const EMPTY_PREFERENCES: Preferences = {
   seating_capacity: null,
   included_pieces: null,
   sofa_type: "auto",
+  bed_size: "auto",
   formality: null,
   luxury_tier: null,
   materials: [],

@@ -30,6 +30,15 @@ PlacedProduct = tuple[PlacedItem, Product]
 # only surface when prefs.room_type == "majlis".
 DEFAULT_ROOM_TYPE = "living_room"
 
+# Bed-width bands (cm) for the bedroom "Bed size" choice (Preferences.bed_size). The headboard
+# width, not the mattress length, is what scales; "auto" is handled separately (no band).
+_BED_WIDTH_BANDS: dict[str, tuple[float, float]] = {
+    "single": (85.0, 120.0),
+    "double": (130.0, 155.0),
+    "queen": (150.0, 172.0),
+    "king": (176.0, 220.0),
+}
+
 
 @dataclass
 class Candidate:
@@ -146,9 +155,26 @@ def select_slots(
         # room). MIN + DEPTH bounds are unchanged.
         if category == "sofa" and prefs.sofa_type != "auto" and not prefs.compact_seating:
             mxw = float("inf")
+        # Bedroom "Bed size" (Preferences.bed_size): the chosen band REPLACES the room-
+        # proportional width, so an explicit king/single overrides the auto-size (otherwise
+        # the room-proportional min/max would cap it back). "auto" keeps today's behaviour.
+        if category == "bed" and prefs.bed_size != "auto":
+            mnw, mxw = _BED_WIDTH_BANDS[prefs.bed_size]
         within = [p for p in products if mnw <= p.width_cm <= mxw and mnd <= p.depth_cm <= mxd]
         if within:
             products = within
+
+    # A bedroom corner PLANT should read as substantial in a big room, not a tiny pot lost in the
+    # space. Plants are thin, so a square-zone fit alone won't drive the size - filter to a room-
+    # scaled MIN width so the tiny pots drop out. Only a MIN (no max) and kept moderate so a large
+    # room can still fit a second, possibly smaller, plant in a tighter corner. Bedroom-scoped so
+    # the living-room plant (and its golden layouts) is untouched.
+    if room_type == "bedroom" and store_category == "flower-pot-and-plant" and room_area_cm2 is not None:
+        area_m2 = room_area_cm2 / 10_000.0
+        lo = max(42.0, min(58.0, 44.0 + (area_m2 - 15.0) * 0.9))
+        bigger = [p for p in products if p.width_cm >= lo]
+        if bigger:
+            products = bigger
 
     # Snapshot the size-appropriate pool BEFORE the palette narrows it. A colour/style is a PREFERENCE,
     # never a reason to leave the room without the piece: if the palette-matching products don't FIT the
@@ -194,16 +220,18 @@ def select_slots(
         if real:
             products = real
 
-    # A small/medium bedroom gets COMPACT storage sized to the space: a wardrobe that doesn't span
-    # the whole wall, and a modest dressing table (not the full-width vanity a big room can carry).
+    # A small/medium bedroom gets a COMPACT WARDROBE (one that doesn't span the whole wall). The
+    # dressing table is NOT hard-capped here - its width now scales smoothly with room area via
+    # `size_bounds` (a small room already yields a modest vanity, a big room a fuller one), so an
+    # extra 95cm cap would just re-shrink it below what the room can carry.
     if (
         category == "storage"
+        and store_category != "dressing-table"
         and room_type == "bedroom"
         and room_area_cm2 is not None
         and room_area_cm2 < SMALL_MEDIUM_MAX_CM2
     ):
-        cap = 95.0 if store_category == "dressing-table" else 200.0
-        capped = [p for p in products if p.width_cm <= cap]
+        capped = [p for p in products if p.width_cm <= 200.0]
         if capped:
             products = capped
 

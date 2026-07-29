@@ -131,8 +131,8 @@ def test_count_modes_per_recipe():
     # lamps still scale with area
     assert modes["living_room"]["accent"] == "single"
     assert modes["living_room"]["ambient_light"] == "fill_available"
-    # the bedroom keeps a single table lamp on a nightstand (on-surface)
-    assert modes["bedroom"]["bedside_lamp"] == "single"
+    # the bedroom places a matching table lamp on EACH nightstand (a mirrored pair, on-surface)
+    assert modes["bedroom"]["bedside_lamp"] == "mirror_pair"
     # essentials stay single
     assert modes["living_room"]["primary_seating"] == "single"
     assert modes["bedroom"]["primary_sleeping"] == "single"

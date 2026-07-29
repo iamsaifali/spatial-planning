@@ -453,8 +453,15 @@ def _frame_zone(
     )
 
 
-def _free_zone_center(analysis: RoomAnalysis, category: str, size_w: float, size_d: float) -> list[ZoneData]:
-    """Fallback when the anchoring item is missing: a central free zone."""
+def _free_zone_center(
+    analysis: RoomAnalysis,
+    category: str,
+    size_w: float,
+    size_d: float,
+    center: tuple[float, float] | None = None,
+) -> list[ZoneData]:
+    """A free zone centred on the open area (default) or on an explicit `center` point
+    (e.g. a bedroom rug centred on the bed so it grounds it, not the room)."""
     usable = largest_piece(analysis.usable_area)
     if usable is None:
         return []
@@ -464,15 +471,20 @@ def _free_zone_center(analysis: RoomAnalysis, category: str, size_w: float, size
     minx, miny, maxx, maxy = usable.bounds
     size_w = max(60.0, min(size_w, (maxx - minx) - 30.0))
     size_d = max(60.0, min(size_d, (maxy - miny) - 30.0))
-    c = usable.centroid
-    rect = item_polygon(c.x, c.y, size_w, size_d, 0).intersection(usable)
+    if center is None:
+        c = usable.centroid
+        cx, cy = c.x, c.y
+    else:
+        cx, cy = center
+    rect = item_polygon(cx, cy, size_w, size_d, 0).intersection(usable)
     piece = largest_piece(rect)
     if piece is None or piece.area < 2_000.0:
         return []
+    anchor_label = "room_center" if center is None else "under_bed"
     return [
         _frame_zone(
-            category, 0, piece, 0.6, 0.0, (c.x, c.y), (0.0, 1.0), (1.0, 0.0),
-            size_d, size_w, [R_FLEXIBLE_SPOT], "room_center", kind="free",
+            category, 0, piece, 0.6, 0.0, (cx, cy), (0.0, 1.0), (1.0, 0.0),
+            size_d, size_w, [R_FLEXIBLE_SPOT], anchor_label, kind="free",
         )
     ]
 
@@ -1341,7 +1353,13 @@ def _beside_console_spots(analysis: RoomAnalysis, placed: list[PlacedProduct], s
     return zones
 
 
-def _decor_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats) -> list[ZoneData]:
+def _decor_zones(
+    analysis: RoomAnalysis,
+    placed: list[PlacedProduct],
+    stats: CategoryStats,
+    blocker_buffer: float = 30.0,
+    size: float = 60.0,
+) -> list[ZoneData]:
     sofa = _find_placed(placed, "sofa")
     near = (sofa[0].x, sofa[0].y) if sofa is not None else None
     # Prefer corners near the seating, but consider EVERY corner (radius = room diagonal): in a
@@ -1350,10 +1368,13 @@ def _decor_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cat
     # Keep the plant a real clearance off other furniture (like the floor lamp) - an 8cm buffer let it
     # sit ~2cm from the service-table in a near-sofa corner. A 30cm buffer shrinks a crowded corner
     # below the fit threshold, so the plant fills a genuinely EMPTY corner instead of crowding a piece.
+    # A BEDROOM passes a smaller buffer + a room-scaled `size` (a small decorative pot may tuck
+    # close to a wardrobe/chair, and a big bedroom wants a substantial plant); the living room
+    # keeps the defaults (30 cm / 60 cm), so its corners are byte-identical to before.
     corners = _corner_spots(
-        analysis, placed, "decor", 60.0, max_zones=4,
+        analysis, placed, "decor", size, max_zones=4,
         near=near, near_radius=analysis.diag_cm if near else 0.0, reasons=[R_FLEXIBLE_SPOT],
-        blocker_buffer=30.0,
+        blocker_buffer=blocker_buffer,
     )
     # SECONDARY location: beside the console. Ranked BELOW the corners (0.5 vs 0.7+), so a genuinely
     # empty corner always wins; the plant tucks beside the console only when no corner survives -
@@ -1365,22 +1386,26 @@ def _decor_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: Cat
 def _lamp_on_table_zones(
     analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats
 ) -> list[ZoneData]:
-    """A table lamp resting ON a nightstand: one small free zone centred on the first placed
-    side table, sized to (most of) its top so only a small lamp fits - not a floor lamp. The
-    lamp shares the table's footprint; that overlap is expected and exempted in validation."""
-    table = _find_placed(placed, "side_table")
-    if table is None:
-        return []  # no nightstand to stand on -> no lamp
-    item, product = table
-    s = min(product.width_cm, product.depth_cm) * 0.8  # fits a small lamp base on the table top
-    poly = item_polygon(item.x, item.y, s, s, item.rotation_deg)
-    return [
-        _frame_zone(
-            "lighting", 0, poly, 0.9, item.rotation_deg,
-            (item.x, item.y), (0.0, 1.0), (1.0, 0.0), s, s,
-            [R_FLEXIBLE_SPOT], "on_nightstand", kind="free",
+    """A table lamp resting ON each nightstand: one small free zone centred on EVERY placed
+    side table (up to two), sized to (most of) its top so only a small lamp fits - not a floor
+    lamp. Each lamp shares its table's footprint; that overlap is expected and exempted in
+    validation. Two nightstands -> a mirrored PAIR of matching bedside lamps."""
+    zones: list[ZoneData] = []
+    idx = 0
+    for item, product in placed:
+        if placement_group(product.category) != "side_table":
+            continue
+        s = min(product.width_cm, product.depth_cm) * 0.8  # fits a small lamp base on the table top
+        poly = item_polygon(item.x, item.y, s, s, item.rotation_deg)
+        zones.append(
+            _frame_zone(
+                "lighting", idx, poly, 0.9, item.rotation_deg,
+                (item.x, item.y), (0.0, 1.0), (1.0, 0.0), s, s,
+                [R_FLEXIBLE_SPOT], "on_nightstand", kind="free",
+            )
         )
-    ]
+        idx += 1
+    return zones
 
 
 def _vases_on_console_zones(
@@ -1411,18 +1436,56 @@ def _vases_on_console_zones(
 def _reading_chair_zones(
     analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats
 ) -> list[ZoneData]:
-    """A single reading chair in the corner FARTHEST from the bed that is clear and door-free.
-    Door corners shrink below the fit threshold via the swing buffer, and occupied corners are
-    excluded as blockers - so what remains is the empty, doorless corner opposite the bed."""
+    """The bedroom accent chair, placed BY FUNCTION:
+
+    - If a DRESSING TABLE was placed, the chair becomes its VANITY SEAT - pulled up in front of
+      the table, centred, and FACING the mirror - so the vanity is actually usable (a dressing
+      table with no seat is dead furniture). This wins because it serves a real function.
+    - Otherwise it's a READING CHAIR in a clear, door-free corner, angled to face the bed.
+    """
+    vanity = next(((it, p) for it, p in placed if p.category == "dressing-table"), None)
+    if vanity is not None:
+        seat = _seat_in_front_of(analysis, vanity[0], vanity[1], "at_vanity")
+        if seat:
+            return seat
+        # vanity spot blocked (no room to pull a chair out) -> fall through to a reading corner
+
+    # No vanity (or no room at it): a reading chair in the clear door-free corner facing the bed.
     bed = _find_placed(placed, "bed")
     far = (bed[0].x, bed[0].y) if bed is not None else None
-    # The chair is a NICE-TO-HAVE placed after the wardrobe + dressing table: it needs a genuinely
-    # clear corner (a wide 35cm clearance off any furniture), otherwise no zone is produced and the
-    # chair is simply skipped rather than crammed beside the vanity.
     return _corner_spots(
-        analysis, placed, "accent_chair", 70.0, max_zones=1, far_from=far, face=far,
-        reasons=[R_FLEXIBLE_SPOT], blocker_buffer=35.0,
+        analysis, placed, "accent_chair", 70.0, max_zones=3, far_from=far, face=far,
+        reasons=[R_FLEXIBLE_SPOT], blocker_buffer=28.0,
     )
+
+
+def _seat_in_front_of(
+    analysis: RoomAnalysis, item: PlacedItem, product: Product, label: str
+) -> list[ZoneData]:
+    """A chair pulled up in front of a wall surface you SIT AT (a vanity or a desk): centred on
+    the surface and turned to FACE it, ~8 cm off the front so it can pull out. Empty list if
+    there is no room to sit."""
+    f = front_vector(item.rotation_deg)  # the surface faces into the room
+    w = width_axis(item.rotation_deg)
+    origin = add((item.x, item.y), f, product.depth_cm / 2.0 + 8.0)
+    fwd_len = 62.0  # room for the chair + a little pull-out space
+    lat_len = max(52.0, product.width_cm * 0.6)  # centred on the surface's width
+    chair_rot = (item.rotation_deg + 180.0) % 360.0  # turn the chair to FACE the surface
+    rect = quad(
+        add(origin, w, -lat_len / 2.0),
+        add(origin, w, lat_len / 2.0),
+        add(add(origin, w, lat_len / 2.0), f, fwd_len),
+        add(add(origin, w, -lat_len / 2.0), f, fwd_len),
+    )
+    piece = largest_piece(rect.intersection(analysis.polygon).difference(analysis.keep_clear_union))
+    if piece is None or piece.area < 2_000.0:
+        return []
+    return [
+        _frame_zone(
+            "accent_chair", 0, piece, 0.95, chair_rot, origin, f, w, fwd_len, lat_len,
+            [R_FLEXIBLE_SPOT], label,
+        )
+    ]
 
 
 # Circulation walkway the chaise-lounge must keep clear of every placed piece (it's a lounge spot you
