@@ -101,6 +101,10 @@ def select_slots(
     # An explicit per-role store category (e.g. a role that wants "vase" specifically) overrides
     # the room's default preference for the placement group.
     pref_cat = store_category or preferred_store_category(room_type, category)
+    # A sofa is already placed => this call is filling a SECONDARY seat (the L-return / U-shape flank),
+    # not the primary. Drives both the size-DOWN to a 2-seater and letting the generic "sofa"-category
+    # feed compete for the return (below).
+    second_sofa = category == "sofa" and any(placement_group(pr.category) == "sofa" for _it, pr in placed)
     # The default living-room sofa is a 3-seater, EXCEPT: a small/medium room gets a 2-seater,
     # and the SECOND sofa (the L-return in a big room) is a 2-seater - not another 3-seater.
     # ONLY the AUTO/default resolution (store_category is None) is downgraded: when the planner
@@ -108,12 +112,19 @@ def select_slots(
     # that choice is honoured as-is - the ladder owns any sizing-down, not this block.
     if pref_cat == "3-seater-sofa" and store_category is None:
         small_medium = room_area_cm2 is not None and room_area_cm2 < SMALL_MEDIUM_MAX_CM2
-        second_sofa = any(placement_group(pr.category) == "sofa" for _it, pr in placed)
         # compact_seating: the planner re-plans a would-be lone 3-seater as a 2-seater + chair.
         if small_medium or second_sofa or prefs.compact_seating:
             pref_cat = "2-seater-sofa"
     if pref_cat:
-        preferred = [p for p in products if p.category == pref_cat]
+        accept = {pref_cat}
+        # The imported generic "sofa"-category feed carries no 2-/3-seater subtype. Let it compete for
+        # the SECONDARY return (L-return / U-shape flank) ALONGSIDE the pinned 2-/3-seater, so a plain
+        # "sofa" can be the return too. Scoped to a return (a sofa already placed): the PRIMARY stays a
+        # 3-seater and every non-sofa role is untouched. The size envelope + zone-fit below keep the
+        # chosen sofa proportional to the (2-/3-seater-sized) return zone.
+        if second_sofa and pref_cat in ("2-seater-sofa", "3-seater-sofa"):
+            accept.add("sofa")
+        preferred = [p for p in products if p.category in accept]
         if preferred:
             products = preferred
 
@@ -125,15 +136,15 @@ def select_slots(
     bounds = size_bounds(category, pref_cat, room_area_cm2)
     if bounds is not None:
         mnw, mxw, mnd, mxd = bounds
-        # A sofa the USER explicitly pinned (Q2 sofa_type != "auto" -> _sofa_ladder pins store_category)
-        # is their choice: the room-proportional MAX WIDTH must not filter it out - only PHYSICAL fit
-        # (fits_zone / validate_item) may reject it, after which _execute_primary_sofa's honour-then-
-        # size-down ladder sizes it down with the existing notice. NOT lifted for the AUTO path
-        # (store_category is None), NOR for the COMPACT re-plan: the never-lone-3-seater compaction
-        # forces store_category="2-seater-sofa" WITHOUT the user asking, so that fallback stays
-        # room-proportional (else it grabs the widest 2-seater and crowds out the console). MIN +
-        # DEPTH bounds are unchanged.
-        if category == "sofa" and store_category is not None and not prefs.compact_seating:
+        # A sofa the USER explicitly pinned (Q2 sofa_type != "auto") is their choice: the room-
+        # proportional MAX WIDTH must not filter it out - only PHYSICAL fit (fits_zone / validate_item)
+        # may reject it, after which _execute_primary_sofa's honour-then-size-down ladder sizes it down
+        # with the existing notice. Keyed on `sofa_type != "auto"` (the true "user asked" signal), NOT
+        # on `store_category is not None`: the PLANNER also pins a store_category for AUTO returns (the
+        # gap-sized L-return / U-shape) and the COMPACT 2-seater re-plan - neither is a user choice, so
+        # both must stay room-proportional (else the return grabs the widest 3-seater and crowds the
+        # room). MIN + DEPTH bounds are unchanged.
+        if category == "sofa" and prefs.sofa_type != "auto" and not prefs.compact_seating:
             mxw = float("inf")
         within = [p for p in products if mnw <= p.width_cm <= mxw and mnd <= p.depth_cm <= mxd]
         if within:

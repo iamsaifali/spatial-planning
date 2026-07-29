@@ -36,7 +36,7 @@ from spatial_planning.services.recommend.orchestrator import (
 UNSAFE_CODES = {"OVERLAP_ITEM", "OUT_OF_BOUNDS", "BLOCKS_DOOR_SWING", "BLOCKS_WALKWAY"}
 
 # The essentials-only default golden (TV included) — must reproduce byte-identically.
-GOLDEN_DEFAULT_PID = "lay_c13e103b94"
+GOLDEN_DEFAULT_PID = "lay_357bd11cb8"
 
 # The essentials checklist WITHOUT the TV (rug + coffee table + floor lamp) — TV unchecked.
 NO_TV = ["rug", "coffee_table", "floor_lamp"]

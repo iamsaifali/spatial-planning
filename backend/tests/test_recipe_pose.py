@@ -14,7 +14,7 @@ from spatial_planning.services.recipe.equivalence import compare_layouts
 from spatial_planning.services.recommend.orchestrator import plan_layout, plan_layout_from_recipe
 
 GOLDEN_LIVING_PID = "lay_6bede4c1fe"  # legacy
-GOLDEN_LIVING_RECIPE = "lay_2bf990bc07"  # recipe planner (current flow): chair placed BEFORE the console (steered to the door-free flank, flush to the sofa/rug); console on the wall away from the seating, or skipped with a notice if none; the door-side chair drops only when the group is jammed by the entry.
+GOLDEN_LIVING_RECIPE = "lay_3e7b6e1b3a"  # recipe planner (current flow): chair placed BEFORE the console (steered to the door-free flank, flush to the sofa/rug); console on the wall away from the seating, or skipped with a notice if none; the door-side chair drops only when the group is jammed by the entry.
 
 LIVING_ROOM = {
     "vertices": [[0, 0], [480, 0], [480, 360], [0, 360]],
@@ -268,8 +268,14 @@ def test_great_room_floats_seating_and_wall_mounts_tv(catalog_repo):
     # the TV stays WALL-MOUNTED (its centre sits within ~a TV depth of the wall)...
     assert "media_at_viewing_distance" not in (tv.reason_codes or [])
     assert Point(tv.pose.x, tv.pose.y).distance(exterior) < 70
-    # ...and the SEATING GROUP floats forward off its wall instead (not glued to it)
-    assert Point(sofa.pose.x, sofa.pose.y).distance(exterior) > 150
+    # ...and the SEATING GROUP floats forward off its BACK WALL instead (not glued to it). Measure the
+    # float DEPTH along the sofa's facing axis (TV - sofa gap) rather than distance-to-nearest-exterior:
+    # in a great room the group may also be shifted sideways toward a side wall (freeing the far flank),
+    # so nearest-exterior would catch that side wall, not the float we're asserting.
+    from spatial_planning.services.spatial.geometry_utils import front_vector
+    f = front_vector(sofa.pose.rotation_deg)
+    float_depth = abs((tv.pose.x - sofa.pose.x) * f[0] + (tv.pose.y - sofa.pose.y) * f[1])
+    assert float_depth > 150  # sofa sits a real distance in front of the wall-mounted TV, not glued back
     # at a comfortable viewing distance (centre-to-centre; front-to-front ~a step less),
     # far closer than the ~660 a wall-glued sofa would give, and circulation is preserved
     assert math.hypot(tv.pose.x - sofa.pose.x, tv.pose.y - sofa.pose.y) < 520

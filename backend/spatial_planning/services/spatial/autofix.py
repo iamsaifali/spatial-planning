@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from shapely.geometry import Polygon
 
 from spatial_planning.models.geometry import PlacedItem, Pose
-from spatial_planning.models.products import Product
+from spatial_planning.models.products import Product, placement_group
 from spatial_planning.models.validation import MUST_FIX_CODES, AutoFix, BetterPlacement, Finding
 from spatial_planning.services.spatial.core import RoomAnalysis, ZoneData
 from spatial_planning.services.spatial.geometry_utils import add, dist, item_polygon, sub, unit
@@ -64,13 +64,30 @@ def _push_out_candidates(
             yield Pose(x=p[0], y=p[1], rotation_deg=item.rotation_deg)
 
 
-def _spiral_candidates(item: PlacedItem) -> Iterator[Pose]:
-    rotations = [
-        item.rotation_deg,
-        (item.rotation_deg + 90.0) % 360.0,
-        (item.rotation_deg - 90.0) % 360.0,
-        (item.rotation_deg + 180.0) % 360.0,
-    ]
+def _lock_rotation(product: Product, placed: list[PlacedProduct], instance_id: str) -> bool:
+    """A SECONDARY sofa (an L-return / U-arm) must not be auto-rotated - its inward facing is semantic.
+    True when placing a sofa and another sofa is already present (i.e. this is a return, not the primary)."""
+    if placement_group(product.category) != "sofa":
+        return False
+    return any(
+        placement_group(p.category) == "sofa" and i.instance_id != instance_id for i, p in placed
+    )
+
+
+def _spiral_candidates(item: PlacedItem, lock_rotation: bool = False) -> Iterator[Pose]:
+    # `lock_rotation` keeps the item's ORIENTATION fixed while nudging its position - used for a SECONDARY
+    # sofa (an L-return / U-arm), whose facing is semantic: rotating it 90° to squeeze in would turn an
+    # arm facing the conversation into a sofa facing a wall (the U-orientation bug). The PRIMARY sofa may
+    # still rotate (a tight room's only seat is better rotated than dropped), and accents rotate freely.
+    if lock_rotation:
+        rotations = [item.rotation_deg]
+    else:
+        rotations = [
+            item.rotation_deg,
+            (item.rotation_deg + 90.0) % 360.0,
+            (item.rotation_deg - 90.0) % 360.0,
+            (item.rotation_deg + 180.0) % 360.0,
+        ]
     for ring in range(1, 16):
         r = ring * 10.0
         for k in range(16):
@@ -95,6 +112,7 @@ def find_autofix(
     other_polys = [(i, p, build_poly(i, p)) for i, p in placed if i.instance_id != item.instance_id]
     room_buffered = analysis.polygon.buffer(1.5)
     poly = build_poly(item, product)
+    lock_rot = _lock_rotation(product, placed, item.instance_id)
 
     def valid(pose: Pose) -> bool:
         candidate_poly = item_polygon(pose.x, pose.y, product.width_cm, product.depth_cm, pose.rotation_deg)
@@ -104,7 +122,7 @@ def find_autofix(
     for gen in (
         _wall_slide_candidates(analysis, item, product),
         _push_out_candidates(analysis, other_polys, item, poly),
-        _spiral_candidates(item),
+        _spiral_candidates(item, lock_rot),
     ):
         for pose in gen:
             tested += 1
@@ -128,6 +146,7 @@ def settle_pose(
     """Anchor pose nudged to the nearest error-free spot (small local search)."""
     other_polys = [(i, p, build_poly(i, p)) for i, p in placed if i.instance_id != instance_id]
     room_buffered = analysis.polygon.buffer(1.5)
+    lock_rot = _lock_rotation(product, placed, instance_id)
 
     def valid(p: Pose) -> bool:
         cand = item_polygon(p.x, p.y, product.width_cm, product.depth_cm, p.rotation_deg)
@@ -159,7 +178,7 @@ def settle_pose(
         # the straight nudge overlaps a neighbour: spiral from it for a spot that is BOTH off the wall
         # and overlap-free; failing that, keep it inside anyway (a small overlap beats crossing a wall).
         probe2 = PlacedItem(instance_id=instance_id, product_id=product.id, x=moved.x, y=moved.y, rotation_deg=moved.rotation_deg)
-        for c in _spiral_candidates(probe2):
+        for c in _spiral_candidates(probe2, lock_rot):
             cp = Pose(x=round(c.x, 1), y=round(c.y, 1), rotation_deg=c.rotation_deg)
             if wall_clearance(cp) >= WALL_GAP - 0.1 and valid(cp):
                 return cp
@@ -171,7 +190,7 @@ def settle_pose(
         instance_id=instance_id, product_id=product.id,
         x=pose.x, y=pose.y, rotation_deg=pose.rotation_deg,
     )
-    for candidate in _spiral_candidates(probe):
+    for candidate in _spiral_candidates(probe, lock_rot):
         if dist((candidate.x, candidate.y), (pose.x, pose.y)) > 80.0:
             continue
         if valid(candidate):

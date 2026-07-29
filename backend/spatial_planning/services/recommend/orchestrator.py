@@ -57,6 +57,7 @@ from spatial_planning.services.recipe.registry import get_recipe
 from spatial_planning.services.recipe.strategies import resolve_strategy
 from spatial_planning.services.spatial.geometry_utils import item_polygon
 from spatial_planning.services.spatial.zones import (
+    MAX_RETURN_SOFAS,
     CategoryStats,
     anchor_pose,
     zones_for_category,
@@ -367,6 +368,20 @@ def _tv_requested(preferences: Preferences, room_type: str) -> bool:
     return "tv_unit" in pieces.resolve_active_pieces(preferences.included_pieces)
 
 
+def _side_shift_mode(preferences: Preferences, room_type: str) -> str | None:
+    """Should the great-room conversation group slide to one side? ONLY when a DINING table was requested
+    - so the dining set gets a comfortable freed block beside the group. Otherwise the group stays
+    CENTRED, whether it's an L-return or a U-return (a U with no dining is centred, same as an L). The
+    shift is "bounded": it leaves room on the NEAR (wall) flank for the secondary sofa / a companion
+    chair, so nothing gets jammed or stranded. Living-room only; `_sofa_zones` still requires a great
+    room + real lateral slack before it acts."""
+    if room_type != "living_room":
+        return None
+    if "dining_set" in pieces.resolve_active_pieces(preferences.included_pieces):
+        return "bounded"
+    return None
+
+
 def _resolve_recipe_predicates(recipe: Recipe) -> None:
     """Predicate awareness: resolve every predicate reference up-front. This is an
     orchestration decision - the interpreter refuses to run a recipe whose intent it
@@ -387,6 +402,11 @@ def _run_strategy(role: RoleDefinition, category: str, st: _PlanState) -> list[Z
     # plan passes the recipe's params dict UNCHANGED (strict no-op, byte-identical goldens).
     if not st.tv_requested:
         params = {**params, "tv_requested": False}
+    # Great-room lateral side-shift: only when a dining table was requested, or a U formed (see
+    # _side_shift_mode). Otherwise the group stays centred.
+    mode = _side_shift_mode(st.preferences, st.room_type)
+    if mode is not None:
+        params = {**params, "side_shift_mode": mode}
     return strategy.resolver(category, st.room_type, st.analysis, st.working, st.stats, params)
 
 
@@ -459,7 +479,7 @@ def _execute_primary_sofa(role: RoleDefinition, st: _PlanState) -> None:
 
 def _execute_single(role: RoleDefinition, st: _PlanState) -> None:
     category = role.categories[0]
-    if category in st.have_categories:
+    if category in st.have_categories and not role.allow_duplicate:
         st.skipped.append(AssistSkip(category=category, reason="ALREADY_PRESENT"))
         return
 
@@ -533,6 +553,80 @@ def _execute_until_target(role: RoleDefinition, st: _PlanState) -> None:
 
     if not placed_any:
         st.skipped.append(AssistSkip(category=category, reason="NO_FIT"))
+    st.have_categories.add(category)
+
+
+def _execute_secondary_sofa(role: RoleDefinition, st: _PlanState) -> None:
+    """Living-room secondary seating: fill the primary's flanks with RETURN sofas SIZED TO THE SEAT GAP
+    (the sofa-first fill ladder, CLAUDE.md 5.1).
+
+    Gated on an EXPLICIT seat request: only when the user SET `seating_capacity` (Q1) does this build a U
+    - gap-sized returns (3-seater vs 2-seater) on both flanks up to `MAX_RETURN_SOFAS`, sized DOWN if a
+    size won't fit. On AUTO (area-derived default, no explicit ask) it keeps today's backbone: a single
+    2-seater L-return - so opt-in pieces (chaise, console) still fit and the AUTO goldens are unchanged.
+    The FIRST return is placed for any positive gap (the "never a lone 3-seater" backbone); ADDITIONAL
+    returns only when the gap is worth a whole sofa - a smaller leftover (+1) is left to a chair
+    (companion_seating). Small rooms / a met target yield no return (the zone generator's area guard + the
+    gap gate). Never sofa-less: the primary already placed via _execute_primary_sofa's honour-then-size-down."""
+    category = role.categories[0]  # "sofa"
+    metric = role.count.metric or "seating_capacity"
+    target = _count_target(role.count, st)
+    strategy = resolve_strategy(role.zone_strategy.name)
+    explicit = st.preferences.seating_capacity is not None
+    max_returns = MAX_RETURN_SOFAS if explicit else 1  # AUTO: today's single 2-seater L-return backbone
+
+    def _return_seats(store_cat: str) -> int:
+        # catalog-derived: a "2-seater-sofa" (~200cm) can actually seat 3, so never key the ladder on
+        # literal 2/3 - ask the catalog what each return size seats (smallest, to be conservative).
+        prods = [p for p in st.repo.in_category("sofa") if p.category == store_cat]
+        return int(min((p.seating_capacity for p in prods), default=(4 if store_cat == "3-seater-sofa" else 3)))
+
+    two_seats = _return_seats("2-seater-sofa")   # the smallest return worth placing (a chair covers a <2-seater gap)
+    three_seats = _return_seats("3-seater-sofa")
+
+    def _zones_for(store_cat: str) -> list[ZoneData]:
+        params = {**role.zone_strategy.params, "return_category": store_cat}
+        if not st.tv_requested:
+            params["tv_requested"] = False
+        return strategy.resolver(category, st.room_type, st.analysis, st.working, st.stats, params)
+
+    used: set = set()
+    returns_placed = 0
+    while returns_placed < max_returns:
+        seated = sum(_metric_of(p, metric) for _i, p in st.working if _metric_of(p, metric) > 0)
+        gap = target - seated
+        if gap <= 0:
+            break
+        if returns_placed >= 1 and gap < two_seats:
+            break  # the target is all-but-met; a small leftover is a chair's job, not another sofa
+        # AUTO: always today's 2-seater L-return. EXPLICIT: the largest size the gap can use (3s then 2s).
+        ladder = ["3-seater-sofa", "2-seater-sofa"] if (explicit and gap >= three_seats) else ["2-seater-sofa"]
+        placed_this = False
+        for store_cat in ladder:  # largest the gap can use, then size DOWN until a free flank fits
+            zone = next((z for z in _zones_for(store_cat) if _unit_key(z, role.count.one_per) not in used), None)
+            if zone is None:
+                continue
+            result = select_slots(
+                category, [zone], st.preferences, st.working, st.repo,
+                room_area_cm2=st.analysis.area_cm2, store_category=store_cat,
+            )
+            candidate = result.best
+            if candidate is None:
+                continue
+            pose = settle_pose(st.analysis, st.working, candidate.product, anchor_pose(zone, candidate.product, st.analysis))
+            placement, item, _reason = _commit(
+                category, candidate, pose, zone.id, f"{AUTO_PREFIX}{next(st.ids)}", st.analysis, st.working
+            )
+            if placement is None:
+                continue
+            used.add(_unit_key(zone, role.count.one_per))
+            st.placements.append(placement)
+            st.working.append((item, candidate.product))
+            returns_placed += 1
+            placed_this = True
+            break
+        if not placed_this:
+            break  # no return size fits a free flank -> stop (chairs top up any remainder)
     st.have_categories.add(category)
 
 
@@ -670,7 +764,9 @@ def _execute_per_anchor(role: RoleDefinition, st: _PlanState) -> None:
 def _execute_role(role: RoleDefinition, st: _PlanState) -> None:
     mode = role.count.mode
     before_placed, before_skipped = len(st.placements), len(st.skipped)
-    if mode == "single":
+    if st.room_type == "living_room" and role.role == "secondary_seating":
+        _execute_secondary_sofa(role, st)  # gap-sized L/U of return sofas (living-room seating ladder)
+    elif mode == "single":
         _execute_single(role, st)
     elif mode == "until_target":
         _execute_until_target(role, st)
@@ -946,6 +1042,13 @@ def _template_layout_score(
         if not behind_used:
             score -= min(2.0, (back_gap - 45.0) / 40.0)
     score -= score_long_axis_penalty
+    # Reward a template that satisfies the WHOLE checklist: penalise every piece the user opted into
+    # that this arrangement couldn't fit (a `did_not_fit` skip - set by `_apply_gating_notices` for a
+    # requested role that placed zero). So of two otherwise-comparable walls, the one that lands the
+    # dining set AND the chaise outranks the one that drops one of them - the request is honoured where
+    # geometry allows, and a template that omits an opted-in piece falls below one that keeps it.
+    dropped = sum(1 for sk in resp.skipped if sk.reason == SKIP_DID_NOT_FIT)
+    score -= 1.5 * dropped
     return score
 
 
@@ -1327,6 +1430,9 @@ def plan_layout_variants(
     primary_params = primary.zone_strategy.params
     if not has_tv:
         primary_params = {**primary_params, "tv_requested": False}
+    _mode = _side_shift_mode(preferences, effective_room_type)
+    if _mode is not None:
+        primary_params = {**primary_params, "side_shift_mode": _mode}
     cands = strategy.resolver(primary.categories[0], effective_room_type, analysis, [], stats, primary_params)
 
     # keep one candidate per distinct wall, best-first
@@ -1358,14 +1464,17 @@ def plan_layout_variants(
         bucket = good_rows if _template_quality_ok(room, z, category) else other_rows
         bucket.append((label, side, resp, z))
 
-    # rank the design-sound options by layout quality (a working sofa<->TV pair wins), so
-    # the recommended template is the one that actually composes - stable on the original
-    # best-first order for ties (and for bedrooms, which score 0 across the board).
-    # rank best-composition-first, then NEVER surface a template with real issues (a warning,
-    # the TV not in front of the sofa, or a floating non-adjacent L). Keep the single best if
-    # everything has issues, so the panel is never empty.
+    # rank the design-sound options: COMPLETENESS FIRST, then layout quality. A template that fits ALL the
+    # opted-in pieces always ranks above one that drops any, so the RECOMMENDED (first) template is a full
+    # layout whenever one exists (e.g. the wall that fits the dining set + chaise beats a "prettier" wall
+    # that drops the chaise). Ties (same drop count) fall back to composition score. `_template_issues`
+    # still hard-drops genuinely broken templates first, so completeness never promotes a broken layout.
+    def _drop_count(resp: AssistLayoutResponse) -> int:
+        return sum(1 for sk in resp.skipped if sk.reason == SKIP_DID_NOT_FIT)
+
     scored = sorted(
-        ((_template_layout_score(r[2], analysis, has_tv), r) for r in good_rows), key=lambda x: x[0], reverse=True
+        ((_template_layout_score(r[2], analysis, has_tv), r) for r in good_rows),
+        key=lambda x: (_drop_count(x[1][2]), -x[0]),
     )
     kept = [sr for sr in scored if not _template_issues(sr[1][2], analysis, has_tv, sofa_explicit)]
     if not kept:
@@ -1375,8 +1484,7 @@ def plan_layout_variants(
         # clean one exists anywhere.
         kept = sorted(
             ((_template_layout_score(r[2], analysis, has_tv), r) for r in other_rows if not _template_issues(r[2], analysis, has_tv, sofa_explicit)),
-            key=lambda x: x[0],
-            reverse=True,
+            key=lambda x: (_drop_count(x[1][2]), -x[0]),
         )
     # NB: we deliberately do NOT pad a single good wall up to two by pulling a weak `other_rows`
     # template. A weak wall means a wall a designer wouldn't offer (a sofa on the DOOR wall, crammed
@@ -1393,7 +1501,7 @@ def plan_layout_variants(
         # _tv_in_front is vacuously True, so the constraint doesn't filter a conversation-focal room.)
         pool = sorted(
             ((_template_layout_score(r[2], analysis, has_tv), r) for r in (good_rows + other_rows) if _tv_in_front(r[2], analysis, has_tv)),
-            key=lambda x: x[0], reverse=True,
+            key=lambda x: (_drop_count(x[1][2]), -x[0]),
         )
     rows = [r for _sc, r in pool[:max_variants]]
     # Door/entry safety net - these must NEVER be surfaced, even when the last-resort pool above (which

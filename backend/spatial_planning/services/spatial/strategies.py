@@ -37,6 +37,8 @@ from spatial_planning.services.spatial.zones import (
     _l_return_sofa_zones,
     _lamp_on_table_zones,
     _lighting_zones,
+    _nook_rug_zones,
+    _nook_satellite_zones,
     _vases_on_console_zones,
     _reading_chair_zones,
     _rug_zones,
@@ -68,7 +70,7 @@ def focal_wall(category, room_type, analysis, placed, stats, params):
     if category == "sofa":
         # Phase 4: when no TV was requested (params tv_requested=False, injected by the
         # orchestrator), relax the window-wall avoidance so the sofa takes the best wall.
-        return _sofa_zones(analysis, placed, stats, tv_requested=params.get("tv_requested", True))
+        return _sofa_zones(analysis, placed, stats, tv_requested=params.get("tv_requested", True), side_shift_mode=params.get("side_shift_mode"))
     if category == "bed":
         return _bed_zones(analysis, placed, stats)
     return _fallback(category, room_type, analysis, placed, stats, params)
@@ -107,11 +109,12 @@ def beside_anchor(category, room_type, analysis, placed, stats, params):
 
 
 def l_return(category, room_type, analysis, placed, stats, params):
-    """A perpendicular RETURN sofa forming an L with the primary (big living rooms). The
-    generator self-limits: it yields a zone only when the primary is the sole sofa AND the
-    return genuinely fits, so small rooms get nothing and only ONE return is ever added."""
+    """A perpendicular RETURN sofa forming an L (or, on the free flank of an existing return, a U) with
+    the primary (big living rooms). The generator self-limits to `MAX_RETURN_SOFAS` and to rooms above
+    the area guard, so small rooms get nothing. `return_category` (from params, default 2-seater) sizes
+    the return - the secondary-sofa fill loop passes 3-seater vs 2-seater by the remaining seat gap."""
     if category == "sofa":
-        return _l_return_sofa_zones(analysis, placed, stats)
+        return _l_return_sofa_zones(analysis, placed, stats, return_category=params.get("return_category", "2-seater-sofa"))
     return _fallback(category, room_type, analysis, placed, stats, params)
 
 
@@ -170,6 +173,21 @@ def chaise(category, room_type, analysis, placed, stats, params):
     (its own placement role)."""
     if category == "chaise":
         return _chaise_zones(analysis, placed, stats)
+    return _fallback(category, room_type, analysis, placed, stats, params)
+
+
+def nook_rug(category, room_type, analysis, placed, stats, params):
+    """A second SMALL rug anchoring the reading nook under the chaise (massive rooms only, chaise placed)."""
+    if category == "rug":
+        return _nook_rug_zones(analysis, placed, stats)
+    return _fallback(category, room_type, analysis, placed, stats, params)
+
+
+def nook_satellite(category, room_type, analysis, placed, stats, params):
+    """A small accent (floor lamp / side table) beside the chaise, completing the reading-nook vignette
+    (massive rooms only, chaise placed)."""
+    if category in ("lighting", "side_table"):
+        return _nook_satellite_zones(analysis, placed, stats, category)
     return _fallback(category, room_type, analysis, placed, stats, params)
 
 
@@ -240,6 +258,8 @@ SPATIAL_STRATEGIES: dict[str, ZoneStrategyFn] = {
     "remaining_wall": remaining_wall,
     "reading_corner": reading_corner,
     "chaise": chaise,
+    "nook_rug": nook_rug,
+    "nook_satellite": nook_satellite,
     "dining": dining,
     "dining_ring": dining_ring,
     "on_surface": on_surface,

@@ -181,3 +181,42 @@ def test_side_table_skipped_when_both_flanks_crowded(catalog_repo):
 
     zones = zones_for_category("side_table", analysis, placed, stats)
     assert zones == [], "both flanks crowded -> the side table yields (no zone)"
+
+
+def test_plant_secondary_zone_beside_the_console(catalog_repo):
+    """The plant (decor/corners) gets a SECONDARY location tucked beside the console - used only when
+    no empty corner survives. Verify: with a console placed, `_beside_console_spots` yields a spot that
+    (a) sits BESIDE the console, (b) is scored below a real corner (so an empty corner always wins),
+    and (c) actually fits inside the room."""
+    from spatial_planning.models.geometry import Room
+    from spatial_planning.services.spatial.geometry_utils import item_polygon
+    from spatial_planning.services.spatial.zones import _beside_console_spots
+
+    # a room > 24 m2 so the console isn't size-skipped (small/medium rooms drop the console)
+    room = Room.model_validate(
+        {"vertices": [[0, 0], [600, 0], [600, 520], [0, 520]],
+         "doors": [{"id": "d", "wall_index": 0, "offset_cm": 40, "width_cm": 85}], "windows": []}
+    )
+    analysis = analyze_room(room)
+    stats = catalog_repo.category_stats()
+    placed = [_place_sofa(catalog_repo, analysis)]
+
+    # place a real console on its wall (via the storage zone + anchor)
+    console_prod = catalog_repo.in_category("storage")[0]
+    czones = zones_for_category("storage", analysis, placed, stats)
+    assert czones, "expected a console zone in a 4.8x3.6 living room"
+    cpose = anchor_pose(czones[0], console_prod, analysis)
+    console_item = PlacedItem(
+        instance_id="console-i1", product_id=console_prod.id,
+        x=cpose.x, y=cpose.y, rotation_deg=cpose.rotation_deg,
+    )
+    placed.append((console_item, console_prod))
+
+    beside = _beside_console_spots(analysis, placed)
+    assert beside, "expected a beside-console fallback spot next to the placed console"
+    cpoly = item_polygon(cpose.x, cpose.y, console_prod.width_cm, console_prod.depth_cm, cpose.rotation_deg)
+    for z in beside:
+        assert z.anchor_label.startswith("beside_console")
+        assert z.score < 0.7, "must rank BELOW a real corner (a genuinely empty corner wins)"
+        assert z.polygon.distance(cpoly) < 30.0, "the spot must sit right beside the console"
+        assert z.polygon.within(analysis.polygon.buffer(1.5)), "the spot must fit inside the room"

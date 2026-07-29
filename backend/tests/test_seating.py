@@ -167,6 +167,22 @@ def test_gap_driven_chairs_never_exceed_two(store_repo):
     assert _chairs(resp) <= 2
 
 
+def test_explicit_high_count_builds_a_u_of_sofas(store_repo):
+    """An EXPLICIT high seat count in a large room fills BOTH flanks with gap-sized return sofas (a U of
+    up to 3), reaching more seats than the AUTO backbone. Sofas carry the count - chairs stay a small
+    top-up. The SAME room on AUTO keeps today's single L-return (the U is opt-in via the seat stepper,
+    so it never starves opt-in pieces by default)."""
+    room = _square(700, 600)  # 42 m2 - room for a U
+    u = _plan(room, seating_capacity=10)
+    assert len(_sofa_cats(u)) >= 3  # primary + two returns = a U
+    assert _seated(u) >= 10 or any("comfortably seats" in n.lower() for n in u.notices)
+    assert _chairs(u) <= 2  # sofas carry the count; chairs stay a top-up
+    assert _no_hard_errors(u)
+    # AUTO in the SAME room keeps the 2-sofa backbone - the U is explicit-only
+    auto = _plan(room)
+    assert len(_sofa_cats(auto)) == 2
+
+
 # --- Hard combo rule: never a lone 3-seater / 3-seater + lone chair ---------------
 
 

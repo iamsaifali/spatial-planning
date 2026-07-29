@@ -50,7 +50,7 @@ LIVING_PREFS = Preferences(
 
 # Golden values. Living: legacy (one-of-each) vs recipe (area-scaled accent pieces).
 GOLDEN_LIVING_PID = "lay_6bede4c1fe"  # legacy planner
-GOLDEN_LIVING_RECIPE = "lay_2bf990bc07"  # recipe planner (current flow): chair placed BEFORE the console (steered to the door-free flank, flush to the sofa/rug); console on the wall away from the seating, or skipped with a notice if none; the door-side chair drops only when the group is jammed by the entry.
+GOLDEN_LIVING_RECIPE = "lay_3e7b6e1b3a"  # recipe planner (current flow): chair placed BEFORE the console (steered to the door-free flank, flush to the sofa/rug); console on the wall away from the seating, or skipped with a notice if none; the door-side chair drops only when the group is jammed by the entry. Rug now runs AFTER the seating group and sizes "front legs on" to cover the whole conversation zone (sofa + flanking chairs), so it is larger than the old primary-sofa-only rug (re-blessed from lay_2bf990bc07).
 
 
 @contextlib.contextmanager

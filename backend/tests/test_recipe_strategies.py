@@ -66,7 +66,7 @@ def _assert_roles_match_legacy(room_spec, room_type, repo):
         # L-return sofa), on_surface (accents resting on a surface, e.g. vases on a console),
         # remaining_wall (the recipe path opts a small-room console IN via allow_small_console=True,
         # whereas the legacy dispatch keeps the blanket small-room console skip - a deliberate divergence).
-        if role.zone_strategy.name in ("l_return", "on_surface", "chaise", "dining", "dining_ring", "remaining_wall"):
+        if role.zone_strategy.name in ("l_return", "on_surface", "chaise", "nook_rug", "nook_satellite", "dining", "dining_ring", "remaining_wall"):
             continue
         category = role.categories[0]
         strat = resolve_strategy(role.zone_strategy.name)
