@@ -28,16 +28,23 @@ from spatial_planning.services.spatial.zones import (
     PlacedProduct,
     _accent_chair_zones,
     _bed_zones,
+    _bedroom_rug_zones,
+    _bedroom_tv_zones,
     _bedside_zones,
     _chaise_zones,
     _coffee_table_zones,
     _decor_zones,
+    _desk_chair_zones,
+    _desk_zones,
     _dining_chair_zones,
     _dining_zones,
     _find_placed,
     _free_zone_center,
     _l_return_sofa_zones,
     _lamp_on_table_zones,
+    _lounge_light_zones,
+    _lounge_sofa_zones,
+    _vanity_chair_zones,
     _lighting_zones,
     _nook_rug_zones,
     _nook_satellite_zones,
@@ -166,7 +173,10 @@ def corners(category, room_type, analysis, placed, stats, params):
 def remaining_wall(category, room_type, analysis, placed, stats, params):
     """A solid wall segment not used by other roles (storage / console)."""
     if category == "storage":
-        return _storage_zones(analysis, placed, stats, room_type=room_type, allow_small_console=True)
+        return _storage_zones(
+            analysis, placed, stats, room_type=room_type, allow_small_console=True,
+            tv_requested=params.get("tv_requested", True),
+        )
     return _fallback(category, room_type, analysis, placed, stats, params)
 
 
@@ -174,6 +184,61 @@ def reading_corner(category, room_type, analysis, placed, stats, params):
     """A reading chair tucked into the empty, door-free corner OPPOSITE the bed (bedroom)."""
     if category == "accent_chair":
         return _reading_chair_zones(analysis, placed, stats)
+    return _fallback(category, room_type, analysis, placed, stats, params)
+
+
+def work_desk(category, room_type, analysis, placed, stats, params):
+    """The bedroom work-nook DESK against a clear wall with room to sit (away from bed / storage)."""
+    if category == "desk":
+        return _desk_zones(analysis, placed, stats, tv_requested=params.get("tv_requested", True))
+    return _fallback(category, room_type, analysis, placed, stats, params)
+
+
+def bed_media(category, room_type, analysis, placed, stats, params):
+    """The bedroom TV unit on the wall the bed faces (opposite the headboard)."""
+    if category == "tv_unit":
+        return _bedroom_tv_zones(analysis, placed, stats)
+    return _fallback(category, room_type, analysis, placed, stats, params)
+
+
+def desk_seat(category, room_type, analysis, placed, stats, params):
+    """The work-nook CHAIR pulled up in front of the placed desk, facing it (reuses the vanity seat)."""
+    if category == "accent_chair":
+        return _desk_chair_zones(analysis, placed, stats)
+    return _fallback(category, room_type, analysis, placed, stats, params)
+
+
+def vanity_seat(category, room_type, analysis, placed, stats, params):
+    """The dressing-table's STOOL: a small chair in front of the vanity, facing it - only where it won't
+    block a walkway or crowd the bed. Requires a dressing table; else no stool."""
+    if category == "accent_chair":
+        return _vanity_chair_zones(analysis, placed, stats)
+    return _fallback(category, room_type, analysis, placed, stats, params)
+
+
+def lounge_seat(category, room_type, analysis, placed, stats, params):
+    """The bedroom LOUNGE sofa: a compact sofa hugging a clear wall of its own, facing into the room -
+    the seat of a small sitting area (its centre table pulls up in front via `front_of_anchor`)."""
+    if category == "sofa":
+        return _lounge_sofa_zones(analysis, placed, stats)
+    return _fallback(category, room_type, analysis, placed, stats, params)
+
+
+def lounge_table(category, room_type, analysis, placed, stats, params):
+    """The bedroom lounge's CENTRE table, pulled up in front of the lounge sofa. Requires the sofa: no
+    lounge sofa placed -> no table (never a marooned room-centred table like the living-room fallback)."""
+    if category == "coffee_table":
+        if _find_placed(placed, "sofa") is None:
+            return []
+        return _coffee_table_zones(analysis, placed, stats)
+    return _fallback(category, room_type, analysis, placed, stats, params)
+
+
+def lounge_light(category, room_type, analysis, placed, stats, params):
+    """A floor lamp (floor-stand) beside the lounge sofa's arm, completing the sitting area. Requires
+    the sofa: no lounge sofa placed -> no lamp."""
+    if category == "lighting":
+        return _lounge_light_zones(analysis, placed, stats)
     return _fallback(category, room_type, analysis, placed, stats, params)
 
 
@@ -238,26 +303,9 @@ def center_area(category, room_type, analysis, placed, stats, params):
     cat_stats = stats.get(category, {})
     if category == "rug":
         if room_type == "bedroom":
-            # A bedroom rug GROUNDS the bed the way a designer does it: it sits under the LOWER
-            # ~2/3 of the bed and EXTENDS PAST THE FOOT, so a big expanse of rug shows where you
-            # step out - the head of the bed comes OFF the rug. (Centring it under the bed hides
-            # it: the mattress covers all but a thin frame.) ~45 cm reveal on each side.
-            bed = _find_placed(placed, "bed")
-            if bed is not None:
-                bitem, bprod = bed
-                fx, fy = front_vector(bitem.rotation_deg)  # headboard -> foot (into the room)
-                w, d = bprod.width_cm, bprod.depth_cm      # headboard width, bed length
-                along = (2.0 * d / 3.0) + 70.0             # lower ~2/3 of the bed + ~70 cm past the foot
-                perp = w + 90.0                            # ~45 cm reveal each side
-                shift = (d / 3.0 + 70.0) / 2.0             # centre shifted toward the foot
-                cx, cy = bitem.x + fx * shift, bitem.y + fy * shift
-                # The bed is wall-aligned (rotation is a multiple of 90), so `along` runs on the
-                # axis the bed faces and `perp` on the other.
-                size_w, size_d = (along, perp) if fx != 0.0 else (perp, along)
-                return _free_zone_center(analysis, "rug", size_w, size_d, center=(cx, cy))
-            # No bed placed (the rug depends on the bed, so rare): a room-centred rug at ~62%.
-            minx, miny, maxx, maxy = analysis.polygon.bounds
-            default_w, default_d = (maxx - minx) * 0.62, (maxy - miny) * 0.62
+            # A big rug anchored at the foot of the bed (only ~1/8 of the bed on it, the rest fanning
+            # forward into the room). See `_bedroom_rug_zones` - a near-edge-anchored FRAME zone.
+            return _bedroom_rug_zones(analysis, placed, stats)
         else:
             default_w, default_d = cat_stats.get("max_w", 300.0), cat_stats.get("max_d", 240.0)
     else:
@@ -283,6 +331,13 @@ SPATIAL_STRATEGIES: dict[str, ZoneStrategyFn] = {
     "corners": corners,
     "remaining_wall": remaining_wall,
     "reading_corner": reading_corner,
+    "work_desk": work_desk,
+    "desk_seat": desk_seat,
+    "vanity_seat": vanity_seat,
+    "lounge_seat": lounge_seat,
+    "lounge_table": lounge_table,
+    "lounge_light": lounge_light,
+    "bed_media": bed_media,
     "chaise": chaise,
     "nook_rug": nook_rug,
     "nook_satellite": nook_satellite,

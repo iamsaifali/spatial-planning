@@ -490,7 +490,10 @@ def _execute_single(role: RoleDefinition, st: _PlanState) -> None:
 
     pinned = st.zone_overrides.get(role.role)
     zones = [pinned] if pinned is not None else _run_strategy(role, category, st)
-    result = select_slots(category, zones, st.preferences, st.working, st.repo, room_area_cm2=st.analysis.area_cm2)
+    # Honour a role's explicit store_category pin (e.g. work_seat -> office-chair, console vases -> vase),
+    # like the fill/per-anchor/secondary executors already do. None -> the room preference, as before.
+    result = select_slots(category, zones, st.preferences, st.working, st.repo,
+                          room_area_cm2=st.analysis.area_cm2, store_category=role.store_category)
     candidate = result.best
     if candidate is None:
         st.skipped.append(AssistSkip(category=category, reason=str(result.no_fit_hints.get("reason", "NO_FIT"))))
@@ -638,7 +641,10 @@ def _execute_mirror_pair(role: RoleDefinition, st: _PlanState) -> None:
     keep-out, and the gate validates every placement - so this never blocks a door.
     """
     category = role.categories[0]
-    if category in st.have_categories:
+    # Respect allow_duplicate (consistent with _execute_single / _execute_fill_available): a role flagged
+    # allow_duplicate runs even when its placement group is already placed - e.g. the bedside lampshades
+    # (mirror pair) must NOT be skipped just because a corner / lounge FLOOR-stand claimed `lighting` first.
+    if category in st.have_categories and not role.allow_duplicate:
         st.skipped.append(AssistSkip(category=category, reason="ALREADY_PRESENT"))
         return
 
@@ -1401,6 +1407,23 @@ def plan_layout_variants(
 
     analysis = analyze_room(room)
 
+    from spatial_planning.services.spatial.geometry_utils import dot as _dot, front_vector as _fv
+    _win_walls = {w.wall_index for w in room.windows}
+    _door_walls = {d.wall_index for d in room.doors}
+
+    def _bedroom_tv_bad_wall(resp: AssistLayoutResponse) -> int:
+        """Bedroom + TV requested: 1 when the TV landed on a WINDOW / DOOR wall (or was skipped), so a
+        template with a CLEAN TV wall ranks FIRST ('go for the alternative'). Returns 0 for the living
+        room / no-TV, so its template ranking is byte-identical."""
+        if effective_room_type != "bedroom" or not has_tv:
+            return 0
+        tv = next((p for p in resp.placements if placement_group(p.category) == "tv_unit"), None)
+        if tv is None:
+            return 1  # TV requested but couldn't be placed -> also bad (prefer a template that places it clean)
+        tf = _fv(tv.pose.rotation_deg)
+        tw = max(range(len(analysis.walls)), key=lambda i: _dot(analysis.walls[i].normal, tf))
+        return 1 if tw in (_win_walls | _door_walls) else 0
+
     def _conversation_focal_fallback(panel: list[tuple[str, AssistLayoutResponse]]):
         # NO CLEAR TV WALL -> skip the TV, re-plan conversation-focal. Keep the TV only when some
         # surfaced template places it on a genuinely CLEAR wall (solid, off the door, facing the sofa -
@@ -1476,7 +1499,7 @@ def plan_layout_variants(
 
     scored = sorted(
         ((_template_layout_score(r[2], analysis, has_tv), r) for r in good_rows),
-        key=lambda x: (_drop_count(x[1][2]), -x[0]),
+        key=lambda x: (_bedroom_tv_bad_wall(x[1][2]), _drop_count(x[1][2]), -x[0]),
     )
     kept = [sr for sr in scored if not _template_issues(sr[1][2], analysis, has_tv, sofa_explicit)]
     if not kept:
@@ -1486,7 +1509,7 @@ def plan_layout_variants(
         # clean one exists anywhere.
         kept = sorted(
             ((_template_layout_score(r[2], analysis, has_tv), r) for r in other_rows if not _template_issues(r[2], analysis, has_tv, sofa_explicit)),
-            key=lambda x: (_drop_count(x[1][2]), -x[0]),
+            key=lambda x: (_bedroom_tv_bad_wall(x[1][2]), _drop_count(x[1][2]), -x[0]),
         )
     # NB: we deliberately do NOT pad a single good wall up to two by pulling a weak `other_rows`
     # template. A weak wall means a wall a designer wouldn't offer (a sofa on the DOOR wall, crammed
@@ -1503,7 +1526,7 @@ def plan_layout_variants(
         # _tv_in_front is vacuously True, so the constraint doesn't filter a conversation-focal room.)
         pool = sorted(
             ((_template_layout_score(r[2], analysis, has_tv), r) for r in (good_rows + other_rows) if _tv_in_front(r[2], analysis, has_tv)),
-            key=lambda x: (_drop_count(x[1][2]), -x[0]),
+            key=lambda x: (_bedroom_tv_bad_wall(x[1][2]), _drop_count(x[1][2]), -x[0]),
         )
     rows = [r for _sc, r in pool[:max_variants]]
     # Door/entry safety net - these must NEVER be surfaced, even when the last-resort pool above (which

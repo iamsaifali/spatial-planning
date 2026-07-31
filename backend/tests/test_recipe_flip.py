@@ -17,8 +17,8 @@ from spatial_planning.models.geometry import Room
 from spatial_planning.models.preferences import Preferences
 from spatial_planning.services.recommend.orchestrator import plan_assist_layout, plan_layout
 
-GOLDEN_LIVING_PID = "lay_6bede4c1fe"  # legacy (one-of-each) - rollback path
-GOLDEN_LIVING_RECIPE = "lay_3e7b6e1b3a"  # recipe planner (current flow): chair placed BEFORE the console (steered to the door-free flank, flush to the sofa/rug); console on the wall away from the seating, or skipped with a notice if none; the door-side chair drops only when the group is jammed by the entry.
+GOLDEN_LIVING_PID = "lay_e70c868492"  # legacy (one-of-each) - rollback path
+GOLDEN_LIVING_RECIPE = "lay_60183a9a6d"  # recipe planner (current flow): chair placed BEFORE the console (steered to the door-free flank, flush to the sofa/rug); console on the wall away from the seating, or skipped with a notice if none; the door-side chair drops only when the group is jammed by the entry.
 
 LIVING_ROOM = {
     "vertices": [[0, 0], [480, 0], [480, 360], [0, 360]],

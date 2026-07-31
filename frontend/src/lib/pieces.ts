@@ -19,6 +19,8 @@ import {
   Flower2,
   Lamp,
   Shirt,
+  Laptop,
+  Sofa,
   type LucideIcon,
 } from "lucide-react";
 
@@ -66,7 +68,12 @@ export const BEDROOM_PIECES: PieceOption[] = [
   // Optional — opt-in.
   { key: "dressing_table", label: "Dressing Table", tier: "optional", icon: Table },
   { key: "reading_chair", label: "Reading Chair", tier: "optional", icon: Armchair },
+  { key: "work_nook", label: "Work Nook", tier: "optional", icon: Laptop },
+  { key: "tv_unit", label: "TV Unit", tier: "optional", icon: Tv },
+  { key: "floor_lamp", label: "Floor Lamp", tier: "optional", icon: LampFloor },
   { key: "plant", label: "Plant", tier: "optional", icon: Sprout },
+  { key: "lounge_sofa", label: "Sofa", tier: "optional", icon: Sofa },
+  { key: "center_table", label: "Center Table", tier: "optional", icon: Table },
 ];
 
 /** Bedroom default checklist (essentials only) as backend keys. */

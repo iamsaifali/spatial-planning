@@ -65,9 +65,19 @@ def _push_out_candidates(
 
 
 def _lock_rotation(product: Product, placed: list[PlacedProduct], instance_id: str) -> bool:
-    """A SECONDARY sofa (an L-return / U-arm) must not be auto-rotated - its inward facing is semantic.
-    True when placing a sofa and another sofa is already present (i.e. this is a return, not the primary)."""
-    if placement_group(product.category) != "sofa":
+    """Pieces whose ROTATION is semantic must not be auto-rotated to squeeze in - sliding only.
+
+    - An ACCENT CHAIR's rotation encodes its FACING (a reading chair faces the bed, a vanity/desk seat
+      faces its surface, a companion chair faces the sofa). Rotating it 90° to fit a corner turns it to
+      face a wall/window - better to slide it or drop it than to face wrong.
+    - A SECONDARY sofa (an L-return / U-arm) must not be auto-rotated either - its inward facing is
+      semantic (True when a sofa is already present, i.e. this is a return, not the primary)."""
+    g = placement_group(product.category)
+    if g in ("accent_chair", "rug"):
+        # a RUG's orientation is semantic too - it's aligned to the bed / seating group; a 90° auto-rotate
+        # swaps its width and depth (e.g. a foot-of-bed rug then runs the wrong way across the bed).
+        return True
+    if g != "sofa":
         return False
     return any(
         placement_group(p.category) == "sofa" and i.instance_id != instance_id for i, p in placed

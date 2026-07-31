@@ -90,9 +90,25 @@ _BEDROOM_PIECES: tuple[Piece, ...] = (
     Piece("wardrobe", "Wardrobe", "essential", "clothing_storage", "wardrobe", 3),
     Piece("rug", "Rug", "essential", "floor_anchor", "carpet", 4),
     Piece("bedside_lamp", "Bedside lamp", "essential", "bedside_lamp", "lampshade", 5),
-    Piece("dressing_table", "Dressing table", "optional", "vanity", "dressing-table", 6),
+    # The dressing table comes WITH its stool: the piece gates the vanity + its chair (`vanity_seat`, an
+    # extra_role), so opting in the dressing table places both (the chair drops if it can't sit clear).
+    Piece("dressing_table", "Dressing table", "optional", "vanity", "dressing-table", 6,
+          extra_roles=("vanity_seat",)),
     Piece("reading_chair", "Reading chair", "optional", "reading_nook", "chair", 7),
-    Piece("plant", "Plant", "optional", "accent", "flower-pot-and-plant", 8),
+    # The work nook is ONE opt-in piece gating a GROUP: the desk (role "work_nook") + its office
+    # chair (role "work_seat", an extra_role), so opting in/out toggles the desk + chair together.
+    Piece("work_nook", "Work nook", "optional", "work_nook", "office-table", 8,
+          extra_roles=("work_seat",)),
+    Piece("tv_unit", "TV unit", "optional", "media", "tv-table", 9),
+    Piece("floor_lamp", "Floor lamp", "optional", "floor_light", "floor-stand", 10),
+    Piece("plant", "Plant", "optional", "accent", "flower-pot-and-plant", 11),
+    # Opt-in sitting area: a compact LOUNGE sofa (best-fit from sofa / 2-/3-seater) on a clear wall +
+    # its CENTRE table in front. Distinct keys (not "sofa"/"coffee_table") so they never collide with
+    # the living-room core pieces in the global priority table. The centre table needs the sofa. The sofa
+    # piece ALSO gates a floor-stand beside it (`lounge_light`, an extra_role) - it comes with the sofa.
+    Piece("lounge_sofa", "Sofa", "optional", "lounge_sofa", "2-seater-sofa", 12,
+          extra_roles=("lounge_light",)),
+    Piece("center_table", "Center table", "optional", "lounge_center", "center-table", 13),
 )
 
 # Per-room piece tables. A room type ABSENT from this registry is NOT gated (its recipe

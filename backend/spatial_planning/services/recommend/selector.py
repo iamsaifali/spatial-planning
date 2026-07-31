@@ -30,6 +30,13 @@ PlacedProduct = tuple[PlacedItem, Product]
 # only surface when prefs.room_type == "majlis".
 DEFAULT_ROOM_TYPE = "living_room"
 
+# A real plant pot has a roughly SQUARE, non-sliver footprint. Catalog "flower-pot-and-plant" rows
+# include mislabeled / noisy icons - thin slivers like 93x15 or 120x9 - that must NEVER get a spot in
+# the room. A valid plant keeps BOTH dimensions sane: the SMALLER side is at least this many cm, AND the
+# longer side is at most this multiple of the shorter (a bounded aspect ratio).
+_PLANT_MIN_SIDE_CM = 22.0
+_PLANT_MAX_ASPECT = 2.0
+
 # Bed-width bands (cm) for the bedroom "Bed size" choice (Preferences.bed_size). The headboard
 # width, not the mattress length, is what scales; "auto" is handled separately (no band).
 _BED_WIDTH_BANDS: dict[str, tuple[float, float]] = {
@@ -114,6 +121,14 @@ def select_slots(
     # not the primary. Drives both the size-DOWN to a 2-seater and letting the generic "sofa"-category
     # feed compete for the return (below).
     second_sofa = category == "sofa" and any(placement_group(pr.category) == "sofa" for _it, pr in placed)
+    # BEDROOM lounge sofa: pick the best-fitting from a COMPACT pool - a plain "sofa", a 2-seater or a
+    # 3-seater (NO L-shape, which is a living-room sectional). The size envelope + zone-fit below then
+    # choose the biggest of those that fits the wall. Skips the single-category narrowing that follows.
+    if room_type == "bedroom" and category == "sofa":
+        pool = [p for p in products if p.category in ("sofa", "2-seater-sofa", "3-seater-sofa")]
+        if pool:
+            products = pool
+        pref_cat = None
     # The default living-room sofa is a 3-seater, EXCEPT: a small/medium room gets a 2-seater,
     # and the SECOND sofa (the L-return in a big room) is a 2-seater - not another 3-seater.
     # ONLY the AUTO/default resolution (store_category is None) is downgraded: when the planner
@@ -164,17 +179,50 @@ def select_slots(
         if within:
             products = within
 
-    # A bedroom corner PLANT should read as substantial in a big room, not a tiny pot lost in the
-    # space. Plants are thin, so a square-zone fit alone won't drive the size - filter to a room-
-    # scaled MIN width so the tiny pots drop out. Only a MIN (no max) and kept moderate so a large
-    # room can still fit a second, possibly smaller, plant in a tighter corner. Bedroom-scoped so
-    # the living-room plant (and its golden layouts) is untouched.
-    if room_type == "bedroom" and store_category == "flower-pot-and-plant" and room_area_cm2 is not None:
+    # A bedroom LOUNGE sofa is a SECONDARY sitting-area seat (a small settee for a reading nook), NOT
+    # the room's anchor - keep it COMPACT (a 2-seater / small 3-seater) so it doesn't dominate the
+    # bedroom. Cap its max width well BELOW the living-room sofa envelope (which reaches 330 in a great
+    # room); the zone-fit + utilization then pick the biggest UNDER the cap that actually fits the wall.
+    if room_type == "bedroom" and category == "sofa" and room_area_cm2 is not None:
         area_m2 = room_area_cm2 / 10_000.0
-        lo = max(42.0, min(58.0, 44.0 + (area_m2 - 15.0) * 0.9))
-        bigger = [p for p in products if p.width_cm >= lo]
-        if bigger:
-            products = bigger
+        cap = max(180.0, min(230.0, 165.0 + (area_m2 - 15.0) * 2.2))
+        compact = [p for p in products if p.width_cm <= cap]
+        if compact:
+            products = compact
+
+    # PLANT footprint sanity (keyed on the resolved `flower-pot-and-plant` category, so the vases - which
+    # resolve to "vase" - are untouched). Two stages:
+    #  1) VALIDITY - a real pot is roughly SQUARE and not a sliver. Check BOTH dimensions: the smaller side
+    #     >= _PLANT_MIN_SIDE_CM AND the aspect ratio <= _PLANT_MAX_ASPECT. A HARD filter (no soft fallback):
+    #     a mislabeled / noisy icon (e.g. 93x15) must NEVER get a spot, even if it leaves NO plant at all.
+    #  2) SUBSTANTIAL - among the valid pots, a corner plant should read as substantial in a big room, not
+    #     a tiny pot lost in the space, so prefer a room-scaled MIN footprint (kept moderate so a large
+    #     room can still fit a second, smaller plant in a tighter corner). Both rooms with a corner plant.
+    if pref_cat == "flower-pot-and-plant":
+        products = [
+            p for p in products
+            if min(p.width_cm, p.depth_cm) >= _PLANT_MIN_SIDE_CM
+            and max(p.width_cm, p.depth_cm) <= _PLANT_MAX_ASPECT * min(p.width_cm, p.depth_cm)
+        ]
+        if products and room_type in ("bedroom", "living_room") and room_area_cm2 is not None:
+            area_m2 = room_area_cm2 / 10_000.0
+            lo = max(42.0, min(58.0, 44.0 + (area_m2 - 15.0) * 0.9))
+            bigger = [p for p in products if max(p.width_cm, p.depth_cm) >= lo]
+            if bigger:
+                products = bigger
+
+    # A RETURN sofa (the U/L flank) must be a REAL sofa of its intended SIZE - keep this palette-INDEPENDENT
+    # so colour/style can never SHRINK the seating (which would move the layout: a smaller return leaves a
+    # gap that accent chairs then fill). The imported generic "sofa" feed carries slim 140cm 2-seaters that
+    # happen to match a colour the big 3-seaters don't; without this floor the palette would pick that tiny
+    # sofa for a 3-seater return and collapse the U. Apply a size floor per the pinned return category, so
+    # the generic feed only competes AT the right size; then the palette (below) narrows colour/style among
+    # the properly-sized sofas (relaxing colour when none match, exactly as the primary already does).
+    if second_sofa and store_category in ("2-seater-sofa", "3-seater-sofa"):
+        min_ret = 190.0 if store_category == "3-seater-sofa" else 140.0
+        sized = [p for p in products if p.width_cm >= min_ret]
+        if sized:
+            products = sized
 
     # Snapshot the size-appropriate pool BEFORE the palette narrows it. A colour/style is a PREFERENCE,
     # never a reason to leave the room without the piece: if the palette-matching products don't FIT the

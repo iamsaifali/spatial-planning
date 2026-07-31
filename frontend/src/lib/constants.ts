@@ -18,6 +18,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
   storage: "Storage",
   decor: "Decor",
   bed: "Bed",
+  desk: "Desk",
   custom: "Your Item",
 };
 
@@ -41,7 +42,7 @@ export const CATEGORY_PLURALS: Record<string, string> = {
  *  so map through this before any CATEGORY_LABELS lookup or setCurrentStep call. */
 export const PLACEMENT_GROUP: Record<string, string> = {
   "2-seater-sofa": "sofa", "3-seater-sofa": "sofa", "l-shape-sofa": "sofa", "chaise-lounge": "sofa",
-  chair: "accent_chair", "office-chair": "accent_chair",
+  chair: "accent_chair", "office-chair": "accent_chair", "office-table": "desk",
   "tv-table": "tv_unit", "center-table": "coffee_table",
   "side-table": "side_table", "service-table": "side_table", carpet: "rug",
   console: "storage", shelve: "storage", "storage-box": "storage", wardrobe: "storage", "dressing-table": "storage",

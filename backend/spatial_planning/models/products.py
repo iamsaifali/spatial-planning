@@ -104,6 +104,9 @@ ROOM_CATEGORY_PREFERENCE: dict[str, dict[str, str]] = {
         "rug": "carpet",
         "accent_chair": "chair",  # a reading chair
         "lighting": "lampshade",  # a table lamp that sits ON a nightstand
+        "desk": "office-table",  # the work-nook desk (its chair is pinned to office-chair on the role)
+        "tv_unit": "tv-table",  # a media unit on the wall opposite the bed
+        "coffee_table": "center-table",  # the centre table for the lounge sofa (sitting area)
     },
 }
 
@@ -155,6 +158,7 @@ ROLE_WIDTH_BY_AREA: dict[str, tuple[float, float, float, float]] = {
     "storage":       (190.0,  290.0,   60.0,  300.0),
     "coffee_table":  (100.0,  150.0,   50.0,  160.0),
     "bed":           (155.0,  205.0,  120.0,  210.0),
+    "desk":          (110.0,  160.0,   90.0,  190.0),  # bedroom work-nook desk, compact in a small room
 }
 
 
