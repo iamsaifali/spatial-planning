@@ -176,6 +176,7 @@ def remaining_wall(category, room_type, analysis, placed, stats, params):
         return _storage_zones(
             analysis, placed, stats, room_type=room_type, allow_small_console=True,
             tv_requested=params.get("tv_requested", True),
+            store_category=params.get("store_category"),
         )
     return _fallback(category, room_type, analysis, placed, stats, params)
 

@@ -210,6 +210,42 @@ def _door_far_anchor(analysis: RoomAnalysis, cand: "_BandCandidate", near_cm: fl
     return cand.hi if d_lo < d_hi else cand.lo  # hug the end FAR from the door
 
 
+def _vanity_clear_anchor(cand: "_BandCandidate", bed_poly, gap_cm: float = 85.0) -> float | None:
+    """An `anchor_t` that slides the DRESSING TABLE along its wall just far enough that its stool (pulled
+    up in front, centred) clears the bed - the vanity's wall often meets the bed at a corner, and a centred
+    vanity's stool then falls inside the bed's keep-clear and is dropped. Keeps the vanity as CENTRAL as
+    possible (never cornered): among the run positions whose centre sits `gap_cm` clear of the bed's SHADOW
+    on the wall, returns the one NEAREST the run centre. None when the centred position already clears (bed
+    not near this wall); the run END farthest from the bed when the shadow+gap covers the whole run."""
+    if bed_poly is None:
+        return None
+    w = cand.wall
+    coords = list(bed_poly.exterior.coords)
+    # Only a bed CLOSE to this wall (perpendicular) can crowd a stool pulled up in front of it (~110 cm
+    # deep). A bed on the OPPOSITE wall projects a SHADOW onto this wall yet sits metres away, so its stool
+    # clears - don't shift the vanity for it (that would needlessly move / drop a 2nd-storage vanity).
+    perp = min(dot(sub2((x, y), w.start), w.normal) for x, y in coords)
+    if perp > 160.0:
+        return None
+    ts = [dot(sub2((x, y), w.start), w.dir) for x, y in coords]
+    b0, b1 = min(ts), max(ts)
+    lo, hi = cand.lo, cand.hi
+    centre = (lo + hi) / 2.0
+    if centre <= b0 - gap_cm or centre >= b1 + gap_cm:
+        return None  # the centred vanity's stool already clears the bed -> centre as usual
+    below_hi = b0 - gap_cm  # positions at/below this clear the bed on the low side
+    above_lo = b1 + gap_cm  # positions at/above this clear it on the high side
+    cands: list[float] = []
+    if below_hi >= lo:
+        cands.append(min(below_hi, hi))   # nearest-to-centre clear point on the low side
+    if above_lo <= hi:
+        cands.append(max(above_lo, lo))   # nearest-to-centre clear point on the high side
+    if cands:
+        return min(cands, key=lambda t: abs(t - centre))
+    # The bed's shadow (+gap) covers the whole run: best effort - hug the end FARTHER from the bed.
+    return lo if abs(lo - (b0 + b1) / 2.0) > abs(hi - (b0 + b1) / 2.0) else hi
+
+
 def _rank(zones: list[ZoneData], limit: int = 3) -> list[ZoneData]:
     zones.sort(key=lambda z: (-z.score, z.id))
     for i, z in enumerate(zones):
@@ -475,12 +511,29 @@ def _bedroom_tv_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats
     for i, cand in enumerate(facing):
         d_wall = first_boundary_hit(analysis.polygon, bed_front, f)
         dist_score = 1.0 if 200.0 <= d_wall <= 500.0 else 0.5
-        # centre the TV on the BED (project the bed centre onto this wall), clamped to the clear run.
+        # Centre the TV on the BED: project the bed centre onto this wall, then carve a band SYMMETRIC
+        # about that projection. A TV placed in a symmetric band is always centred on the bed - it can
+        # NEVER clamp off-centre (the old code left the anchor to clamp inside the full run, which shoved
+        # the TV off the bed when the bed's line sat near a run end / off a window-split wall). If the
+        # symmetric half-width can't hold even a minimum TV, the bed can't be watched from a centred TV on
+        # this wall, so it's SKIPPED (the TV yields - CLAUDE.md 5.2 - rather than render off-centre).
         proj = dot(sub2(bed_front, cand.wall.start), cand.wall.dir)
-        span_ok = cand.lo - 40.0 <= proj <= cand.hi + 40.0
-        score = 0.5 * (1.0 if span_ok else 0.4) + 0.3 * dist_score + 0.2 * (cand.extent / max_extent)
-        reasons = [R_IDEAL_VIEWING_DIST] if span_ok else [R_REMAINING_WALL]
-        zones.append(_band_zone(analysis, cand, "tv_unit", i, score, reasons, depth, anchor_t=proj))
+        hw = min(proj - cand.lo, cand.hi - proj)  # symmetric half-width available about the bed centre
+        if 2.0 * hw < min_w * 0.9:
+            continue  # no room for a TV centred on the bed here -> yield (never off-centre)
+        a, b = proj - hw, proj + hw
+        sym_quad = quad(
+            add(cand.wall.point_at(a), cand.wall.normal, 2.0),
+            add(cand.wall.point_at(b), cand.wall.normal, 2.0),
+            add(cand.wall.point_at(b), cand.wall.normal, 2.0 + depth),
+            add(cand.wall.point_at(a), cand.wall.normal, 2.0 + depth),
+        )
+        piece = sym_quad.intersection(cand.piece)  # keep the original clipping (door swing / OOB)
+        if piece.is_empty or piece.area < 1_000.0:
+            continue
+        sym = _BandCandidate(wall=cand.wall, lo=a, hi=b, piece=piece, extent=2.0 * hw)
+        score = 0.5 + 0.3 * dist_score + 0.2 * (min(2.0 * hw, max_extent) / max_extent)
+        zones.append(_band_zone(analysis, sym, "tv_unit", i, score, [R_IDEAL_VIEWING_DIST], depth, anchor_t=proj))
     return _rank(zones)
 
 
@@ -1208,7 +1261,7 @@ def _lighting_zones(analysis: RoomAnalysis, placed: list[PlacedProduct], stats: 
 
 def _storage_zones(
     analysis: RoomAnalysis, placed: list[PlacedProduct], stats: CategoryStats, room_type: str = "living_room",
-    allow_small_console: bool = False, tv_requested: bool = True,
+    allow_small_console: bool = False, tv_requested: bool = True, store_category: str | None = None,
 ) -> list[ZoneData]:
     # SEPARATE handling per storage TYPE - they want different walls:
     #   console (living)     : a fully CLEAN wall (never behind the seating or across a path); optional.
@@ -1502,10 +1555,25 @@ def _storage_zones(
             score -= 0.5  # a wall already carrying storage - prefer a different one (fall back if forced)
         if bed_faces is not None and w.index == bed_faces:
             score -= 0.9  # reserve the bed-facing wall for the TV -> the wardrobe/dresser shift to a side wall
-        # A BEDROOM wardrobe / dresser on a wall whose end meets the door slides DOWN the wall, away from
-        # the entry corner (so it - and the desk that later shares its wall - don't crowd the door). The
-        # living console keeps its centred placement (anchor stays None).
-        anchor_t = _door_far_anchor(analysis, cand) if room_type == "bedroom" else None
+        # BEDROOM storage CENTRES in its clear run: the door swing is already trimmed out of the run
+        # (door_clearance in _wall_band_candidates), so centring keeps the piece off the door AND off the
+        # wall ENDS - a wardrobe / vanity hugged into a corner reads as "cornered" (user, repeated). The
+        # living console keeps its centred placement too (anchor stays None). The DRESSING TABLE is the
+        # exception: it centres too, BUT if a centred vanity's stool would be crowded by the bed it slides
+        # along the wall the MINIMUM needed to free the stool (`_vanity_clear_anchor`) - so the vanity is
+        # "placed where its chair fits" without being cornered (user).
+        is_vanity = room_type == "bedroom" and store_category == "dressing-table"
+        if is_vanity:
+            bed_pl = _find_placed(placed, "bed")
+            bed_poly = (
+                item_polygon(bed_pl[0].x, bed_pl[0].y, bed_pl[1].width_cm, bed_pl[1].depth_cm, bed_pl[0].rotation_deg)
+                if bed_pl is not None else None
+            )
+            anchor_t = _vanity_clear_anchor(cand, bed_poly)  # None -> centred (stool already clears)
+        elif room_type == "bedroom":
+            anchor_t = None  # centre the wardrobe in its clear run - never corner it
+        else:
+            anchor_t = None
         zones.append(_band_zone(analysis, cand, "storage", i, score, [R_REMAINING_WALL], depth, anchor_t=anchor_t))
     return _rank(zones)
 
@@ -1639,14 +1707,15 @@ def _reading_chair_zones(
 
 
 def _seat_in_front_of(
-    analysis: RoomAnalysis, item: PlacedItem, product: Product, label: str
+    analysis: RoomAnalysis, item: PlacedItem, product: Product, label: str, lat_offset: float = 0.0
 ) -> list[ZoneData]:
     """A chair pulled up in front of a wall surface you SIT AT (a vanity or a desk): centred on
-    the surface and turned to FACE it, ~8 cm off the front so it can pull out. Empty list if
-    there is no room to sit."""
+    the surface and turned to FACE it, ~8 cm off the front so it can pull out. `lat_offset` slides the
+    chair along the surface's width (0 = centred) so a vanity stool can sit toward one END of the
+    dressing table, clear of the bed, instead of dead-centre. Empty list if there is no room to sit."""
     f = front_vector(item.rotation_deg)  # the surface faces into the room
     w = width_axis(item.rotation_deg)
-    origin = add((item.x, item.y), f, product.depth_cm / 2.0 + 8.0)
+    origin = add(add((item.x, item.y), f, product.depth_cm / 2.0 + 8.0), w, lat_offset)
     fwd_len = 62.0  # room for the chair + a little pull-out space
     lat_len = max(52.0, product.width_cm * 0.6)  # centred on the surface's width
     chair_rot = (item.rotation_deg + 180.0) % 360.0  # turn the chair to FACE the surface
@@ -1789,23 +1858,50 @@ def _vanity_chair_zones(
     `_seat_in_front_of`). Placed ONLY where it won't block a walkway or crowd the bed - the seat area
     must clear any corridor AND keep a real gap off the bed; otherwise the stool is DROPPED (the vanity
     keeps its wall, just chair-less) rather than jutting into the passage or against the bed. No dressing
-    table placed -> no stool (never orphaned)."""
+    table placed -> no stool (never orphaned).
+
+    The vanity stays CENTRED on its wall (never cornered); so when the CENTRED stool would crowd the bed
+    (the vanity's wall meets the bed at a corner), the STOOL - not the vanity - slides toward the table end
+    FARTHER from the bed: a chair BESIDE the vanity, still usable and under the vanity's own width. The
+    centred spot is tried first, so a vanity with clear room in front is byte-identical to before."""
     vanity = next(((it, p) for it, p in placed if p.category == "dressing-table"), None)
     if vanity is None:
         return []
+    v_it, v_pr = vanity
     bed = _find_placed(placed, "bed")
     bed_poly = (
         item_polygon(bed[0].x, bed[0].y, bed[1].width_cm, bed[1].depth_cm, bed[0].rotation_deg)
         if bed is not None else None
     )
-    out: list[ZoneData] = []
-    for z in _seat_in_front_of(analysis, vanity[0], vanity[1], "at_vanity"):
+
+    def ok(z: ZoneData) -> bool:
         if _corridor_overlap_ratio(analysis, z.polygon) > 0.10:
-            continue  # the stool would sit in a walkway/passage
+            return False  # the stool would sit in a walkway/passage
         if bed_poly is not None and z.polygon.distance(bed_poly) < _VANITY_BED_CLEAR_CM:
-            continue  # too close to the bed
-        out.append(z)
-    return out
+            return False  # too close to the bed
+        return True
+
+    # Lateral offsets to try: centred first, then progressively slid toward the table end FARTHER from the
+    # bed (finest step first, so the stool moves the MINIMUM needed to clear). Capped near the vanity's own
+    # half-width so the stool sits at most at the table's END - a chair BESIDE the vanity, never marooned.
+    # Only the SOLE vanity (no wardrobe) slides off-centre. With a wardrobe the vanity is already slid off
+    # the bed by `_vanity_clear_anchor` (payload 5) and the stool stays centred-only, because the extra
+    # off-centre stool placement perturbs which bed-pinned template wins and drops the 2nd-storage vanity.
+    has_wardrobe = any(p.category == "wardrobe" for _it, p in placed)
+    offsets = [0.0]
+    if bed_poly is not None and not has_wardrobe:
+        w = width_axis(v_it.rotation_deg)
+        bc = bed_poly.centroid
+        bed_side = dot(sub2((bc.x, bc.y), (v_it.x, v_it.y)), w)  # >0: bed toward +w along the vanity
+        far_sign = -1.0 if bed_side > 0 else 1.0
+        max_shift = max(0.0, v_pr.width_cm / 2.0 - 8.0)  # up to the vanity's end (small margin)
+        offsets += [far_sign * max_shift * frac for frac in (0.35, 0.55, 0.75, 1.0) if max_shift * frac > 4.0]
+
+    for off in offsets:
+        good = [z for z in _seat_in_front_of(analysis, v_it, v_pr, "at_vanity", lat_offset=off) if ok(z)]
+        if good:
+            return good  # first offset (centred, then increasingly bed-far) that clears the passage + bed
+    return []
 
 
 # The bedroom lounge sofa starts a hair AFTER the bed's foot, so its sitting area reads as clearly

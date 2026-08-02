@@ -407,6 +407,11 @@ def _run_strategy(role: RoleDefinition, category: str, st: _PlanState) -> list[Z
     mode = _side_shift_mode(st.preferences, st.room_type)
     if mode is not None:
         params = {**params, "side_shift_mode": mode}
+    # Thread the role's store_category pin so a strategy can tell WHICH piece of a shared placement
+    # group it is placing (e.g. the bedroom `vanity` role pins "dressing-table" within the `storage`
+    # group). Strategies that don't read it ignore the extra key, so other roles stay byte-identical.
+    if role.store_category is not None:
+        params = {**params, "store_category": role.store_category}
     return strategy.resolver(category, st.room_type, st.analysis, st.working, st.stats, params)
 
 
@@ -1066,6 +1071,12 @@ def _template_layout_score(
 # only (rounding / a few cm of zone drift), NOT the sofa's half-width.
 _TV_SOFA_CENTER_TOL_CM = 30.0
 
+# BEDROOM analogue: a REQUESTED TV must sit SQUARELY in front of & centred on the BED (watchable from
+# it). A TV pushed off the bed's centre-line (squeezed off by a window / a shorter solid run on the
+# facing wall) must NOT surface - drop the template so a bed wall whose facing wall centres the TV is
+# preferred instead. Same small absolute slack (zone drift), not the bed's half-width.
+_TV_BED_CENTER_TOL_CM = 40.0
+
 # A surfaced template must keep the primary seating and the TV genuinely CLEAR of every door
 # swing arc - not merely under the per-item validator's lenient 5% overlap tolerance (that slack
 # exists for autofix leniency, not for what we RECOMMEND). Drop a template whose sofa/tv overlaps
@@ -1247,6 +1258,20 @@ def _template_issues(
             long_axis = (1.0, 0.0) if rw >= rh else (0.0, 1.0)
             if abs(f[0] * long_axis[0] + f[1] * long_axis[1]) > 0.7:
                 return True  # sofa faces down the long axis -> lopsided, far TV
+    # BEDROOM: a REQUESTED TV must sit DIRECTLY in front of & centred on the BED. A TV rendered off the
+    # bed's centre-line (a window / short solid run pushed it off) is never surfaced - MAX penalty, drop
+    # the template so the ranking prefers a bed wall that centres the TV (or one that skips it cleanly).
+    # Gated on tv_requested, like the sofa block: a TV the user didn't request never drops a template, and
+    # a template that SKIPS a requested TV (no `tvs`) isn't dropped either - only one that RENDERS it off.
+    beds_for_tv = [p for p in resp.placements if p.category == "bed"]
+    if tv_requested and beds_for_tv and tvs:
+        bed, tv = beds_for_tv[0], tvs[0]
+        bf = front_vector(bed.pose.rotation_deg)  # headboard -> foot (toward the wall the bed faces)
+        vx, vy = tv.pose.x - bed.pose.x, tv.pose.y - bed.pose.y
+        if bf[0] * vx + bf[1] * vy <= 0.0:
+            return True  # TV not in front of the bed (behind the headboard)
+        if abs(vy * bf[0] - vx * bf[1]) > _TV_BED_CENTER_TOL_CM:
+            return True  # TV centre not aligned with the bed centre -> never render
     if len(sofas) >= 2:
         a = item_polygon(sofas[0].pose.x, sofas[0].pose.y, sofas[0].product.width_cm, sofas[0].product.depth_cm, sofas[0].pose.rotation_deg)
         b = item_polygon(sofas[1].pose.x, sofas[1].pose.y, sofas[1].product.width_cm, sofas[1].product.depth_cm, sofas[1].pose.rotation_deg)
