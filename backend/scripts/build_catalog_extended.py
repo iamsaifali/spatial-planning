@@ -56,11 +56,12 @@ ROLE_DIMS = {
     "storage": (40, 300, 30, 62), "lighting": (18, 60, 18, 60), "decor": (8, 120, 8, 120),
     "bed": (90, 200, 190, 215),
     "dining_table": (120, 280, 75, 120), "desk": (90, 200, 42, 85),
+    "chaise": (120, 250, 55, 120),
 }
 ROLE_HEIGHT = {
     "sofa": 85, "accent_chair": 90, "tv_unit": 50, "coffee_table": 45, "side_table": 55,
     "rug": 1, "storage": 180, "lighting": 150, "decor": 35, "bed": 45,
-    "dining_table": 75, "desk": 75,
+    "dining_table": 75, "desk": 75, "chaise": 85,
 }
 # a piece of this role whose LONGEST side is below this is an accessory, not the furniture
 MIN_MAX_DIM = {"dining_table": 120.0, "desk": 80.0}
@@ -68,7 +69,7 @@ MIN_MAX_DIM = {"dining_table": 120.0, "desk": 80.0}
 WALKABLE_ROLES = {"rug"}
 ROUND_ROLES = {"decor"}
 LIVING_ROLES = {"sofa", "tv_unit", "rug", "coffee_table", "side_table", "accent_chair",
-                "lighting", "storage", "decor", "dining_table", "desk"}
+                "lighting", "storage", "decor", "dining_table", "desk", "chaise"}
 BEDROOM_ROLES = {"bed", "side_table", "storage", "lighting", "decor", "rug", "accent_chair",
                  "tv_unit", "desk"}
 
