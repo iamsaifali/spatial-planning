@@ -2134,7 +2134,12 @@ def _chaise_zones(
             continue
         back_gap = dot(sub2((it.x, it.y), analysis.walls[back].start), analysis.walls[back].normal) - pr.depth_cm / 2.0
         if back_gap >= 60.0:
-            continue  # a centre U-arm merely FACING a far wall - that open wall stays available
+            # A floated U-arm merely FACING a far wall leaves the wall available - EXCEPT the stretch
+            # DIRECTLY behind it: a chaise hugging the wall right behind a floated sofa can't clear it
+            # (the sofa's back sits < a chaise-depth off the wall) and settles into a graze. Shadow the
+            # sofa's along-wall span so the chaise takes the CLEAR stretch beside it, not the spot behind.
+            _add_shadow(back)
+            continue
         # A RETURN that HUGS this wall: exclude the wall ONLY if the return leaves no CLEAR stretch long
         # enough for the chaise beside it (else the chaise takes the clear part, kept off the return by the
         # circulation blockers - not "behind" it). Wall length minus the return's along-wall span.

@@ -1077,6 +1077,35 @@ _TV_SOFA_CENTER_TOL_CM = 30.0
 # preferred instead. Same small absolute slack (zone drift), not the bed's half-width.
 _TV_BED_CENTER_TOL_CM = 40.0
 
+# NEVER surface a template where two REAL (non-walkable) pieces OVERLAP - even a graze that slips under
+# validate_item's per-item overlap tolerance (e.g. a chaise settled a few cm into a sofa). A max-penalty
+# template gate, stricter than the per-item validator, mirroring the door-swing gate. Small absolute area
+# so a real overlap drops but touching pieces (an L-return meeting the primary, a chair at the dining
+# table - both ~0 overlap) pass.
+_TEMPLATE_OVERLAP_TOL_CM2 = 80.0
+# Intentional ON-SURFACE overlaps that are NOT a defect (mirror of validate.py `_ON_SURFACE_PAIRS`):
+# a lamp resting on a side table, vases/decor resting on a console/storage top.
+_OVERLAP_EXEMPT_PAIRS = ({"lighting", "side_table"}, {"decor", "storage"})
+
+
+def _template_has_overlap(resp: AssistLayoutResponse, _analysis: "RoomAnalysis | None" = None) -> bool:
+    """A REAL overlap between two SOLID (non-walkable) pieces, past `_TEMPLATE_OVERLAP_TOL_CM2` and minus
+    the intentional on-surface pairs. Used BOTH as a `_template_issues` drop AND in the final safety net
+    (so an overlapping template can't leak through the last-resort fallback that bypasses `_template_issues`).
+    Signature takes an optional analysis so it slots into the (resp, analysis) safety-net loop."""
+    from spatial_planning.services.spatial.geometry_utils import item_polygon
+
+    solid = [p for p in resp.placements if not p.product.is_walkable]
+    for k in range(len(solid)):
+        pk = item_polygon(solid[k].pose.x, solid[k].pose.y, solid[k].product.width_cm, solid[k].product.depth_cm, solid[k].pose.rotation_deg)
+        for m in range(k + 1, len(solid)):
+            if {solid[k].category, solid[m].category} in _OVERLAP_EXEMPT_PAIRS:
+                continue  # a lamp on a table / vases on a console - intentional
+            pm = item_polygon(solid[m].pose.x, solid[m].pose.y, solid[m].product.width_cm, solid[m].product.depth_cm, solid[m].pose.rotation_deg)
+            if pk.intersection(pm).area > _TEMPLATE_OVERLAP_TOL_CM2:
+                return True
+    return False
+
 # A surfaced template must keep the primary seating and the TV genuinely CLEAR of every door
 # swing arc - not merely under the per-item validator's lenient 5% overlap tolerance (that slack
 # exists for autofix leniency, not for what we RECOMMEND). Drop a template whose sofa/tv overlaps
@@ -1291,6 +1320,8 @@ def _template_issues(
     # must never surface. This mirrors the window-wall drop and backstops the BLOCKS_DOOR_SWING error.
     if _furniture_hits_door(resp, analysis):
         return True  # a sofa/tv/side-table/console that collides with (or hugs) a door swing
+    if _template_has_overlap(resp):
+        return True  # two solid pieces overlap -> never recommend this template
     # "Does this look right?" size backstop: reject a template that still contains a piece clearly
     # bigger than the room warrants for its role - a safety net for the selection size-cap's
     # last-resort fallback (or any future path that skips it). 1.2x the room-proportional max, so
@@ -1565,7 +1596,7 @@ def plan_layout_variants(
     # Order matters: a soft TV-a-few-cm-off-the-door issue must NOT outrank (and drop) a sofa-on-the-
     # entry-wall template - the reason the door-on-a-short-wall room used to surface the sofa jammed
     # beside the entry.
-    for _drop in (_furniture_blocks_door_hard, _sofa_blocks_entry, _furniture_hits_door):
+    for _drop in (_furniture_blocks_door_hard, _sofa_blocks_entry, _furniture_hits_door, _template_has_overlap):
         cleaner = [r for r in rows if not _drop(r[2], analysis)]
         if cleaner:
             rows = cleaner
@@ -1601,8 +1632,15 @@ def plan_layout_variants(
         repainted: list[tuple[str, str, AssistLayoutResponse, ZoneData]] = []
         for label, side, resp, z in rows:
             palette_resp = plan_layout_from_recipe(room, prefs, placed_items, room_type, zone_overrides={primary.role: z})
-            if category in {p.category for p in palette_resp.placements} and not any(
-                fd.severity == "error" for fd in palette_resp.findings
+            # Keep the palette layout ONLY if it still places the primary, has no error, AND introduces no
+            # OVERLAP. The palette swaps products (different SIZES), which can graze pieces the neutral
+            # ranking placed clean - that overlap must never surface (this is the palette-dependent overlap
+            # the safety net above can't see, since it ran on the neutral products). Else keep the neutral
+            # (clean) layout: colours may not match perfectly, but no pieces overlap (palette != arrangement).
+            if (
+                category in {p.category for p in palette_resp.placements}
+                and not any(fd.severity == "error" for fd in palette_resp.findings)
+                and not _template_has_overlap(palette_resp)
             ):
                 resp = palette_resp
             repainted.append((label, side, resp, z))
