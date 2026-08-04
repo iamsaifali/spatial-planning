@@ -2026,10 +2026,16 @@ def _lounge_light_zones(
     def _end_pt(sign: float) -> Vec:
         return (item.x + w[0] * sign * product.width_cm / 2.0, item.y + w[1] * sign * product.width_cm / 2.0)
 
+    # Forward offsets: the lamp must never poke AHEAD of the sofa's front (user: "pull it back"). Cap the
+    # forward reach so the lamp's front edge stays at/behind the sofa's front; prefer ALIGNED (0) then
+    # PULLED BACK toward the sofa's back (works for a floated sofa; a wall-hugging one just fails those and
+    # keeps 0). If no in-footprint spot clears the sofa / door / window, DROP the lamp - a missing companion
+    # lamp beats one jutting past the sofa into the room (which is what pushing forward to escape a window did).
+    max_fwd = max(0.0, product.depth_cm / 2.0 - sd / 2.0)
     # Prefer the sofa END farther from the bed (the room-corner end, where a reading lamp reads best).
     ends = sorted((1.0, -1.0), key=lambda sign: dist(_end_pt(sign), bed_pt), reverse=True)
     for sign in ends:
-        for fwd in (0.0, 25.0, -20.0, 45.0):
+        for fwd in (0.0, -20.0, -40.0, max_fwd):
             # sit the lamp a real gap PAST the sofa's arm - the offset must clear the 5cm blocker buffer
             # (else the lamp's edge just touches the sofa's shadow and every spot is rejected).
             off = product.width_cm / 2.0 + sw / 2.0 + 12.0
