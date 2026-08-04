@@ -14,7 +14,6 @@ from spatial_planning.models.products import (
 from spatial_planning.models.recommend import (
     NOTICE_NO_FIT,
     NOTICE_OVER_BUDGET,
-    NOTICE_PREORDER,
     NOTICE_TIGHT_FIT,
 )
 from spatial_planning.services.catalog.repository import CatalogRepository
@@ -68,17 +67,12 @@ def _gate(
     products: list[Product],
     zones: list[ZoneData],
     margin: float,
-    include_out_of_stock: bool,
 ) -> list[tuple[Product, ZoneData, list[str]]]:
     out = []
     for product in products:
-        if not include_out_of_stock and not product.in_stock:
-            continue
         for zone in zones:
             if fits_zone(zone, product, margin=margin):
                 notices = []
-                if not product.in_stock:
-                    notices.append(NOTICE_PREORDER)
                 if margin > 1.0:
                     notices.append(NOTICE_TIGHT_FIT)
                 out.append((product, zone, notices))
@@ -104,8 +98,7 @@ def select_slots(
     # room_type is a STRONG filter (defaulting to living_room when unset), but it never
     # eliminates all results: if no product in this category serves the requested room
     # type, fall back to the full category list so the relaxation ladder still has
-    # candidates. region / luxury_tier are intentionally NOT hard-filtered here - they
-    # steer ranking via scoring.preference_bonus so global/standard items remain valid.
+    # candidates.
     room_type = prefs.room_type or DEFAULT_ROOM_TYPE
     scoped = [p for p in products if room_type in p.room_types]
     if scoped:
@@ -286,13 +279,13 @@ def select_slots(
     if not zones:
         return SlotResult(None, None, None, {"reason": "no_zones"})
 
-    # relaxation ladder: strict -> include out-of-stock -> tight fit margin. If the palette-filtered
-    # pool yields NO fit, repeat the ladder on the pre-palette pool - the palette is a preference, not a
-    # reason to drop the piece (a colour whose only rugs are oversized must not leave the room rug-less).
+    # relaxation ladder: strict fit -> tight fit margin. If the palette-filtered pool yields NO fit,
+    # repeat the ladder on the pre-palette pool - the palette is a preference, not a reason to drop the
+    # piece (a colour whose only rugs are oversized must not leave the room rug-less).
     gated: list[tuple[Product, ZoneData, list[str]]] = []
     for pool in (products, pool_pre_palette):
-        for margin, include_oos in ((1.0, False), (1.0, True), (1.05, True)):
-            gated = _gate(pool, zones, margin, include_oos)
+        for margin in (1.0, 1.05):
+            gated = _gate(pool, zones, margin)
             if gated:
                 break
         if gated:
@@ -318,8 +311,8 @@ def select_slots(
         score, facts = total_score(product, zone, prefs, placed, repo)
         candidates.append(Candidate(product=product, zone=zone, score=score, facts=facts, notices=list(notices)))
 
-    # deterministic ordering: score desc, then price asc, rating desc, id
-    candidates.sort(key=lambda c: (-c.score, c.product.price, -c.product.rating, c.product.id))
+    # deterministic ordering: score desc, then price asc, id
+    candidates.sort(key=lambda c: (-c.score, c.product.price, c.product.id))
     best = candidates[0]
 
     threshold = 0.55 * best.score
@@ -336,10 +329,9 @@ def select_slots(
         c
         for c in candidates
         if c.score >= 0.5 * best.score
-        and c.product.rating >= 4.0
         and c.product.id not in {best.product.id, budget.product.id if budget else ""}
     ]
-    premium = max(premium_pool, key=lambda c: (c.product.price, c.product.rating, c.product.id), default=None)
+    premium = max(premium_pool, key=lambda c: (c.product.price, c.product.id), default=None)
     if premium is None:
         rest = [
             c for c in candidates

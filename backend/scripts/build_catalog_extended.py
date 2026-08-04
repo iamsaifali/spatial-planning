@@ -174,16 +174,14 @@ def build(csv_path):
 
         icon_key = (r.get("two_d_icon") or "").strip().lstrip("/")
         products.append({
-            "id": pid, "name": name, "brand": store.capitalize(), "category": cat,
-            "price": price, "mrp": None,
+            "id": pid, "name": name, "category": cat,
+            "price": price,
             "width_cm": width, "depth_cm": depth, "height_cm": float(ROLE_HEIGHT[role]),
-            "style_tags": tags, "colors": colors or ["Natural"], "materials": [],
-            "in_stock": True, "delivery_days": 7, "rating": 4.3,
+            "style_tags": tags, "colors": colors or ["Natural"],
             "image_url": (r.get("image_url") or "").strip(),
             "two_d_icon": f"{ICON_BASE}/{icon_key}" if icon_key else "",
             "is_walkable": role in WALKABLE_ROLES,
             "shape": "round" if role in ROUND_ROLES else "rect",
-            "description": f"{name} — from {store.capitalize()}." if name else f"From {store.capitalize()}.",
             "room_types": room_types, "seating_capacity": seats,
             "styles": styles, "main_color": main_color, "secondary_colors": secondary,
             "main_family": family_of(main_color),

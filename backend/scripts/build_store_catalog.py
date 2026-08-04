@@ -123,14 +123,12 @@ def is_corrupt(cat: str, w: float, l: float) -> bool:
     return min(w, l) < fl or min(w, l) < 1 or max(w, l) > 400
 
 
-def synth_price(role: str, w: float, d: float) -> tuple[int, int | None]:
+def synth_price(role: str, w: float, d: float) -> int:
     base = ROLE_PRICE[role]
     ratio = (w * d) / max(ROLE_TYP_AREA[role], 1.0)
     price = int(round(clamp(base * (0.55 + 0.45 * ratio), base * 0.4, base * 3.0)))
-    # round to a tidy figure; give ~15% of items a struck-through MRP
-    price = max(50, round(price / 10) * 10)
-    mrp = round(price * 1.18 / 10) * 10 if (price % 7 == 0) else None
-    return price, mrp
+    # round to a tidy figure
+    return max(50, round(price / 10) * 10)
 
 
 def build(csv_path: str) -> tuple[list[dict], Counter]:
@@ -160,7 +158,7 @@ def build(csv_path: str) -> tuple[list[dict], Counter]:
             continue
 
         width, depth = footprint(role, w, l)
-        price, mrp = synth_price(role, width, depth)
+        price = synth_price(role, width, depth)
         room_types = ["living_room"]
         if role in MAJLIS_ROLES:
             room_types.append("majlis")
@@ -172,23 +170,16 @@ def build(csv_path: str) -> tuple[list[dict], Counter]:
             {
                 "id": f"{store}-{r['id']}",
                 "name": name,
-                "brand": store.upper() if store == "ikea" else store.capitalize(),
                 "category": cat,  # ORIGINAL store category (kept)
                 "price": price,
-                "mrp": mrp,
                 "width_cm": width,
                 "depth_cm": depth,
                 "height_cm": ROLE_HEIGHT[role],
                 "style_tags": STORE_STYLE.get(store, ["modern"]),
                 "colors": parse_colors(name) or ["Natural"],
-                "materials": [],
-                "in_stock": True,
-                "delivery_days": 7,
-                "rating": 4.3,
                 "two_d_icon": f"{ICON_BASE}/{r['two_d_icon'].strip().lstrip('/')}" if r["two_d_icon"].strip() else "",
                 "is_walkable": role in WALKABLE_ROLES,
                 "shape": "round" if role in ROUND_ROLES else "rect",
-                "description": f"{name} — from {store.capitalize()}.",
                 "room_types": room_types,
                 "seating_capacity": seats,
             }

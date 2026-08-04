@@ -106,67 +106,37 @@ export type StyleTag =
   | "luxury";
 
 export type RoomType = "living_room" | "majlis" | "bedroom";
-export type Region =
-  | "global"
-  | "gcc"
-  | "saudi_arabia"
-  | "levant"
-  | "south_asia"
-  | "east_asia"
-  | "europe";
-export type Formality = "casual" | "family" | "formal";
-export type LuxuryTier = "value" | "standard" | "premium" | "luxury";
 
 export interface Product {
   id: string;
   name: string;
-  brand: string;
   category: Category;
   price: number;
-  mrp?: number | null;
   width_cm: number;
   depth_cm: number;
   height_cm: number;
   style_tags: StyleTag[];
   colors: string[];
-  materials: string[];
-  in_stock: boolean;
-  delivery_days: number;
-  rating: number;
-  attrs: Record<string, number>;
   image_url: string;
   two_d_icon?: string; // top-down icon URL (real-catalog products); rendered on the canvas
   is_walkable: boolean;
   shape: "rect" | "round";
-  description: string;
-  // cultural / room-type taxonomy (optional on the client; always present from the API)
+  // room-type taxonomy (optional on the client; always present from the API)
   room_types?: RoomType[];
-  placement_type?: "wall_hug" | "perimeter" | "floor" | "center" | "freestanding";
   seating_capacity?: number;
-  is_modular?: boolean;
-  formality?: Formality;
-  luxury_tier?: LuxuryTier;
-  region?: Region;
 }
 
 export interface Preferences {
   styles: StyleTag[];
-  budget_tier: "budget" | "mid" | "premium" | null;
-  total_budget: number | null;
   colors: string[];
-  room_purpose: "family" | "entertaining" | "compact_living" | "work_lounge" | null;
-  // cultural / room-type aware fields (all optional; mirror backend Preferences)
+  // room-type aware fields (all optional; mirror backend Preferences)
   room_type?: RoomType | null;
-  region?: Region | null;
   seating_capacity?: number | null;
   // living-room piece checklist (backend `included_pieces`) + sofa footprint choice
   included_pieces?: string[] | null;
   sofa_type?: "auto" | "2-seater" | "3-seater" | "l-shape";
   // bedroom main-bed size choice (backend `bed_size`)
   bed_size?: "auto" | "single" | "double" | "queen" | "king";
-  formality?: Formality | null;
-  luxury_tier?: LuxuryTier | null;
-  materials?: string[];
   // rich style/colour preference (drives real catalog FILTERING). `style` = one name from
   // styleMetadata.STYLES; `color_families` = any of styleMetadata.COLOR_FAMILIES.
   style?: string | null;
@@ -175,19 +145,12 @@ export interface Preferences {
 
 export const EMPTY_PREFERENCES: Preferences = {
   styles: [],
-  budget_tier: null,
-  total_budget: null,
   colors: [],
-  room_purpose: null,
   room_type: null,
-  region: null,
   seating_capacity: null,
   included_pieces: null,
   sofa_type: "auto",
   bed_size: "auto",
-  formality: null,
-  luxury_tier: null,
-  materials: [],
   style: null,
   color_families: [],
 };

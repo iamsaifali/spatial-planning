@@ -15,10 +15,10 @@ from spatial_planning.services.spatial.zones import zones_for_category
 
 def _sofa(pid: str, styles: list[str], family: str):
     return Product(
-        id=pid, name=pid, brand="Test", category="3-seater-sofa",
+        id=pid, name=pid, category="3-seater-sofa",
         price=1000, width_cm=200, depth_cm=90, height_cm=85,
-        style_tags=["modern"], colors=["Beige"], materials=[],
-        delivery_days=7, rating=4.0, room_types=["living_room"], seating_capacity=3,
+        style_tags=["modern"], colors=["Beige"],
+        room_types=["living_room"], seating_capacity=3,
         styles=styles, main_color="X", secondary_colors=[], main_family=family,
     )
 

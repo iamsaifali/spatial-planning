@@ -2,10 +2,8 @@
  {
   "id": "sofa-001",
   "name": "Luna 3-Seater Sofa",
-  "brand": "Vanna Home",
   "category": "sofa",
   "price": 849,
-  "mrp": 1019,
   "width_cm": 218,
   "depth_cm": 92,
   "height_cm": 85,
@@ -16,30 +14,16 @@
    "Ivory",
    "Rust"
   ],
-  "materials": [
-   "Velvet",
-   "Mango Wood"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 3.6,
-  "attrs": {
-   "seat_height_cm": 45,
-   "arm_height_cm": 65
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A comfortable anchor for the seating zone."
+  "shape": "rect"
  },
  {
   "id": "sofa-002",
   "name": "Oslo 2-Seater Sofa",
-  "brand": "Studio Kova",
   "category": "sofa",
   "price": 529,
-  "mrp": null,
   "width_cm": 168,
   "depth_cm": 88,
   "height_cm": 82,
@@ -51,30 +35,16 @@
    "Ivory",
    "Charcoal"
   ],
-  "materials": [
-   "Linen",
-   "Teak"
-  ],
-  "in_stock": true,
-  "delivery_days": 5,
-  "rating": 4.6,
-  "attrs": {
-   "seat_height_cm": 42,
-   "arm_height_cm": 62
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A comfortable anchor for the seating zone."
+  "shape": "rect"
  },
  {
   "id": "sofa-003",
   "name": "Marlowe Fabric Sofa",
-  "brand": "Fern & Oak",
   "category": "sofa",
   "price": 1219,
-  "mrp": 1489,
   "width_cm": 226,
   "depth_cm": 95,
   "height_cm": 88,
@@ -86,30 +56,16 @@
    "Ivory",
    "Oat"
   ],
-  "materials": [
-   "Linen",
-   "Teak"
-  ],
-  "in_stock": true,
-  "delivery_days": 7,
-  "rating": 3.7,
-  "attrs": {
-   "seat_height_cm": 44,
-   "arm_height_cm": 60
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1540574163026-643ea20ade25?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A comfortable anchor for the seating zone."
+  "shape": "rect"
  },
  {
   "id": "sofa-004",
   "name": "Kova Compact Loveseat",
-  "brand": "Fern & Oak",
   "category": "sofa",
   "price": 509,
-  "mrp": null,
   "width_cm": 152,
   "depth_cm": 84,
   "height_cm": 80,
@@ -120,30 +76,16 @@
    "Olive",
    "Oat"
   ],
-  "materials": [
-   "Boucle",
-   "Oak"
-  ],
-  "in_stock": true,
-  "delivery_days": 7,
-  "rating": 4.3,
-  "attrs": {
-   "seat_height_cm": 45,
-   "arm_height_cm": 62
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1512212621149-107ffe572d2f?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A comfortable anchor for the seating zone."
+  "shape": "rect"
  },
  {
   "id": "sofa-005",
   "name": "Ashwood 3-Seater",
-  "brand": "Studio Kova",
   "category": "sofa",
   "price": 1089,
-  "mrp": 1199,
   "width_cm": 232,
   "depth_cm": 96,
   "height_cm": 90,
@@ -154,30 +96,16 @@
    "Beige",
    "Sand"
   ],
-  "materials": [
-   "Cotton Weave",
-   "Walnut"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.2,
-  "attrs": {
-   "seat_height_cm": 42,
-   "arm_height_cm": 65
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1567016432779-094069958ea5?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A comfortable anchor for the seating zone."
+  "shape": "rect"
  },
  {
   "id": "sofa-006",
   "name": "Nimbus Low Sofa",
-  "brand": "Vanna Home",
   "category": "sofa",
   "price": 1009,
-  "mrp": null,
   "width_cm": 210,
   "depth_cm": 98,
   "height_cm": 76,
@@ -188,30 +116,16 @@
    "Olive",
    "Sand"
   ],
-  "materials": [
-   "Velvet",
-   "Mango Wood"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 4.0,
-  "attrs": {
-   "seat_height_cm": 44,
-   "arm_height_cm": 65
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1550254478-ead40cc54513?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A comfortable anchor for the seating zone."
+  "shape": "rect"
  },
  {
   "id": "sofa-007",
   "name": "Brontë Tufted Sofa",
-  "brand": "Dhara Living",
   "category": "sofa",
   "price": 1539,
-  "mrp": null,
   "width_cm": 224,
   "depth_cm": 94,
   "height_cm": 92,
@@ -222,30 +136,16 @@
    "Warm Grey",
    "Sand"
   ],
-  "materials": [
-   "Linen",
-   "Oak"
-  ],
-  "in_stock": true,
-  "delivery_days": 7,
-  "rating": 4.2,
-  "attrs": {
-   "seat_height_cm": 45,
-   "arm_height_cm": 65
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A comfortable anchor for the seating zone."
+  "shape": "rect"
  },
  {
   "id": "sofa-008",
   "name": "Haven Modular 3-Seater",
-  "brand": "Vanna Home",
   "category": "sofa",
   "price": 1809,
-  "mrp": 2199,
   "width_cm": 240,
   "depth_cm": 100,
   "height_cm": 84,
@@ -256,30 +156,16 @@
    "Beige",
    "Olive"
   ],
-  "materials": [
-   "Boucle",
-   "Sheesham"
-  ],
-  "in_stock": true,
-  "delivery_days": 10,
-  "rating": 3.9,
-  "attrs": {
-   "seat_height_cm": 44,
-   "arm_height_cm": 60
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1519961655809-34fa156820ff?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A comfortable anchor for the seating zone."
+  "shape": "rect"
  },
  {
   "id": "sofa-009",
   "name": "Sora Linen Sofa",
-  "brand": "Loom & Larch",
   "category": "sofa",
   "price": 949,
-  "mrp": 1049,
   "width_cm": 196,
   "depth_cm": 90,
   "height_cm": 83,
@@ -291,30 +177,16 @@
    "Rust",
    "Beige"
   ],
-  "materials": [
-   "Cotton Weave",
-   "Sheesham"
-  ],
-  "in_stock": false,
-  "delivery_days": 7,
-  "rating": 4.4,
-  "attrs": {
-   "seat_height_cm": 44,
-   "arm_height_cm": 62
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A comfortable anchor for the seating zone."
+  "shape": "rect"
  },
  {
   "id": "sofa-010",
   "name": "Atlas Track-Arm Sofa",
-  "brand": "Dhara Living",
   "category": "sofa",
   "price": 849,
-  "mrp": null,
   "width_cm": 214,
   "depth_cm": 92,
   "height_cm": 86,
@@ -326,30 +198,16 @@
    "Ivory",
    "Oat"
   ],
-  "materials": [
-   "Cotton Weave",
-   "Walnut"
-  ],
-  "in_stock": true,
-  "delivery_days": 10,
-  "rating": 4.6,
-  "attrs": {
-   "seat_height_cm": 42,
-   "arm_height_cm": 65
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A comfortable anchor for the seating zone."
+  "shape": "rect"
  },
  {
   "id": "sofa-011",
   "name": "Juniper Boho Sofa",
-  "brand": "Fern & Oak",
   "category": "sofa",
   "price": 1049,
-  "mrp": null,
   "width_cm": 200,
   "depth_cm": 95,
   "height_cm": 88,
@@ -361,30 +219,16 @@
    "Charcoal",
    "Rust"
   ],
-  "materials": [
-   "Cotton Weave",
-   "Mango Wood"
-  ],
-  "in_stock": true,
-  "delivery_days": 21,
-  "rating": 4.6,
-  "attrs": {
-   "seat_height_cm": 43,
-   "arm_height_cm": 65
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1540574163026-643ea20ade25?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A comfortable anchor for the seating zone."
+  "shape": "rect"
  },
  {
   "id": "sofa-012",
   "name": "Forge Industrial Sofa",
-  "brand": "Mistwood",
   "category": "sofa",
   "price": 879,
-  "mrp": 959,
   "width_cm": 206,
   "depth_cm": 90,
   "height_cm": 84,
@@ -396,30 +240,16 @@
    "Warm Grey",
    "Oat"
   ],
-  "materials": [
-   "Boucle",
-   "Sheesham"
-  ],
-  "in_stock": true,
-  "delivery_days": 21,
-  "rating": 4.8,
-  "attrs": {
-   "seat_height_cm": 43,
-   "arm_height_cm": 62
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1512212621149-107ffe572d2f?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A comfortable anchor for the seating zone."
+  "shape": "rect"
  },
  {
   "id": "sofa-013",
   "name": "Petite Studio Sofa",
-  "brand": "Casa Norte",
   "category": "sofa",
   "price": 299,
-  "mrp": 339,
   "width_cm": 158,
   "depth_cm": 82,
   "height_cm": 80,
@@ -431,30 +261,16 @@
    "Oat",
    "Charcoal"
   ],
-  "materials": [
-   "Boucle",
-   "Teak"
-  ],
-  "in_stock": true,
-  "delivery_days": 5,
-  "rating": 4.2,
-  "attrs": {
-   "seat_height_cm": 44,
-   "arm_height_cm": 55
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1567016432779-094069958ea5?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A comfortable anchor for the seating zone."
+  "shape": "rect"
  },
  {
   "id": "sofa-014",
   "name": "Grand Riviera Sofa",
-  "brand": "Aralia",
   "category": "sofa",
   "price": 1849,
-  "mrp": 2159,
   "width_cm": 252,
   "depth_cm": 102,
   "height_cm": 90,
@@ -466,30 +282,16 @@
    "Olive",
    "Beige"
   ],
-  "materials": [
-   "Linen",
-   "Mango Wood"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.7,
-  "attrs": {
-   "seat_height_cm": 43,
-   "arm_height_cm": 58
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1550254478-ead40cc54513?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A comfortable anchor for the seating zone."
+  "shape": "rect"
  },
  {
   "id": "sofa-015",
   "name": "Mira Curved Sofa",
-  "brand": "Mistwood",
   "category": "sofa",
   "price": 1219,
-  "mrp": 1419,
   "width_cm": 222,
   "depth_cm": 98,
   "height_cm": 82,
@@ -501,30 +303,16 @@
    "Warm Grey",
    "Ivory"
   ],
-  "materials": [
-   "Cotton Weave",
-   "Mango Wood"
-  ],
-  "in_stock": true,
-  "delivery_days": 5,
-  "rating": 4.2,
-  "attrs": {
-   "seat_height_cm": 43,
-   "arm_height_cm": 62
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A comfortable anchor for the seating zone."
+  "shape": "rect"
  },
  {
   "id": "sofa-016",
   "name": "Elm Street Sofa",
-  "brand": "Fern & Oak",
   "category": "sofa",
   "price": 809,
-  "mrp": 889,
   "width_cm": 186,
   "depth_cm": 88,
   "height_cm": 84,
@@ -535,30 +323,16 @@
    "Rust",
    "Ivory"
   ],
-  "materials": [
-   "Boucle",
-   "Teak"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 3.6,
-  "attrs": {
-   "seat_height_cm": 44,
-   "arm_height_cm": 65
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1519961655809-34fa156820ff?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A comfortable anchor for the seating zone."
+  "shape": "rect"
  },
  {
   "id": "tv-unit-001",
   "name": "Ledge Low TV Unit",
-  "brand": "Casa Norte",
   "category": "tv_unit",
   "price": 319,
-  "mrp": 389,
   "width_cm": 180,
   "depth_cm": 40,
   "height_cm": 48,
@@ -569,27 +343,16 @@
    "Beige",
    "Sheesham"
   ],
-  "materials": [
-   "Sheesham",
-   "Powder-coated Steel"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 4.1,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Media storage that keeps cables and clutter hidden."
+  "shape": "rect"
  },
  {
   "id": "tv-unit-002",
   "name": "Skandi Media Console",
-  "brand": "Studio Kova",
   "category": "tv_unit",
   "price": 319,
-  "mrp": null,
   "width_cm": 160,
   "depth_cm": 42,
   "height_cm": 52,
@@ -600,27 +363,16 @@
    "Mango Wood",
    "Warm Grey"
   ],
-  "materials": [
-   "Oak",
-   "Powder-coated Steel"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.3,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1581539250439-c96689b516dd?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Media storage that keeps cables and clutter hidden."
+  "shape": "rect"
  },
  {
   "id": "tv-unit-003",
   "name": "Foundry TV Cabinet",
-  "brand": "Dhara Living",
   "category": "tv_unit",
   "price": 419,
-  "mrp": 449,
   "width_cm": 200,
   "depth_cm": 45,
   "height_cm": 50,
@@ -631,27 +383,16 @@
    "Ivory",
    "Walnut"
   ],
-  "materials": [
-   "Teak",
-   "Matte Laminate"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 3.7,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1595428774223-ef52624120d2?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Media storage that keeps cables and clutter hidden."
+  "shape": "rect"
  },
  {
   "id": "tv-unit-004",
   "name": "Aria Floating Console",
-  "brand": "Casa Norte",
   "category": "tv_unit",
   "price": 269,
-  "mrp": null,
   "width_cm": 150,
   "depth_cm": 35,
   "height_cm": 40,
@@ -663,27 +404,16 @@
    "Walnut",
    "Teak"
   ],
-  "materials": [
-   "Teak",
-   "Powder-coated Steel"
-  ],
-  "in_stock": false,
-  "delivery_days": 21,
-  "rating": 4.8,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1601760562234-9814eea6663a?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Media storage that keeps cables and clutter hidden."
+  "shape": "rect"
  },
  {
   "id": "tv-unit-005",
   "name": "Heritage Media Unit",
-  "brand": "Mistwood",
   "category": "tv_unit",
   "price": 779,
-  "mrp": 839,
   "width_cm": 210,
   "depth_cm": 45,
   "height_cm": 55,
@@ -695,27 +425,16 @@
    "Oak",
    "Warm Grey"
   ],
-  "materials": [
-   "Teak",
-   "Veneer"
-  ],
-  "in_stock": true,
-  "delivery_days": 7,
-  "rating": 4.4,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Media storage that keeps cables and clutter hidden."
+  "shape": "rect"
  },
  {
   "id": "tv-unit-006",
   "name": "Cane Weave TV Unit",
-  "brand": "Mistwood",
   "category": "tv_unit",
   "price": 339,
-  "mrp": 419,
   "width_cm": 170,
   "depth_cm": 42,
   "height_cm": 50,
@@ -726,27 +445,16 @@
    "Sheesham",
    "Mango Wood"
   ],
-  "materials": [
-   "Sheesham",
-   "Veneer"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.9,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1581539250439-c96689b516dd?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Media storage that keeps cables and clutter hidden."
+  "shape": "rect"
  },
  {
   "id": "tv-unit-007",
   "name": "Slimline Console",
-  "brand": "Loom & Larch",
   "category": "tv_unit",
   "price": 189,
-  "mrp": null,
   "width_cm": 130,
   "depth_cm": 38,
   "height_cm": 45,
@@ -757,27 +465,16 @@
    "Beige",
    "Oak"
   ],
-  "materials": [
-   "Sheesham",
-   "Veneer"
-  ],
-  "in_stock": true,
-  "delivery_days": 5,
-  "rating": 4.0,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1595428774223-ef52624120d2?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Media storage that keeps cables and clutter hidden."
+  "shape": "rect"
  },
  {
   "id": "tv-unit-008",
   "name": "Grandview Media Wall",
-  "brand": "Dhara Living",
   "category": "tv_unit",
   "price": 959,
-  "mrp": 1029,
   "width_cm": 220,
   "depth_cm": 45,
   "height_cm": 54,
@@ -789,27 +486,16 @@
    "Ivory",
    "Teak"
   ],
-  "materials": [
-   "Oak",
-   "Veneer"
-  ],
-  "in_stock": true,
-  "delivery_days": 2,
-  "rating": 3.8,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1601760562234-9814eea6663a?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Media storage that keeps cables and clutter hidden."
+  "shape": "rect"
  },
  {
   "id": "tv-unit-009",
   "name": "Tana Compact TV Stand",
-  "brand": "Fern & Oak",
   "category": "tv_unit",
   "price": 169,
-  "mrp": 199,
   "width_cm": 120,
   "depth_cm": 36,
   "height_cm": 46,
@@ -821,27 +507,16 @@
    "Teak",
    "Mango Wood"
   ],
-  "materials": [
-   "Oak",
-   "Matte Laminate"
-  ],
-  "in_stock": true,
-  "delivery_days": 7,
-  "rating": 4.1,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Media storage that keeps cables and clutter hidden."
+  "shape": "rect"
  },
  {
   "id": "tv-unit-010",
   "name": "Marlow TV Sideboard",
-  "brand": "Loom & Larch",
   "category": "tv_unit",
   "price": 679,
-  "mrp": 789,
   "width_cm": 190,
   "depth_cm": 44,
   "height_cm": 52,
@@ -852,27 +527,16 @@
    "Sheesham",
    "Ivory"
   ],
-  "materials": [
-   "Sheesham",
-   "Powder-coated Steel"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 3.6,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1581539250439-c96689b516dd?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Media storage that keeps cables and clutter hidden."
+  "shape": "rect"
  },
  {
   "id": "rug-001",
   "name": "Dune Handwoven Rug",
-  "brand": "Casa Norte",
   "category": "rug",
   "price": 139,
-  "mrp": null,
   "width_cm": 230,
   "depth_cm": 160,
   "height_cm": 1.5,
@@ -883,18 +547,10 @@
    "Olive",
    "Oat"
   ],
-  "materials": [
-   "Polypropylene"
-  ],
-  "in_stock": true,
-  "delivery_days": 21,
-  "rating": 3.8,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1600166898405-da9535204843?w=800&q=80&auto=format&fit=crop",
   "is_walkable": true,
   "shape": "rect",
-  "description": "Defines the seating zone and warms up the floor.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -903,10 +559,8 @@
  {
   "id": "rug-002",
   "name": "Atlas Kilim Rug",
-  "brand": "Aralia",
   "category": "rug",
   "price": 179,
-  "mrp": 209,
   "width_cm": 300,
   "depth_cm": 200,
   "height_cm": 1.5,
@@ -917,18 +571,10 @@
    "Sand",
    "Mustard"
   ],
-  "materials": [
-   "Cotton Flatweave"
-  ],
-  "in_stock": false,
-  "delivery_days": 3,
-  "rating": 4.2,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1531835551805-16d864c8d311?w=800&q=80&auto=format&fit=crop",
   "is_walkable": true,
   "shape": "rect",
-  "description": "Defines the seating zone and warms up the floor.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -937,10 +583,8 @@
  {
   "id": "rug-003",
   "name": "Mist Plush Rug",
-  "brand": "Dhara Living",
   "category": "rug",
   "price": 159,
-  "mrp": null,
   "width_cm": 240,
   "depth_cm": 170,
   "height_cm": 1.5,
@@ -951,18 +595,10 @@
    "Clay",
    "Olive"
   ],
-  "materials": [
-   "Jute"
-  ],
-  "in_stock": true,
-  "delivery_days": 21,
-  "rating": 4.0,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1575414003591-ece8d0416c7a?w=800&q=80&auto=format&fit=crop",
   "is_walkable": true,
   "shape": "rect",
-  "description": "Defines the seating zone and warms up the floor.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -971,10 +607,8 @@
  {
   "id": "rug-004",
   "name": "Ember Jute Rug",
-  "brand": "Vanna Home",
   "category": "rug",
   "price": 119,
-  "mrp": null,
   "width_cm": 270,
   "depth_cm": 180,
   "height_cm": 1.5,
@@ -985,18 +619,10 @@
    "Sand",
    "Rust"
   ],
-  "materials": [
-   "Cotton Flatweave"
-  ],
-  "in_stock": true,
-  "delivery_days": 5,
-  "rating": 3.8,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1600607686527-6fb886090705?w=800&q=80&auto=format&fit=crop",
   "is_walkable": true,
   "shape": "rect",
-  "description": "Defines the seating zone and warms up the floor.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -1005,10 +631,8 @@
  {
   "id": "rug-005",
   "name": "Stone Wash Rug",
-  "brand": "Loom & Larch",
   "category": "rug",
   "price": 369,
-  "mrp": null,
   "width_cm": 300,
   "depth_cm": 240,
   "height_cm": 1.5,
@@ -1019,26 +643,16 @@
    "Rust",
    "Beige"
   ],
-  "materials": [
-   "Jute"
-  ],
-  "in_stock": true,
-  "delivery_days": 2,
-  "rating": 4.0,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1600166898405-da9535204843?w=800&q=80&auto=format&fit=crop",
   "is_walkable": true,
-  "shape": "rect",
-  "description": "Defines the seating zone and warms up the floor."
+  "shape": "rect"
  },
  {
   "id": "rug-006",
   "name": "Loom Classic Rug",
-  "brand": "Aralia",
   "category": "rug",
   "price": 699,
-  "mrp": null,
   "width_cm": 350,
   "depth_cm": 250,
   "height_cm": 1.5,
@@ -1050,26 +664,16 @@
    "Warm Grey",
    "Ivory"
   ],
-  "materials": [
-   "Cotton Flatweave"
-  ],
-  "in_stock": true,
-  "delivery_days": 7,
-  "rating": 4.1,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1531835551805-16d864c8d311?w=800&q=80&auto=format&fit=crop",
   "is_walkable": true,
-  "shape": "rect",
-  "description": "Defines the seating zone and warms up the floor."
+  "shape": "rect"
  },
  {
   "id": "rug-007",
   "name": "Petite Weave Rug",
-  "brand": "Dhara Living",
   "category": "rug",
   "price": 79,
-  "mrp": 89,
   "width_cm": 180,
   "depth_cm": 120,
   "height_cm": 1.5,
@@ -1081,26 +685,16 @@
    "Terracotta",
    "Ivory"
   ],
-  "materials": [
-   "Jute"
-  ],
-  "in_stock": false,
-  "delivery_days": 10,
-  "rating": 4.5,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1575414003591-ece8d0416c7a?w=800&q=80&auto=format&fit=crop",
   "is_walkable": true,
-  "shape": "rect",
-  "description": "Defines the seating zone and warms up the floor."
+  "shape": "rect"
  },
  {
   "id": "rug-008",
   "name": "Sahara Lines Rug",
-  "brand": "Loom & Larch",
   "category": "rug",
   "price": 219,
-  "mrp": 249,
   "width_cm": 290,
   "depth_cm": 200,
   "height_cm": 1.5,
@@ -1112,26 +706,16 @@
    "Oat",
    "Clay"
   ],
-  "materials": [
-   "Jute"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.2,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1600607686527-6fb886090705?w=800&q=80&auto=format&fit=crop",
   "is_walkable": true,
-  "shape": "rect",
-  "description": "Defines the seating zone and warms up the floor."
+  "shape": "rect"
  },
  {
   "id": "rug-009",
   "name": "Fjord Wool Rug",
-  "brand": "Aralia",
   "category": "rug",
   "price": 429,
-  "mrp": null,
   "width_cm": 310,
   "depth_cm": 230,
   "height_cm": 1.5,
@@ -1143,26 +727,16 @@
    "Terracotta",
    "Warm Grey"
   ],
-  "materials": [
-   "Cotton Flatweave"
-  ],
-  "in_stock": true,
-  "delivery_days": 2,
-  "rating": 4.3,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1600166898405-da9535204843?w=800&q=80&auto=format&fit=crop",
   "is_walkable": true,
-  "shape": "rect",
-  "description": "Defines the seating zone and warms up the floor."
+  "shape": "rect"
  },
  {
   "id": "rug-010",
   "name": "Terra Diamond Rug",
-  "brand": "Casa Norte",
   "category": "rug",
   "price": 249,
-  "mrp": 269,
   "width_cm": 260,
   "depth_cm": 180,
   "height_cm": 1.5,
@@ -1173,26 +747,16 @@
    "Sand",
    "Ivory"
   ],
-  "materials": [
-   "Wool"
-  ],
-  "in_stock": true,
-  "delivery_days": 2,
-  "rating": 4.9,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1531835551805-16d864c8d311?w=800&q=80&auto=format&fit=crop",
   "is_walkable": true,
-  "shape": "rect",
-  "description": "Defines the seating zone and warms up the floor."
+  "shape": "rect"
  },
  {
   "id": "rug-011",
   "name": "Slate Border Rug",
-  "brand": "Mistwood",
   "category": "rug",
   "price": 229,
-  "mrp": 269,
   "width_cm": 280,
   "depth_cm": 190,
   "height_cm": 1.5,
@@ -1204,26 +768,16 @@
    "Clay",
    "Ivory"
   ],
-  "materials": [
-   "Wool"
-  ],
-  "in_stock": true,
-  "delivery_days": 10,
-  "rating": 3.9,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1575414003591-ece8d0416c7a?w=800&q=80&auto=format&fit=crop",
   "is_walkable": true,
-  "shape": "rect",
-  "description": "Defines the seating zone and warms up the floor."
+  "shape": "rect"
  },
  {
   "id": "rug-012",
   "name": "Ivory Field Rug",
-  "brand": "Mistwood",
   "category": "rug",
   "price": 439,
-  "mrp": 529,
   "width_cm": 320,
   "depth_cm": 240,
   "height_cm": 1.5,
@@ -1234,26 +788,16 @@
    "Forest Green",
    "Sand"
   ],
-  "materials": [
-   "Polypropylene"
-  ],
-  "in_stock": true,
-  "delivery_days": 5,
-  "rating": 4.6,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1600607686527-6fb886090705?w=800&q=80&auto=format&fit=crop",
   "is_walkable": true,
-  "shape": "rect",
-  "description": "Defines the seating zone and warms up the floor."
+  "shape": "rect"
  },
  {
   "id": "coffee-table-001",
   "name": "Orbit Round Coffee Table",
-  "brand": "Vanna Home",
   "category": "coffee_table",
   "price": 209,
-  "mrp": 229,
   "width_cm": 90,
   "depth_cm": 90,
   "height_cm": 42,
@@ -1265,27 +809,16 @@
    "Sheesham",
    "Mango Wood"
   ],
-  "materials": [
-   "Walnut",
-   "Steel"
-  ],
-  "in_stock": true,
-  "delivery_days": 7,
-  "rating": 3.9,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1532372320572-cda25653a26d?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Within easy reach of the sofa for everyday use."
+  "shape": "round"
  },
  {
   "id": "coffee-table-002",
   "name": "Ledger Oak Coffee Table",
-  "brand": "Casa Norte",
   "category": "coffee_table",
   "price": 329,
-  "mrp": 359,
   "width_cm": 120,
   "depth_cm": 60,
   "height_cm": 44,
@@ -1297,27 +830,16 @@
    "Sheesham",
    "Mango Wood"
   ],
-  "materials": [
-   "Teak",
-   "Steel"
-  ],
-  "in_stock": true,
-  "delivery_days": 5,
-  "rating": 3.9,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1499933374294-4584851497cc?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Within easy reach of the sofa for everyday use."
+  "shape": "rect"
  },
  {
   "id": "coffee-table-003",
   "name": "Anvil Industrial Table",
-  "brand": "Casa Norte",
   "category": "coffee_table",
   "price": 269,
-  "mrp": 299,
   "width_cm": 110,
   "depth_cm": 65,
   "height_cm": 42,
@@ -1328,27 +850,16 @@
    "Mango Wood",
    "Beige"
   ],
-  "materials": [
-   "Teak",
-   "Glass"
-  ],
-  "in_stock": true,
-  "delivery_days": 5,
-  "rating": 4.3,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Within easy reach of the sofa for everyday use."
+  "shape": "rect"
  },
  {
   "id": "coffee-table-004",
   "name": "Halo Nesting Tables",
-  "brand": "Mistwood",
   "category": "coffee_table",
   "price": 209,
-  "mrp": 239,
   "width_cm": 80,
   "depth_cm": 80,
   "height_cm": 40,
@@ -1359,27 +870,16 @@
    "Mango Wood",
    "Beige"
   ],
-  "materials": [
-   "Sheesham",
-   "Marble"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.7,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Within easy reach of the sofa for everyday use."
+  "shape": "round"
  },
  {
   "id": "coffee-table-005",
   "name": "Estate Marble Table",
-  "brand": "Aralia",
   "category": "coffee_table",
   "price": 599,
-  "mrp": null,
   "width_cm": 130,
   "depth_cm": 70,
   "height_cm": 45,
@@ -1390,27 +890,16 @@
    "Sheesham",
    "Teak"
   ],
-  "materials": [
-   "Mango Wood",
-   "Glass"
-  ],
-  "in_stock": true,
-  "delivery_days": 2,
-  "rating": 3.9,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1532372320572-cda25653a26d?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Within easy reach of the sofa for everyday use."
+  "shape": "rect"
  },
  {
   "id": "coffee-table-006",
   "name": "Rattan Drum Table",
-  "brand": "Vanna Home",
   "category": "coffee_table",
   "price": 159,
-  "mrp": null,
   "width_cm": 75,
   "depth_cm": 75,
   "height_cm": 40,
@@ -1421,27 +910,16 @@
    "Mango Wood",
    "Beige"
   ],
-  "materials": [
-   "Walnut",
-   "Steel"
-  ],
-  "in_stock": true,
-  "delivery_days": 2,
-  "rating": 3.6,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1499933374294-4584851497cc?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Within easy reach of the sofa for everyday use."
+  "shape": "round"
  },
  {
   "id": "coffee-table-007",
   "name": "Slab Low Table",
-  "brand": "Vanna Home",
   "category": "coffee_table",
   "price": 289,
-  "mrp": null,
   "width_cm": 125,
   "depth_cm": 70,
   "height_cm": 38,
@@ -1453,27 +931,16 @@
    "Teak",
    "Oak"
   ],
-  "materials": [
-   "Oak",
-   "Steel"
-  ],
-  "in_stock": false,
-  "delivery_days": 14,
-  "rating": 3.8,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Within easy reach of the sofa for everyday use."
+  "shape": "rect"
  },
  {
   "id": "coffee-table-008",
   "name": "Pebble Oval Table",
-  "brand": "Vanna Home",
   "category": "coffee_table",
   "price": 329,
-  "mrp": null,
   "width_cm": 115,
   "depth_cm": 65,
   "height_cm": 41,
@@ -1485,27 +952,16 @@
    "Walnut",
    "Teak"
   ],
-  "materials": [
-   "Oak",
-   "Marble"
-  ],
-  "in_stock": true,
-  "delivery_days": 2,
-  "rating": 4.3,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Within easy reach of the sofa for everyday use."
+  "shape": "round"
  },
  {
   "id": "coffee-table-009",
   "name": "Trestle Wood Table",
-  "brand": "Casa Norte",
   "category": "coffee_table",
   "price": 269,
-  "mrp": 309,
   "width_cm": 105,
   "depth_cm": 60,
   "height_cm": 43,
@@ -1516,27 +972,16 @@
    "Oak",
    "Ivory"
   ],
-  "materials": [
-   "Mango Wood",
-   "Glass"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 4.9,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1532372320572-cda25653a26d?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Within easy reach of the sofa for everyday use."
+  "shape": "rect"
  },
  {
   "id": "coffee-table-010",
   "name": "Compact Studio Table",
-  "brand": "Fern & Oak",
   "category": "coffee_table",
   "price": 109,
-  "mrp": null,
   "width_cm": 70,
   "depth_cm": 70,
   "height_cm": 40,
@@ -1548,27 +993,16 @@
    "Teak",
    "Ivory"
   ],
-  "materials": [
-   "Teak",
-   "Steel"
-  ],
-  "in_stock": true,
-  "delivery_days": 2,
-  "rating": 4.4,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1499933374294-4584851497cc?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Within easy reach of the sofa for everyday use."
+  "shape": "round"
  },
  {
   "id": "coffee-table-011",
   "name": "Carved Heritage Table",
-  "brand": "Studio Kova",
   "category": "coffee_table",
   "price": 359,
-  "mrp": 429,
   "width_cm": 120,
   "depth_cm": 65,
   "height_cm": 45,
@@ -1580,27 +1014,16 @@
    "Ivory",
    "Teak"
   ],
-  "materials": [
-   "Oak",
-   "Cane"
-  ],
-  "in_stock": true,
-  "delivery_days": 10,
-  "rating": 3.7,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Within easy reach of the sofa for everyday use."
+  "shape": "rect"
  },
  {
   "id": "coffee-table-012",
   "name": "Iron Frame Table",
-  "brand": "Dhara Living",
   "category": "coffee_table",
   "price": 199,
-  "mrp": 229,
   "width_cm": 100,
   "depth_cm": 60,
   "height_cm": 42,
@@ -1612,27 +1035,16 @@
    "Sheesham",
    "Mango Wood"
   ],
-  "materials": [
-   "Oak",
-   "Steel"
-  ],
-  "in_stock": true,
-  "delivery_days": 2,
-  "rating": 4.9,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Within easy reach of the sofa for everyday use."
+  "shape": "rect"
  },
  {
   "id": "side-table-001",
   "name": "Dot Side Table",
-  "brand": "Mistwood",
   "category": "side_table",
   "price": 69,
-  "mrp": 78,
   "width_cm": 45,
   "depth_cm": 45,
   "height_cm": 55,
@@ -1643,18 +1055,10 @@
    "Teak",
    "Mango Wood"
   ],
-  "materials": [
-   "Marble"
-  ],
-  "in_stock": true,
-  "delivery_days": 2,
-  "rating": 4.2,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1565191999001-551c187427bb?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Keeps essentials at arm's reach beside the seating.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -1663,10 +1067,8 @@
  {
   "id": "side-table-002",
   "name": "Sheesham End Table",
-  "brand": "Fern & Oak",
   "category": "side_table",
   "price": 99,
-  "mrp": 109,
   "width_cm": 50,
   "depth_cm": 50,
   "height_cm": 58,
@@ -1677,18 +1079,10 @@
    "Mango Wood",
    "Ivory"
   ],
-  "materials": [
-   "Sheesham"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 4.3,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1611117775350-ac3950990985?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Keeps essentials at arm's reach beside the seating.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -1697,10 +1091,8 @@
  {
   "id": "side-table-003",
   "name": "Wire Frame Table",
-  "brand": "Studio Kova",
   "category": "side_table",
   "price": 59,
-  "mrp": 69,
   "width_cm": 42,
   "depth_cm": 42,
   "height_cm": 52,
@@ -1712,18 +1104,10 @@
    "Beige",
    "Sheesham"
   ],
-  "materials": [
-   "Teak"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 4.6,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1499933374294-4584851497cc?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Keeps essentials at arm's reach beside the seating.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -1732,10 +1116,8 @@
  {
   "id": "side-table-004",
   "name": "Nordic Stool Table",
-  "brand": "Fern & Oak",
   "category": "side_table",
   "price": 89,
-  "mrp": null,
   "width_cm": 40,
   "depth_cm": 40,
   "height_cm": 50,
@@ -1746,18 +1128,10 @@
    "Ivory",
    "Beige"
   ],
-  "materials": [
-   "Oak"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 3.8,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1565191999001-551c187427bb?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Keeps essentials at arm's reach beside the seating.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -1766,10 +1140,8 @@
  {
   "id": "side-table-005",
   "name": "Cane Top Side Table",
-  "brand": "Aralia",
   "category": "side_table",
   "price": 119,
-  "mrp": 129,
   "width_cm": 48,
   "depth_cm": 48,
   "height_cm": 56,
@@ -1780,26 +1152,16 @@
    "Teak",
    "Walnut"
   ],
-  "materials": [
-   "Steel"
-  ],
-  "in_stock": true,
-  "delivery_days": 7,
-  "rating": 4.4,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1611117775350-ac3950990985?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Keeps essentials at arm's reach beside the seating."
+  "shape": "round"
  },
  {
   "id": "side-table-006",
   "name": "Cube Storage Table",
-  "brand": "Mistwood",
   "category": "side_table",
   "price": 169,
-  "mrp": 189,
   "width_cm": 45,
   "depth_cm": 45,
   "height_cm": 50,
@@ -1811,26 +1173,16 @@
    "Oak",
    "Teak"
   ],
-  "materials": [
-   "Mango Wood"
-  ],
-  "in_stock": true,
-  "delivery_days": 5,
-  "rating": 3.8,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1499933374294-4584851497cc?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Keeps essentials at arm's reach beside the seating."
+  "shape": "rect"
  },
  {
   "id": "side-table-007",
   "name": "Pedestal C-Table",
-  "brand": "Fern & Oak",
   "category": "side_table",
   "price": 109,
-  "mrp": 119,
   "width_cm": 40,
   "depth_cm": 38,
   "height_cm": 60,
@@ -1842,26 +1194,16 @@
    "Sheesham",
    "Oak"
   ],
-  "materials": [
-   "Oak"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 4.7,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1565191999001-551c187427bb?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Keeps essentials at arm's reach beside the seating."
+  "shape": "rect"
  },
  {
   "id": "side-table-008",
   "name": "Mini Marble Table",
-  "brand": "Studio Kova",
   "category": "side_table",
   "price": 129,
-  "mrp": 149,
   "width_cm": 38,
   "depth_cm": 38,
   "height_cm": 52,
@@ -1873,26 +1215,16 @@
    "Beige",
    "Sheesham"
   ],
-  "materials": [
-   "Sheesham"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 4.3,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1611117775350-ac3950990985?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Keeps essentials at arm's reach beside the seating."
+  "shape": "round"
  },
  {
   "id": "side-table-009",
   "name": "Stack Tray Table",
-  "brand": "Studio Kova",
   "category": "side_table",
   "price": 59,
-  "mrp": null,
   "width_cm": 46,
   "depth_cm": 46,
   "height_cm": 54,
@@ -1903,26 +1235,16 @@
    "Sheesham",
    "Ivory"
   ],
-  "materials": [
-   "Steel"
-  ],
-  "in_stock": true,
-  "delivery_days": 7,
-  "rating": 4.8,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1499933374294-4584851497cc?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Keeps essentials at arm's reach beside the seating."
+  "shape": "round"
  },
  {
   "id": "side-table-010",
   "name": "Drift Wood Table",
-  "brand": "Studio Kova",
   "category": "side_table",
   "price": 209,
-  "mrp": null,
   "width_cm": 50,
   "depth_cm": 45,
   "height_cm": 55,
@@ -1933,26 +1255,16 @@
    "Sheesham",
    "Oak"
   ],
-  "materials": [
-   "Mango Wood"
-  ],
-  "in_stock": true,
-  "delivery_days": 2,
-  "rating": 4.1,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1565191999001-551c187427bb?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Keeps essentials at arm's reach beside the seating."
+  "shape": "rect"
  },
  {
   "id": "accent-chair-001",
   "name": "Wing Lounge Chair",
-  "brand": "Loom & Larch",
   "category": "accent_chair",
   "price": 349,
-  "mrp": 429,
   "width_cm": 75,
   "depth_cm": 80,
   "height_cm": 100,
@@ -1964,21 +1276,10 @@
    "Charcoal",
    "Mustard"
   ],
-  "materials": [
-   "Boucle",
-   "Walnut"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.6,
-  "attrs": {
-   "seat_height_cm": 42
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "rect",
-  "description": "A conversation seat that completes the seating circle.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -1987,10 +1288,8 @@
  {
   "id": "accent-chair-002",
   "name": "Sling Leather Chair",
-  "brand": "Dhara Living",
   "category": "accent_chair",
   "price": 449,
-  "mrp": 499,
   "width_cm": 70,
   "depth_cm": 75,
   "height_cm": 78,
@@ -2002,21 +1301,10 @@
    "Beige",
    "Rust"
   ],
-  "materials": [
-   "Velvet",
-   "Sheesham"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 4.3,
-  "attrs": {
-   "seat_height_cm": 44
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1567538096621-38d2284b23ff?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "rect",
-  "description": "A conversation seat that completes the seating circle.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -2025,10 +1313,8 @@
  {
   "id": "accent-chair-003",
   "name": "Boucle Barrel Chair",
-  "brand": "Dhara Living",
   "category": "accent_chair",
   "price": 379,
-  "mrp": 449,
   "width_cm": 78,
   "depth_cm": 76,
   "height_cm": 82,
@@ -2039,21 +1325,10 @@
    "Forest Green",
    "Mustard"
   ],
-  "materials": [
-   "Cane",
-   "Sheesham"
-  ],
-  "in_stock": true,
-  "delivery_days": 2,
-  "rating": 4.2,
-  "attrs": {
-   "seat_height_cm": 44
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1592078615290-033ee584e267?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "rect",
-  "description": "A conversation seat that completes the seating circle.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -2062,10 +1337,8 @@
  {
   "id": "accent-chair-004",
   "name": "Rattan Lounge Chair",
-  "brand": "Aralia",
   "category": "accent_chair",
   "price": 239,
-  "mrp": 259,
   "width_cm": 72,
   "depth_cm": 78,
   "height_cm": 84,
@@ -2077,21 +1350,10 @@
    "Terracotta",
    "Ivory"
   ],
-  "materials": [
-   "Linen",
-   "Mango Wood"
-  ],
-  "in_stock": true,
-  "delivery_days": 7,
-  "rating": 4.6,
-  "attrs": {
-   "seat_height_cm": 42
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1519947486511-46149fa0a254?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "rect",
-  "description": "A conversation seat that completes the seating circle.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -2100,10 +1362,8 @@
  {
   "id": "accent-chair-005",
   "name": "Oak Frame Armchair",
-  "brand": "Casa Norte",
   "category": "accent_chair",
   "price": 339,
-  "mrp": 409,
   "width_cm": 68,
   "depth_cm": 72,
   "height_cm": 80,
@@ -2115,29 +1375,16 @@
    "Forest Green",
    "Rust"
   ],
-  "materials": [
-   "Linen",
-   "Sheesham"
-  ],
-  "in_stock": false,
-  "delivery_days": 10,
-  "rating": 4.7,
-  "attrs": {
-   "seat_height_cm": 44
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A conversation seat that completes the seating circle."
+  "shape": "rect"
  },
  {
   "id": "accent-chair-006",
   "name": "Petite Reading Chair",
-  "brand": "Dhara Living",
   "category": "accent_chair",
   "price": 149,
-  "mrp": null,
   "width_cm": 65,
   "depth_cm": 70,
   "height_cm": 85,
@@ -2148,29 +1395,16 @@
    "Forest Green",
    "Terracotta"
   ],
-  "materials": [
-   "Boucle",
-   "Oak"
-  ],
-  "in_stock": true,
-  "delivery_days": 7,
-  "rating": 3.9,
-  "attrs": {
-   "seat_height_cm": 40
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A conversation seat that completes the seating circle."
+  "shape": "rect"
  },
  {
   "id": "accent-chair-007",
   "name": "Velvet Club Chair",
-  "brand": "Dhara Living",
   "category": "accent_chair",
   "price": 609,
-  "mrp": null,
   "width_cm": 80,
   "depth_cm": 82,
   "height_cm": 78,
@@ -2182,29 +1416,16 @@
    "Olive",
    "Charcoal"
   ],
-  "materials": [
-   "Cane",
-   "Walnut"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 4.2,
-  "attrs": {
-   "seat_height_cm": 44
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1567538096621-38d2284b23ff?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A conversation seat that completes the seating circle."
+  "shape": "rect"
  },
  {
   "id": "accent-chair-008",
   "name": "Swivel Studio Chair",
-  "brand": "Studio Kova",
   "category": "accent_chair",
   "price": 349,
-  "mrp": 399,
   "width_cm": 74,
   "depth_cm": 74,
   "height_cm": 80,
@@ -2216,29 +1437,16 @@
    "Forest Green",
    "Olive"
   ],
-  "materials": [
-   "Linen",
-   "Sheesham"
-  ],
-  "in_stock": true,
-  "delivery_days": 21,
-  "rating": 3.8,
-  "attrs": {
-   "seat_height_cm": 42
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1592078615290-033ee584e267?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A conversation seat that completes the seating circle."
+  "shape": "rect"
  },
  {
   "id": "accent-chair-009",
   "name": "Cane Back Accent Chair",
-  "brand": "Casa Norte",
   "category": "accent_chair",
   "price": 209,
-  "mrp": 229,
   "width_cm": 66,
   "depth_cm": 70,
   "height_cm": 88,
@@ -2249,29 +1457,16 @@
    "Oat",
    "Olive"
   ],
-  "materials": [
-   "Linen",
-   "Teak"
-  ],
-  "in_stock": true,
-  "delivery_days": 5,
-  "rating": 4.6,
-  "attrs": {
-   "seat_height_cm": 44
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1519947486511-46149fa0a254?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A conversation seat that completes the seating circle."
+  "shape": "rect"
  },
  {
   "id": "accent-chair-010",
   "name": "Recline Lounge Chair",
-  "brand": "Mistwood",
   "category": "accent_chair",
   "price": 719,
-  "mrp": null,
   "width_cm": 85,
   "depth_cm": 85,
   "height_cm": 95,
@@ -2282,29 +1477,16 @@
    "Warm Grey",
    "Rust"
   ],
-  "materials": [
-   "Boucle",
-   "Mango Wood"
-  ],
-  "in_stock": true,
-  "delivery_days": 2,
-  "rating": 3.9,
-  "attrs": {
-   "seat_height_cm": 42
-  },
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "A conversation seat that completes the seating circle."
+  "shape": "rect"
  },
  {
   "id": "lighting-001",
   "name": "Arc Floor Lamp",
-  "brand": "Fern & Oak",
   "category": "lighting",
   "price": 99,
-  "mrp": 109,
   "width_cm": 40,
   "depth_cm": 40,
   "height_cm": 165,
@@ -2316,19 +1498,10 @@
    "Ivory",
    "Brass"
   ],
-  "materials": [
-   "Wood",
-   "Fabric Shade"
-  ],
-  "in_stock": true,
-  "delivery_days": 21,
-  "rating": 4.4,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Layered light beside the seating, away from walk paths.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -2337,10 +1510,8 @@
  {
   "id": "lighting-002",
   "name": "Tripod Wood Lamp",
-  "brand": "Dhara Living",
   "category": "lighting",
   "price": 129,
-  "mrp": null,
   "width_cm": 45,
   "depth_cm": 45,
   "height_cm": 150,
@@ -2351,19 +1522,10 @@
    "Charcoal",
    "Brass"
   ],
-  "materials": [
-   "Steel",
-   "Fabric Shade"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.2,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Layered light beside the seating, away from walk paths.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -2372,10 +1534,8 @@
  {
   "id": "lighting-003",
   "name": "Industrial Task Lamp",
-  "brand": "Mistwood",
   "category": "lighting",
   "price": 109,
-  "mrp": 118,
   "width_cm": 35,
   "depth_cm": 35,
   "height_cm": 145,
@@ -2387,19 +1547,10 @@
    "Ivory",
    "Charcoal"
   ],
-  "materials": [
-   "Steel",
-   "Fabric Shade"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 3.7,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1543198126-a8ad8e47fb22?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Layered light beside the seating, away from walk paths.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -2408,10 +1559,8 @@
  {
   "id": "lighting-004",
   "name": "Rattan Shade Lamp",
-  "brand": "Studio Kova",
   "category": "lighting",
   "price": 129,
-  "mrp": 149,
   "width_cm": 42,
   "depth_cm": 42,
   "height_cm": 155,
@@ -2423,19 +1572,10 @@
    "Black",
    "Brass"
   ],
-  "materials": [
-   "Steel",
-   "Fabric Shade"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 4.3,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1565636192335-0a4cbfa1aaf8?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Layered light beside the seating, away from walk paths.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -2444,10 +1584,8 @@
  {
   "id": "lighting-005",
   "name": "Column Brass Lamp",
-  "brand": "Mistwood",
   "category": "lighting",
   "price": 219,
-  "mrp": 249,
   "width_cm": 32,
   "depth_cm": 32,
   "height_cm": 160,
@@ -2459,27 +1597,16 @@
    "Ivory",
    "Beige"
   ],
-  "materials": [
-   "Steel",
-   "Fabric Shade"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 4.3,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Layered light beside the seating, away from walk paths."
+  "shape": "round"
  },
  {
   "id": "lighting-006",
   "name": "Paper Lantern Lamp",
-  "brand": "Casa Norte",
   "category": "lighting",
   "price": 79,
-  "mrp": null,
   "width_cm": 38,
   "depth_cm": 38,
   "height_cm": 140,
@@ -2491,27 +1618,16 @@
    "Charcoal",
    "Warm Grey"
   ],
-  "materials": [
-   "Wood",
-   "Fabric Shade"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.6,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Layered light beside the seating, away from walk paths."
+  "shape": "round"
  },
  {
   "id": "lighting-007",
   "name": "Reading Curve Lamp",
-  "brand": "Dhara Living",
   "category": "lighting",
   "price": 199,
-  "mrp": null,
   "width_cm": 36,
   "depth_cm": 36,
   "height_cm": 158,
@@ -2523,27 +1639,16 @@
    "Charcoal",
    "Ivory"
   ],
-  "materials": [
-   "Brass",
-   "Fabric Shade"
-  ],
-  "in_stock": true,
-  "delivery_days": 21,
-  "rating": 4.1,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1543198126-a8ad8e47fb22?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Layered light beside the seating, away from walk paths."
+  "shape": "round"
  },
  {
   "id": "lighting-008",
   "name": "Dome Studio Lamp",
-  "brand": "Dhara Living",
   "category": "lighting",
   "price": 139,
-  "mrp": null,
   "width_cm": 34,
   "depth_cm": 34,
   "height_cm": 148,
@@ -2555,27 +1660,16 @@
    "Black",
    "Charcoal"
   ],
-  "materials": [
-   "Rattan",
-   "Fabric Shade"
-  ],
-  "in_stock": false,
-  "delivery_days": 14,
-  "rating": 4.4,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1565636192335-0a4cbfa1aaf8?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Layered light beside the seating, away from walk paths."
+  "shape": "round"
  },
  {
   "id": "lighting-009",
   "name": "Twin Shade Lamp",
-  "brand": "Fern & Oak",
   "category": "lighting",
   "price": 279,
-  "mrp": 309,
   "width_cm": 44,
   "depth_cm": 44,
   "height_cm": 162,
@@ -2586,27 +1680,16 @@
    "Ivory",
    "Beige"
   ],
-  "materials": [
-   "Wood",
-   "Fabric Shade"
-  ],
-  "in_stock": true,
-  "delivery_days": 10,
-  "rating": 3.8,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Layered light beside the seating, away from walk paths."
+  "shape": "round"
  },
  {
   "id": "lighting-010",
   "name": "Slim Line Lamp",
-  "brand": "Casa Norte",
   "category": "lighting",
   "price": 69,
-  "mrp": null,
   "width_cm": 30,
   "depth_cm": 30,
   "height_cm": 152,
@@ -2617,27 +1700,16 @@
    "Beige",
    "Warm Grey"
   ],
-  "materials": [
-   "Steel",
-   "Fabric Shade"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 4.5,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Layered light beside the seating, away from walk paths."
+  "shape": "round"
  },
  {
   "id": "storage-001",
   "name": "Ladder Bookshelf",
-  "brand": "Fern & Oak",
   "category": "storage",
   "price": 169,
-  "mrp": 179,
   "width_cm": 70,
   "depth_cm": 40,
   "height_cm": 180,
@@ -2649,19 +1721,10 @@
    "Beige",
    "Sheesham"
   ],
-  "materials": [
-   "Mango Wood",
-   "Veneer"
-  ],
-  "in_stock": false,
-  "delivery_days": 10,
-  "rating": 4.0,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1594620302200-9a762244a156?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Closed and open storage to keep the room tidy.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -2670,10 +1733,8 @@
  {
   "id": "storage-002",
   "name": "Low Sideboard",
-  "brand": "Studio Kova",
   "category": "storage",
   "price": 459,
-  "mrp": 499,
   "width_cm": 160,
   "depth_cm": 42,
   "height_cm": 75,
@@ -2684,19 +1745,10 @@
    "Beige",
    "Oak"
   ],
-  "materials": [
-   "Sheesham",
-   "Veneer"
-  ],
-  "in_stock": true,
-  "delivery_days": 2,
-  "rating": 4.7,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1588447749191-315ebee5c4a8?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Closed and open storage to keep the room tidy.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -2705,10 +1757,8 @@
  {
   "id": "storage-003",
   "name": "Mesh Door Cabinet",
-  "brand": "Loom & Larch",
   "category": "storage",
   "price": 379,
-  "mrp": 449,
   "width_cm": 90,
   "depth_cm": 40,
   "height_cm": 120,
@@ -2720,19 +1770,10 @@
    "Beige",
    "Teak"
   ],
-  "materials": [
-   "Sheesham",
-   "Cane"
-  ],
-  "in_stock": true,
-  "delivery_days": 2,
-  "rating": 4.4,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1595428774223-ef52624120d2?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Closed and open storage to keep the room tidy.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -2741,10 +1782,8 @@
  {
   "id": "storage-004",
   "name": "Open Cube Shelf",
-  "brand": "Loom & Larch",
   "category": "storage",
   "price": 239,
-  "mrp": null,
   "width_cm": 120,
   "depth_cm": 38,
   "height_cm": 140,
@@ -2756,27 +1795,16 @@
    "Beige",
    "Teak"
   ],
-  "materials": [
-   "Walnut",
-   "Steel"
-  ],
-  "in_stock": true,
-  "delivery_days": 2,
-  "rating": 3.9,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1601760562234-9814eea6663a?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Closed and open storage to keep the room tidy."
+  "shape": "rect"
  },
  {
   "id": "storage-005",
   "name": "Heritage Display Cabinet",
-  "brand": "Fern & Oak",
   "category": "storage",
   "price": 679,
-  "mrp": 799,
   "width_cm": 100,
   "depth_cm": 45,
   "height_cm": 170,
@@ -2787,27 +1815,16 @@
    "Beige",
    "Mango Wood"
   ],
-  "materials": [
-   "Mango Wood",
-   "Cane"
-  ],
-  "in_stock": true,
-  "delivery_days": 7,
-  "rating": 4.5,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1594620302200-9a762244a156?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Closed and open storage to keep the room tidy."
+  "shape": "rect"
  },
  {
   "id": "storage-006",
   "name": "Cane Door Sideboard",
-  "brand": "Studio Kova",
   "category": "storage",
   "price": 589,
-  "mrp": 709,
   "width_cm": 140,
   "depth_cm": 45,
   "height_cm": 80,
@@ -2819,27 +1836,16 @@
    "Walnut",
    "Mango Wood"
   ],
-  "materials": [
-   "Sheesham",
-   "Steel"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 4.2,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1588447749191-315ebee5c4a8?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Closed and open storage to keep the room tidy."
+  "shape": "rect"
  },
  {
   "id": "storage-007",
   "name": "Slim Console Shelf",
-  "brand": "Dhara Living",
   "category": "storage",
   "price": 179,
-  "mrp": 189,
   "width_cm": 80,
   "depth_cm": 35,
   "height_cm": 110,
@@ -2850,27 +1856,16 @@
    "Oak",
    "Mango Wood"
   ],
-  "materials": [
-   "Sheesham",
-   "Veneer"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 4.9,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1595428774223-ef52624120d2?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Closed and open storage to keep the room tidy."
+  "shape": "rect"
  },
  {
   "id": "storage-008",
   "name": "Wide Media Bookcase",
-  "brand": "Dhara Living",
   "category": "storage",
   "price": 879,
-  "mrp": null,
   "width_cm": 180,
   "depth_cm": 40,
   "height_cm": 160,
@@ -2881,27 +1876,16 @@
    "Ivory",
    "Beige"
   ],
-  "materials": [
-   "Mango Wood",
-   "Cane"
-  ],
-  "in_stock": true,
-  "delivery_days": 7,
-  "rating": 4.3,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1601760562234-9814eea6663a?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "rect",
-  "description": "Closed and open storage to keep the room tidy."
+  "shape": "rect"
  },
  {
   "id": "decor-001",
   "name": "Monstera Floor Plant",
-  "brand": "Dhara Living",
   "category": "decor",
   "price": 19,
-  "mrp": null,
   "width_cm": 45,
   "depth_cm": 45,
   "height_cm": 150,
@@ -2912,18 +1896,10 @@
    "Beige",
    "Forest Green"
   ],
-  "materials": [
-   "Brass"
-  ],
-  "in_stock": true,
-  "delivery_days": 10,
-  "rating": 4.4,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Finishing touches that make the room feel lived-in.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -2932,10 +1908,8 @@
  {
   "id": "decor-002",
   "name": "Areca Palm Planter",
-  "brand": "Loom & Larch",
   "category": "decor",
   "price": 39,
-  "mrp": 48,
   "width_cm": 40,
   "depth_cm": 40,
   "height_cm": 140,
@@ -2947,18 +1921,10 @@
    "Rust",
    "Ivory"
   ],
-  "materials": [
-   "Ceramic"
-  ],
-  "in_stock": true,
-  "delivery_days": 3,
-  "rating": 4.1,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1463320726281-696a485928c7?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Finishing touches that make the room feel lived-in.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -2967,10 +1933,8 @@
  {
   "id": "decor-003",
   "name": "Seagrass Basket Set",
-  "brand": "Dhara Living",
   "category": "decor",
   "price": 29,
-  "mrp": 38,
   "width_cm": 38,
   "depth_cm": 38,
   "height_cm": 45,
@@ -2981,18 +1945,10 @@
    "Rust",
    "Olive"
   ],
-  "materials": [
-   "Ceramic"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 3.7,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Finishing touches that make the room feel lived-in.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -3001,10 +1957,8 @@
  {
   "id": "decor-004",
   "name": "Ceramic Floor Vase",
-  "brand": "Dhara Living",
   "category": "decor",
   "price": 39,
-  "mrp": 48,
   "width_cm": 28,
   "depth_cm": 28,
   "height_cm": 70,
@@ -3015,18 +1969,10 @@
    "Mustard",
    "Olive"
   ],
-  "materials": [
-   "Terracotta"
-  ],
-  "in_stock": true,
-  "delivery_days": 7,
-  "rating": 3.7,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1545165375-1b744b9ed444?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
   "shape": "round",
-  "description": "Finishing touches that make the room feel lived-in.",
   "room_types": [
    "living_room",
    "bedroom"
@@ -3035,10 +1981,8 @@
  {
   "id": "decor-005",
   "name": "Rubber Tree Plant",
-  "brand": "Dhara Living",
   "category": "decor",
   "price": 19,
-  "mrp": 28,
   "width_cm": 42,
   "depth_cm": 42,
   "height_cm": 130,
@@ -3050,26 +1994,16 @@
    "Ivory",
    "Terracotta"
   ],
-  "materials": [
-   "Seagrass"
-  ],
-  "in_stock": true,
-  "delivery_days": 21,
-  "rating": 4.8,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1581783898377-1c85bf937427?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Finishing touches that make the room feel lived-in."
+  "shape": "round"
  },
  {
   "id": "decor-006",
   "name": "Terracotta Urn",
-  "brand": "Loom & Larch",
   "category": "decor",
   "price": 69,
-  "mrp": null,
   "width_cm": 32,
   "depth_cm": 32,
   "height_cm": 60,
@@ -3080,26 +2014,16 @@
    "Rust",
    "Olive"
   ],
-  "materials": [
-   "Seagrass"
-  ],
-  "in_stock": false,
-  "delivery_days": 7,
-  "rating": 3.7,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1526057565006-20beab8dd2ed?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Finishing touches that make the room feel lived-in."
+  "shape": "round"
  },
  {
   "id": "decor-007",
   "name": "Snake Plant Trio",
-  "brand": "Mistwood",
   "category": "decor",
   "price": 29,
-  "mrp": 38,
   "width_cm": 30,
   "depth_cm": 30,
   "height_cm": 90,
@@ -3111,26 +2035,16 @@
    "Rust",
    "Olive"
   ],
-  "materials": [
-   "Terracotta"
-  ],
-  "in_stock": true,
-  "delivery_days": 5,
-  "rating": 4.8,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Finishing touches that make the room feel lived-in."
+  "shape": "round"
  },
  {
   "id": "decor-008",
   "name": "Woven Floor Lantern",
-  "brand": "Loom & Larch",
   "category": "decor",
   "price": 29,
-  "mrp": null,
   "width_cm": 35,
   "depth_cm": 35,
   "height_cm": 55,
@@ -3141,26 +2055,16 @@
    "Mustard",
    "Terracotta"
   ],
-  "materials": [
-   "Seagrass"
-  ],
-  "in_stock": true,
-  "delivery_days": 5,
-  "rating": 4.8,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1463320726281-696a485928c7?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Finishing touches that make the room feel lived-in."
+  "shape": "round"
  },
  {
   "id": "decor-009",
   "name": "Stone Sculpture",
-  "brand": "Fern & Oak",
   "category": "decor",
   "price": 59,
-  "mrp": null,
   "width_cm": 25,
   "depth_cm": 25,
   "height_cm": 45,
@@ -3172,26 +2076,16 @@
    "Rust",
    "Mustard"
   ],
-  "materials": [
-   "Brass"
-  ],
-  "in_stock": true,
-  "delivery_days": 21,
-  "rating": 4.4,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Finishing touches that make the room feel lived-in."
+  "shape": "round"
  },
  {
   "id": "decor-010",
   "name": "Olive Tree Planter",
-  "brand": "Vanna Home",
   "category": "decor",
   "price": 79,
-  "mrp": 89,
   "width_cm": 48,
   "depth_cm": 48,
   "height_cm": 160,
@@ -3203,26 +2097,16 @@
    "Beige",
    "Terracotta"
   ],
-  "materials": [
-   "Live Plant"
-  ],
-  "in_stock": true,
-  "delivery_days": 21,
-  "rating": 4.5,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1545165375-1b744b9ed444?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Finishing touches that make the room feel lived-in."
+  "shape": "round"
  },
  {
   "id": "decor-011",
   "name": "Brass Floor Candle Stand",
-  "brand": "Fern & Oak",
   "category": "decor",
   "price": 29,
-  "mrp": 38,
   "width_cm": 24,
   "depth_cm": 24,
   "height_cm": 80,
@@ -3234,26 +2118,16 @@
    "Clay",
    "Beige"
   ],
-  "materials": [
-   "Seagrass"
-  ],
-  "in_stock": false,
-  "delivery_days": 3,
-  "rating": 4.4,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1581783898377-1c85bf937427?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Finishing touches that make the room feel lived-in."
+  "shape": "round"
  },
  {
   "id": "decor-012",
   "name": "Dried Pampas Set",
-  "brand": "Vanna Home",
   "category": "decor",
   "price": 9,
-  "mrp": 18,
   "width_cm": 26,
   "depth_cm": 26,
   "height_cm": 95,
@@ -3264,26 +2138,16 @@
    "Rust",
    "Clay"
   ],
-  "materials": [
-   "Terracotta"
-  ],
-  "in_stock": true,
-  "delivery_days": 5,
-  "rating": 4.7,
-  "attrs": {},
   "image_url": "",
   "source_image_url": "https://images.unsplash.com/photo-1526057565006-20beab8dd2ed?w=800&q=80&auto=format&fit=crop",
   "is_walkable": false,
-  "shape": "round",
-  "description": "Finishing touches that make the room feel lived-in."
+  "shape": "round"
  },
  {
   "id": "majlis-sofa-001",
   "name": "Najd Long Majlis Bench",
-  "brand": "Najd Living",
   "category": "sofa",
   "price": 1690,
-  "mrp": 1990,
   "width_cm": 300,
   "depth_cm": 80,
   "height_cm": 75,
@@ -3296,38 +2160,19 @@
    "Maroon",
    "Gold"
   ],
-  "materials": [
-   "Velvet",
-   "Carved Walnut"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.8,
-  "attrs": {
-   "seat_height_cm": 40,
-   "arm_height_cm": 62
-  },
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Crafted for a formal Saudi majlis setting.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "perimeter",
-  "seating_capacity": 4,
-  "is_modular": true,
-  "formality": "formal",
-  "luxury_tier": "luxury",
-  "region": "saudi_arabia"
+  "seating_capacity": 4
  },
  {
   "id": "majlis-sofa-002",
   "name": "Riyadh Modular Majlis 3-Seat",
-  "brand": "Diriyah Home",
   "category": "sofa",
   "price": 1190,
-  "mrp": null,
   "width_cm": 240,
   "depth_cm": 82,
   "height_cm": 78,
@@ -3340,38 +2185,19 @@
    "Emerald",
    "Gold"
   ],
-  "materials": [
-   "Velvet",
-   "Oak"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.7,
-  "attrs": {
-   "seat_height_cm": 42,
-   "arm_height_cm": 64
-  },
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Crafted for a formal Saudi majlis setting.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "perimeter",
-  "seating_capacity": 3,
-  "is_modular": true,
-  "formality": "formal",
-  "luxury_tier": "premium",
-  "region": "saudi_arabia"
+  "seating_capacity": 3
  },
  {
   "id": "majlis-sofa-003",
   "name": "Hijazi Corner Majlis Seat",
-  "brand": "Hijazi Interiors",
   "category": "sofa",
   "price": 1450,
-  "mrp": null,
   "width_cm": 280,
   "depth_cm": 90,
   "height_cm": 80,
@@ -3383,38 +2209,19 @@
    "Cream",
    "Bronze"
   ],
-  "materials": [
-   "Linen",
-   "Sheesham"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.6,
-  "attrs": {
-   "seat_height_cm": 41,
-   "arm_height_cm": 63
-  },
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Crafted for a formal Saudi majlis setting.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "perimeter",
-  "seating_capacity": 4,
-  "is_modular": true,
-  "formality": "formal",
-  "luxury_tier": "luxury",
-  "region": "gcc"
+  "seating_capacity": 4
  },
  {
   "id": "majlis-sofa-004",
   "name": "Diriyah Low Floor Majlis",
-  "brand": "Sadu Co.",
   "category": "sofa",
   "price": 890,
-  "mrp": null,
   "width_cm": 210,
   "depth_cm": 95,
   "height_cm": 55,
@@ -3427,37 +2234,19 @@
    "Sand",
    "Terracotta"
   ],
-  "materials": [
-   "Cotton Weave",
-   "Mango Wood"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.5,
-  "attrs": {
-   "seat_height_cm": 30
-  },
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Crafted for a formal Saudi majlis setting.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "floor",
-  "seating_capacity": 3,
-  "is_modular": true,
-  "formality": "formal",
-  "luxury_tier": "premium",
-  "region": "saudi_arabia"
+  "seating_capacity": 3
  },
  {
   "id": "majlis-sofa-005",
   "name": "Qasr Velvet Majlis Sofa",
-  "brand": "Qasr Atelier",
   "category": "sofa",
   "price": 1390,
-  "mrp": null,
   "width_cm": 260,
   "depth_cm": 92,
   "height_cm": 82,
@@ -3470,38 +2259,19 @@
    "Royal Blue",
    "Brass"
   ],
-  "materials": [
-   "Velvet",
-   "Walnut"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.8,
-  "attrs": {
-   "seat_height_cm": 43,
-   "arm_height_cm": 66
-  },
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Crafted for a formal Saudi majlis setting.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "perimeter",
-  "seating_capacity": 3,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "luxury",
-  "region": "gcc"
+  "seating_capacity": 3
  },
  {
   "id": "majlis-sofa-006",
   "name": "Khaleeji Modern Majlis",
-  "brand": "Khaleeji Design",
   "category": "sofa",
   "price": 990,
-  "mrp": null,
   "width_cm": 220,
   "depth_cm": 88,
   "height_cm": 80,
@@ -3513,38 +2283,19 @@
    "Warm Grey",
    "Gold"
   ],
-  "materials": [
-   "Boucle",
-   "Oak"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.5,
-  "attrs": {
-   "seat_height_cm": 44,
-   "arm_height_cm": 65
-  },
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Crafted for a formal Saudi majlis setting.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "wall_hug",
-  "seating_capacity": 3,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "premium",
-  "region": "gcc"
+  "seating_capacity": 3
  },
  {
   "id": "majlis-cushion-001",
   "name": "Sadu Floor Cushion Set",
-  "brand": "Sadu Co.",
   "category": "accent_chair",
   "price": 220,
-  "mrp": null,
   "width_cm": 70,
   "depth_cm": 70,
   "height_cm": 28,
@@ -3557,37 +2308,19 @@
    "Maroon",
    "Sand"
   ],
-  "materials": [
-   "Cotton Weave",
-   "Wool"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.4,
-  "attrs": {
-   "seat_height_cm": 18
-  },
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Traditional sadu-woven floor seating for the majlis.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "floor",
-  "seating_capacity": 1,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "premium",
-  "region": "saudi_arabia"
+  "seating_capacity": 1
  },
  {
   "id": "majlis-cushion-002",
   "name": "Najdi Jalsa Floor Cushion",
-  "brand": "Najd Living",
   "category": "accent_chair",
   "price": 260,
-  "mrp": null,
   "width_cm": 75,
   "depth_cm": 75,
   "height_cm": 30,
@@ -3599,37 +2332,19 @@
    "Emerald",
    "Gold"
   ],
-  "materials": [
-   "Velvet",
-   "Cotton Weave"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.5,
-  "attrs": {
-   "seat_height_cm": 20
-  },
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Plush jalsa floor cushion for ground-level seating.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "floor",
-  "seating_capacity": 1,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "premium",
-  "region": "saudi_arabia"
+  "seating_capacity": 1
  },
  {
   "id": "majlis-pouf-001",
   "name": "Brass-Trim Velvet Pouf",
-  "brand": "Qasr Atelier",
   "category": "accent_chair",
   "price": 340,
-  "mrp": null,
   "width_cm": 55,
   "depth_cm": 55,
   "height_cm": 42,
@@ -3642,37 +2357,19 @@
    "Royal Blue",
    "Brass"
   ],
-  "materials": [
-   "Velvet",
-   "Brass"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.7,
-  "attrs": {
-   "seat_height_cm": 42
-  },
   "image_url": "",
   "is_walkable": false,
   "shape": "round",
-  "description": "A jewel-toned pouf with brass detailing.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "freestanding",
-  "seating_capacity": 1,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "luxury",
-  "region": "gcc"
+  "seating_capacity": 1
  },
  {
   "id": "majlis-pouf-002",
   "name": "Arabesque Ottoman Pouf",
-  "brand": "Hijazi Interiors",
   "category": "accent_chair",
   "price": 290,
-  "mrp": null,
   "width_cm": 60,
   "depth_cm": 60,
   "height_cm": 40,
@@ -3684,37 +2381,19 @@
    "Mustard",
    "Bronze"
   ],
-  "materials": [
-   "Velvet",
-   "Mango Wood"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.4,
-  "attrs": {
-   "seat_height_cm": 40
-  },
   "image_url": "",
   "is_walkable": false,
   "shape": "round",
-  "description": "An arabesque-patterned ottoman pouf.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "freestanding",
-  "seating_capacity": 1,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "premium",
-  "region": "gcc"
+  "seating_capacity": 1
  },
  {
   "id": "majlis-table-001",
   "name": "Arabesque Low Brass Table",
-  "brand": "Qasr Atelier",
   "category": "coffee_table",
   "price": 520,
-  "mrp": null,
   "width_cm": 95,
   "depth_cm": 95,
   "height_cm": 38,
@@ -3727,35 +2406,19 @@
    "Brass",
    "Gold"
   ],
-  "materials": [
-   "Brass",
-   "Glass"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.7,
-  "attrs": {},
   "image_url": "",
   "is_walkable": false,
   "shape": "round",
-  "description": "A low brass centerpiece table for the majlis.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "center",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "luxury",
-  "region": "gcc"
+  "seating_capacity": 0
  },
  {
   "id": "majlis-table-002",
   "name": "Carved Wood Majlis Table",
-  "brand": "Najd Living",
   "category": "coffee_table",
   "price": 640,
-  "mrp": null,
   "width_cm": 120,
   "depth_cm": 70,
   "height_cm": 40,
@@ -3767,35 +2430,19 @@
    "Walnut",
    "Bronze"
   ],
-  "materials": [
-   "Carved Walnut",
-   "Brass"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.6,
-  "attrs": {},
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "A hand-carved low table at floor-seat height.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "center",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "luxury",
-  "region": "saudi_arabia"
+  "seating_capacity": 0
  },
  {
   "id": "majlis-table-003",
   "name": "Mother-of-Pearl Low Table",
-  "brand": "Hijazi Interiors",
   "category": "coffee_table",
   "price": 580,
-  "mrp": null,
   "width_cm": 80,
   "depth_cm": 80,
   "height_cm": 36,
@@ -3808,35 +2455,19 @@
    "Cream",
    "Brass"
   ],
-  "materials": [
-   "Mother-of-Pearl",
-   "Sheesham"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.6,
-  "attrs": {},
   "image_url": "",
   "is_walkable": false,
   "shape": "round",
-  "description": "Inlaid mother-of-pearl low table.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "center",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "premium",
-  "region": "gcc"
+  "seating_capacity": 0
  },
  {
   "id": "majlis-rug-001",
   "name": "Persian Medallion Rug",
-  "brand": "Qasr Atelier",
   "category": "rug",
   "price": 699,
-  "mrp": null,
   "width_cm": 350,
   "depth_cm": 250,
   "height_cm": 1,
@@ -3849,34 +2480,19 @@
    "Maroon",
    "Gold"
   ],
-  "materials": [
-   "Wool"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.8,
-  "attrs": {},
   "image_url": "",
   "is_walkable": true,
   "shape": "rect",
-  "description": "A medallion-pattern rug to anchor the majlis.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "floor",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "luxury",
-  "region": "gcc"
+  "seating_capacity": 0
  },
  {
   "id": "majlis-rug-002",
   "name": "Sadu Geometric Rug",
-  "brand": "Sadu Co.",
   "category": "rug",
   "price": 420,
-  "mrp": null,
   "width_cm": 300,
   "depth_cm": 200,
   "height_cm": 1,
@@ -3889,35 +2505,19 @@
    "Sand",
    "Charcoal"
   ],
-  "materials": [
-   "Wool",
-   "Cotton Flatweave"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.5,
-  "attrs": {},
   "image_url": "",
   "is_walkable": true,
   "shape": "rect",
-  "description": "A sadu-geometric flatweave rug.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "floor",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "premium",
-  "region": "saudi_arabia"
+  "seating_capacity": 0
  },
  {
   "id": "majlis-rug-003",
   "name": "Najdi Heritage Rug",
-  "brand": "Najd Living",
   "category": "rug",
   "price": 760,
-  "mrp": null,
   "width_cm": 400,
   "depth_cm": 300,
   "height_cm": 1,
@@ -3930,34 +2530,19 @@
    "Emerald",
    "Cream"
   ],
-  "materials": [
-   "Wool"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.7,
-  "attrs": {},
   "image_url": "",
   "is_walkable": true,
   "shape": "rect",
-  "description": "An oversized heritage rug for a grand majlis.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "floor",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "luxury",
-  "region": "saudi_arabia"
+  "seating_capacity": 0
  },
  {
   "id": "majlis-side-001",
   "name": "Brass Tray Side Table",
-  "brand": "Qasr Atelier",
   "category": "side_table",
   "price": 230,
-  "mrp": null,
   "width_cm": 45,
   "depth_cm": 45,
   "height_cm": 55,
@@ -3970,36 +2555,19 @@
    "Brass",
    "Gold"
   ],
-  "materials": [
-   "Brass"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.5,
-  "attrs": {
-   "arm_height_cm": 55
-  },
   "image_url": "",
   "is_walkable": false,
   "shape": "round",
-  "description": "A removable brass tray side table.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "freestanding",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "premium",
-  "region": "gcc"
+  "seating_capacity": 0
  },
  {
   "id": "majlis-side-002",
   "name": "Octagonal Inlay Side Table",
-  "brand": "Hijazi Interiors",
   "category": "side_table",
   "price": 270,
-  "mrp": null,
   "width_cm": 50,
   "depth_cm": 50,
   "height_cm": 52,
@@ -4011,37 +2579,19 @@
    "Walnut",
    "Bronze"
   ],
-  "materials": [
-   "Sheesham",
-   "Mother-of-Pearl"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.4,
-  "attrs": {
-   "arm_height_cm": 52
-  },
   "image_url": "",
   "is_walkable": false,
   "shape": "round",
-  "description": "An octagonal inlaid side table.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "freestanding",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "premium",
-  "region": "gcc"
+  "seating_capacity": 0
  },
  {
   "id": "majlis-storage-001",
   "name": "Carved Wood Console",
-  "brand": "Najd Living",
   "category": "storage",
   "price": 879,
-  "mrp": null,
   "width_cm": 160,
   "depth_cm": 45,
   "height_cm": 85,
@@ -4053,34 +2603,19 @@
    "Walnut",
    "Bronze"
   ],
-  "materials": [
-   "Carved Walnut"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.6,
-  "attrs": {},
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "A carved console for the majlis perimeter.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "wall_hug",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "premium",
-  "region": "saudi_arabia"
+  "seating_capacity": 0
  },
  {
   "id": "majlis-storage-002",
   "name": "Mashrabiya Cabinet",
-  "brand": "Hijazi Interiors",
   "category": "storage",
   "price": 1190,
-  "mrp": null,
   "width_cm": 120,
   "depth_cm": 42,
   "height_cm": 160,
@@ -4093,35 +2628,19 @@
    "Walnut",
    "Brass"
   ],
-  "materials": [
-   "Mashrabiya Wood",
-   "Brass"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.7,
-  "attrs": {},
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "A latticework mashrabiya storage cabinet.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "wall_hug",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "luxury",
-  "region": "gcc"
+  "seating_capacity": 0
  },
  {
   "id": "majlis-decor-001",
   "name": "Geometric Islamic Wall Art",
-  "brand": "Qasr Atelier",
   "category": "decor",
   "price": 180,
-  "mrp": null,
   "width_cm": 90,
   "depth_cm": 4,
   "height_cm": 90,
@@ -4134,35 +2653,19 @@
    "Gold",
    "Charcoal"
   ],
-  "materials": [
-   "Brass",
-   "Wood"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.6,
-  "attrs": {},
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Geometric Islamic-pattern wall art.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "wall_hug",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "premium",
-  "region": "gcc"
+  "seating_capacity": 0
  },
  {
   "id": "majlis-decor-002",
   "name": "Arabic Calligraphy Panel",
-  "brand": "Najd Living",
   "category": "decor",
   "price": 220,
-  "mrp": null,
   "width_cm": 120,
   "depth_cm": 4,
   "height_cm": 80,
@@ -4175,35 +2678,19 @@
    "Bronze",
    "Cream"
   ],
-  "materials": [
-   "Wood",
-   "Brass"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.7,
-  "attrs": {},
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "A framed Arabic calligraphy panel.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "wall_hug",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "premium",
-  "region": "saudi_arabia"
+  "seating_capacity": 0
  },
  {
   "id": "majlis-decor-003",
   "name": "Velvet Majlis Drapery Set",
-  "brand": "Khaleeji Design",
   "category": "decor",
   "price": 340,
-  "mrp": null,
   "width_cm": 150,
   "depth_cm": 8,
   "height_cm": 260,
@@ -4216,34 +2703,19 @@
    "Maroon",
    "Gold"
   ],
-  "materials": [
-   "Velvet"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.5,
-  "attrs": {},
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "Floor-length velvet drapery for the majlis.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "wall_hug",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "luxury",
-  "region": "gcc"
+  "seating_capacity": 0
  },
  {
   "id": "majlis-light-001",
   "name": "Brass Arabic Lantern",
-  "brand": "Qasr Atelier",
   "category": "lighting",
   "price": 260,
-  "mrp": null,
   "width_cm": 40,
   "depth_cm": 40,
   "height_cm": 55,
@@ -4256,35 +2728,19 @@
    "Brass",
    "Gold"
   ],
-  "materials": [
-   "Brass",
-   "Glass"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.6,
-  "attrs": {},
   "image_url": "",
   "is_walkable": false,
   "shape": "round",
-  "description": "A pierced-brass Arabic lantern.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "freestanding",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "premium",
-  "region": "gcc"
+  "seating_capacity": 0
  },
  {
   "id": "majlis-light-002",
   "name": "Crystal Majlis Chandelier",
-  "brand": "Khaleeji Design",
   "category": "lighting",
   "price": 1490,
-  "mrp": 1790,
   "width_cm": 80,
   "depth_cm": 80,
   "height_cm": 90,
@@ -4297,35 +2753,19 @@
    "Gold",
    "Brass"
   ],
-  "materials": [
-   "Crystal",
-   "Brass"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.8,
-  "attrs": {},
   "image_url": "",
   "is_walkable": false,
   "shape": "round",
-  "description": "A statement crystal chandelier for the majlis.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "center",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "luxury",
-  "region": "gcc"
+  "seating_capacity": 0
  },
  {
   "id": "majlis-light-003",
   "name": "Moroccan Pendant Lamp",
-  "brand": "Hijazi Interiors",
   "category": "lighting",
   "price": 320,
-  "mrp": null,
   "width_cm": 45,
   "depth_cm": 45,
   "height_cm": 60,
@@ -4337,35 +2777,19 @@
    "Brass",
    "Amber"
   ],
-  "materials": [
-   "Brass",
-   "Glass"
-  ],
-  "in_stock": true,
-  "delivery_days": 14,
-  "rating": 4.5,
-  "attrs": {},
   "image_url": "",
   "is_walkable": false,
   "shape": "round",
-  "description": "A Moroccan-style pierced pendant lamp.",
   "room_types": [
    "majlis"
   ],
-  "placement_type": "center",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "formal",
-  "luxury_tier": "premium",
-  "region": "gcc"
+  "seating_capacity": 0
  },
  {
   "id": "bed-001",
   "name": "Oslo Upholstered Queen Bed",
-  "brand": "Vanna Home",
   "category": "bed",
   "price": 899,
-  "mrp": 1079,
   "width_cm": 165,
   "depth_cm": 215,
   "height_cm": 110,
@@ -4376,35 +2800,19 @@
    "Ivory",
    "Oak"
   ],
-  "materials": [
-   "Linen",
-   "Oak"
-  ],
-  "in_stock": true,
-  "delivery_days": 10,
-  "rating": 4.7,
-  "attrs": {},
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "A restful anchor for the bedroom.",
   "room_types": [
    "bedroom"
   ],
-  "placement_type": "wall_hug",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "family",
-  "luxury_tier": "premium",
-  "region": "global"
+  "seating_capacity": 0
  },
  {
   "id": "bed-002",
   "name": "Stockholm Double Bed",
-  "brand": "Studio Kova",
   "category": "bed",
   "price": 649,
-  "mrp": null,
   "width_cm": 150,
   "depth_cm": 205,
   "height_cm": 100,
@@ -4416,34 +2824,19 @@
    "Oat",
    "Walnut"
   ],
-  "materials": [
-   "Oak"
-  ],
-  "in_stock": true,
-  "delivery_days": 10,
-  "rating": 4.5,
-  "attrs": {},
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "A restful anchor for the bedroom.",
   "room_types": [
    "bedroom"
   ],
-  "placement_type": "wall_hug",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "family",
-  "luxury_tier": "standard",
-  "region": "global"
+  "seating_capacity": 0
  },
  {
   "id": "bed-003",
   "name": "Aspen King Bed",
-  "brand": "Studio Kova",
   "category": "bed",
   "price": 1190,
-  "mrp": 1399,
   "width_cm": 200,
   "depth_cm": 215,
   "height_cm": 120,
@@ -4455,35 +2848,19 @@
    "Charcoal",
    "Walnut"
   ],
-  "materials": [
-   "Velvet",
-   "Walnut"
-  ],
-  "in_stock": true,
-  "delivery_days": 10,
-  "rating": 4.8,
-  "attrs": {},
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "A restful anchor for the bedroom.",
   "room_types": [
    "bedroom"
   ],
-  "placement_type": "wall_hug",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "family",
-  "luxury_tier": "luxury",
-  "region": "global"
+  "seating_capacity": 0
  },
  {
   "id": "bed-004",
   "name": "Lumio Platform Queen",
-  "brand": "Vanna Home",
   "category": "bed",
   "price": 760,
-  "mrp": null,
   "width_cm": 168,
   "depth_cm": 210,
   "height_cm": 95,
@@ -4495,26 +2872,12 @@
    "Warm Grey",
    "Oak"
   ],
-  "materials": [
-   "Veneer",
-   "Oak"
-  ],
-  "in_stock": true,
-  "delivery_days": 10,
-  "rating": 4.4,
-  "attrs": {},
   "image_url": "",
   "is_walkable": false,
   "shape": "rect",
-  "description": "A restful anchor for the bedroom.",
   "room_types": [
    "bedroom"
   ],
-  "placement_type": "wall_hug",
-  "seating_capacity": 0,
-  "is_modular": false,
-  "formality": "family",
-  "luxury_tier": "standard",
-  "region": "global"
+  "seating_capacity": 0
  }
 ]

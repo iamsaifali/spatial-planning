@@ -1,10 +1,10 @@
-"""Catalog migration / backfill for the foundational taxonomy fields.
+"""Catalog migration / backfill for the room-type / seating-capacity fields.
 
-Existing catalog rows (and any re-generated seed) predate the room_type / placement /
-seating-capacity / luxury / region fields. Rather than rewrite the JSON seed, we
-backfill missing fields at load time so every legacy product keeps working as a
-generic living-room item. The only field that needs computation is seating_capacity,
-which is inferred from category + width; a static model default can't do that.
+Existing catalog rows (and any re-generated seed) may predate the room_types /
+seating_capacity fields. Rather than rewrite the JSON seed, we backfill missing fields
+at load time so every legacy product keeps working as a generic living-room item. The
+only field that needs computation is seating_capacity, which is inferred from category +
+width; a static model default can't do that.
 
 This is intentionally pure and side-effect-free so it is easy to unit-test and so the
 same defaults apply no matter where the catalog is loaded from.
@@ -17,14 +17,9 @@ _BENCH_SEAT_CATEGORIES = {"sofa", "majlis_sofa", "majlis_seating"}
 # Nominal width (cm) occupied by one seated person on a bench/sofa.
 SEAT_WIDTH_CM = 75.0
 
-# Defaults for the additive taxonomy fields (mirror app/models/products.py).
+# Defaults for the additive room-type fields (mirror app/models/products.py).
 _DEFAULTS: dict[str, object] = {
     "room_types": ["living_room"],
-    "placement_type": "wall_hug",
-    "is_modular": False,
-    "formality": "family",
-    "luxury_tier": "standard",
-    "region": "global",
 }
 
 

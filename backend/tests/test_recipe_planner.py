@@ -44,7 +44,7 @@ SALON = {
 # recipe reproduces the pre-gating full-room layout byte-for-byte (golden hashes unchanged).
 _ALL_LIVING_PIECES = ["rug", "coffee_table", "tv_unit", "floor_lamp", "side_table", "console", "plant", "vases"]
 LIVING_PREFS = Preferences(
-    styles=["modern"], budget_tier="mid", total_budget=8000, room_purpose="entertaining",
+    styles=["modern"],
     included_pieces=_ALL_LIVING_PIECES,
 )
 
@@ -53,8 +53,8 @@ LIVING_PREFS = Preferences(
 # applies to the LIVING room too, so the corner flower-pot-and-plant grew from decor-005 (42x42) to
 # decor-010 (48x48) at the SAME position - every other piece byte-identical; the console vases (a "vase"
 # category) are untouched. Verified via before/after diff.
-GOLDEN_LIVING_PID = "lay_e70c868492"  # legacy planner
-GOLDEN_LIVING_RECIPE = "lay_60183a9a6d"  # recipe planner (current flow): chair placed BEFORE the console (steered to the door-free flank, flush to the sofa/rug); console on the wall away from the seating, or skipped with a notice if none; the door-side chair drops only when the group is jammed by the entry. Rug now runs AFTER the seating group and sizes "front legs on" to cover the whole conversation zone (sofa + flanking chairs), so it is larger than the old primary-sofa-only rug (re-blessed from lay_2bf990bc07).
+GOLDEN_LIVING_PID = "lay_dc1d3a1f82"  # legacy planner
+GOLDEN_LIVING_RECIPE = "lay_6f5ce292a8"  # recipe planner (current flow): chair placed BEFORE the console (steered to the door-free flank, flush to the sofa/rug); console on the wall away from the seating, or skipped with a notice if none; the door-side chair drops only when the group is jammed by the entry. Rug now runs AFTER the seating group and sizes "front legs on" to cover the whole conversation zone (sofa + flanking chairs), so it is larger than the old primary-sofa-only rug (re-blessed from lay_2bf990bc07).
 
 
 @contextlib.contextmanager

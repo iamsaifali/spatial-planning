@@ -1,7 +1,7 @@
-"""Foundational taxonomy schema + catalog backfill (Saudi/Majlis groundwork).
+"""Catalog schema + backfill: room_types default + seating-capacity inference.
 
 These fields are additive and must not change geometry, rendering, or existing
-living-room recommendations - only carry intent for future room-type support.
+living-room recommendations - only carry room-type intent.
 """
 
 import pytest
@@ -14,11 +14,10 @@ API = "/api/v1"
 
 
 def _raw(**over) -> dict:
-    """A legacy-shaped catalog row (no taxonomy fields), as in catalog.json."""
+    """A legacy-shaped catalog row (no room_types), as in catalog.json."""
     base = {
         "id": "x-1",
         "name": "Test Sofa",
-        "brand": "Acme",
         "category": "sofa",
         "price": 500,
         "width_cm": 220,
@@ -26,9 +25,6 @@ def _raw(**over) -> dict:
         "height_cm": 80,
         "style_tags": ["modern"],
         "colors": ["Ivory"],
-        "materials": ["Linen"],
-        "delivery_days": 5,
-        "rating": 4.2,
     }
     base.update(over)
     return base
@@ -37,14 +33,9 @@ def _raw(**over) -> dict:
 # --- backfill / migration ---------------------------------------------------------
 
 
-def test_backfill_fills_defaults_for_legacy_row():
+def test_backfill_fills_default_room_types_for_legacy_row():
     out = backfill_product(_raw())
     assert out["room_types"] == ["living_room"]
-    assert out["placement_type"] == "wall_hug"
-    assert out["region"] == "global"
-    assert out["formality"] == "family"
-    assert out["luxury_tier"] == "standard"
-    assert out["is_modular"] is False
 
 
 def test_backfill_infers_seating_capacity_from_width():
@@ -64,10 +55,9 @@ def test_infer_seating_capacity_units():
 
 
 def test_backfill_does_not_override_explicit_values():
-    out = backfill_product(_raw(room_types=["majlis"], seating_capacity=8, region="saudi_arabia"))
+    out = backfill_product(_raw(room_types=["majlis"], seating_capacity=8))
     assert out["room_types"] == ["majlis"]
     assert out["seating_capacity"] == 8
-    assert out["region"] == "saudi_arabia"
 
 
 def test_backfill_is_pure_no_shared_mutable_default():
@@ -80,62 +70,40 @@ def test_backfill_is_pure_no_shared_mutable_default():
 # --- model accepts both legacy and new shapes -------------------------------------
 
 
-def test_product_defaults_when_constructed_without_taxonomy():
+def test_product_defaults_when_constructed_without_room_types():
     p = Product(**_raw())
     assert p.room_types == ["living_room"]
-    assert p.placement_type == "wall_hug"
-    assert p.region == "global"
     assert p.seating_capacity == 0  # model default; loader backfills inferred values
 
 
-def test_product_accepts_full_majlis_taxonomy():
-    p = Product(
-        **_raw(
-            id="majlis-sofa-001",
-            category="sofa",
-            room_types=["majlis", "living_room"],
-            placement_type="perimeter",
-            seating_capacity=3,
-            is_modular=True,
-            formality="formal",
-            luxury_tier="luxury",
-            region="saudi_arabia",
-        )
-    )
-    assert p.placement_type == "perimeter"
-    assert p.luxury_tier == "luxury"
-    assert p.is_modular is True
+def test_product_accepts_explicit_room_types():
+    p = Product(**_raw(id="majlis-sofa-001", category="sofa",
+                       room_types=["majlis", "living_room"], seating_capacity=3))
+    assert p.room_types == ["majlis", "living_room"]
+    assert p.seating_capacity == 3
 
 
-def test_product_rejects_unknown_enum_values():
+def test_product_rejects_removed_metadata_fields():
+    # the taxonomy / commerce metadata fields were removed from the model (extra=forbid),
+    # so a stray legacy key must be rejected rather than silently carried.
     with pytest.raises(Exception):
         Product(**_raw(region="mars"))
     with pytest.raises(Exception):
-        Product(**_raw(luxury_tier="diamond"))
+        Product(**_raw(brand="Acme"))
 
 
 # --- preferences ------------------------------------------------------------------
 
 
-def test_preferences_new_fields_optional_and_default_none():
+def test_preferences_optional_fields_default_none():
     p = Preferences()
-    assert p.room_type is None and p.region is None and p.seating_capacity is None
-    assert p.formality is None and p.luxury_tier is None and p.materials == []
+    assert p.room_type is None and p.seating_capacity is None
 
 
-def test_preferences_accepts_new_fields():
-    p = Preferences(
-        styles=["modern"],
-        room_type="majlis",
-        region="saudi_arabia",
-        seating_capacity=10,
-        formality="formal",
-        luxury_tier="luxury",
-        materials=["Velvet", "Carved Wood"],
-    )
-    assert p.room_type == "majlis"
+def test_preferences_accepts_room_type_and_seating():
+    p = Preferences(styles=["modern"], room_type="bedroom", seating_capacity=10)
+    assert p.room_type == "bedroom"
     assert p.seating_capacity == 10
-    assert p.materials == ["Velvet", "Carved Wood"]
 
 
 # --- loaded catalog + repository filtering ----------------------------------------
@@ -145,28 +113,19 @@ def test_loaded_catalog_is_backfilled(catalog_repo):
     # 100 living-room-origin + 26 Majlis seed + 4 bedroom beds = 130
     products = catalog_repo.all()
     assert len(products) == 130
-    # the original living-room cohort keeps its backfilled region/placement defaults
-    # (bedroom re-tagging only added a room_type; it changed no other field)
     living = [p for p in products if "living_room" in p.room_types and p.category != "bed"]
     assert len(living) == 100
-    for p in living:
-        assert p.region == "global"
-        assert p.placement_type == "wall_hug"
     # seating inference still holds across the legacy living-room catalog
     legacy_sofas = [p for p in catalog_repo.in_category("sofa") if "majlis" not in p.room_types]
     assert legacy_sofas and all(s.seating_capacity >= 1 for s in legacy_sofas)
     assert all(t.seating_capacity == 0 for t in catalog_repo.in_category("tv_unit"))
 
 
-def test_repository_room_type_and_region_filters(catalog_repo):
+def test_repository_room_type_filters(catalog_repo):
     # re-tagging kept living_room (so the count is unchanged at 100); beds are bedroom-only.
     assert len(catalog_repo.in_room_type("living_room")) == 100
     assert len(catalog_repo.in_room_type("majlis")) == 26
     assert len(catalog_repo.in_room_type("bedroom")) == 27  # 4 beds + 23 re-tagged
 
-    items, total = catalog_repo.search(room_type="living_room")
+    _items, total = catalog_repo.search(room_type="living_room")
     assert total == 100
-    items, total = catalog_repo.search(region="saudi_arabia")
-    assert total == 10  # Majlis seed adds Saudi-origin products
-    items, total = catalog_repo.search(luxury_tier="standard")
-    assert total == 102  # 100 living-origin standard + 2 standard beds

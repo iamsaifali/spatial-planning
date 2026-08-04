@@ -9,10 +9,9 @@ from spatial_planning.models.products import Product, placement_group
 from spatial_planning.services.catalog.backfill import backfill_product
 
 SORTS = {
-    "relevance": lambda p: (-p.rating, p.price),
+    "relevance": lambda p: (p.price, p.id),
     "price_asc": lambda p: (p.price, p.id),
     "price_desc": lambda p: (-p.price, p.id),
-    "rating": lambda p: (-p.rating, p.price),
 }
 
 
@@ -99,14 +98,10 @@ class CatalogRepository:
         category: str | None = None,
         style: str | None = None,
         color: str | None = None,
-        material: str | None = None,
         min_price: int | None = None,
         max_price: int | None = None,
-        in_stock: bool | None = None,
         q: str | None = None,
         room_type: str | None = None,
-        region: str | None = None,
-        luxury_tier: str | None = None,
         sort: str = "relevance",
         page: int = 1,
         page_size: int = 24,
@@ -116,27 +111,18 @@ class CatalogRepository:
             items = [p for p in items if style in p.style_tags]
         if room_type:
             items = [p for p in items if room_type in p.room_types]
-        if region:
-            items = [p for p in items if p.region == region]
-        if luxury_tier:
-            items = [p for p in items if p.luxury_tier == luxury_tier]
         if color:
             needle = color.lower()
             items = [p for p in items if any(needle in c.lower() for c in p.colors)]
-        if material:
-            needle = material.lower()
-            items = [p for p in items if any(needle in m.lower() for m in p.materials)]
         if min_price is not None:
             items = [p for p in items if p.price >= min_price]
         if max_price is not None:
             items = [p for p in items if p.price <= max_price]
-        if in_stock is not None:
-            items = [p for p in items if p.in_stock == in_stock]
         if q:
             needle = q.lower()
             items = [
                 p for p in items
-                if needle in p.name.lower() or needle in p.brand.lower() or needle in p.category
+                if needle in p.name.lower() or needle in p.category
             ]
         items = sorted(items, key=SORTS.get(sort, SORTS["relevance"]))
         total = len(items)

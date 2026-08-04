@@ -26,9 +26,6 @@ function applyRoomType(rt: RoomType) {
   setPreferences({
     ...preferences,
     room_type: rt === "bedroom" ? "bedroom" : null,
-    region: null,
-    formality: null,
-    luxury_tier: null,
     seating_capacity: null,
     styles: preferences.styles.filter((s) => !CULTURAL_TAGS.has(s)),
   });

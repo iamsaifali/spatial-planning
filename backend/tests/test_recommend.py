@@ -29,15 +29,6 @@ def test_selection_deterministic(rect_room, catalog_repo):
     assert r1.premium.product.id == r2.premium.product.id
 
 
-def test_budget_tier_shifts_best(rect_room, catalog_repo):
-    analysis = analyze_room(rect_room)
-    zones = zones_for_category("sofa", analysis, [], catalog_repo.category_stats())
-    cheap = select_slots("sofa", zones, Preferences(budget_tier="budget"), [], catalog_repo)
-    pricey = select_slots("sofa", zones, Preferences(budget_tier="premium"), [], catalog_repo)
-    assert cheap.best is not None and pricey.best is not None
-    assert cheap.best.product.price <= pricey.best.product.price
-
-
 def test_rug_compat_facts_present(rect_room, catalog_repo):
     analysis = analyze_room(rect_room)
     stats = catalog_repo.category_stats()

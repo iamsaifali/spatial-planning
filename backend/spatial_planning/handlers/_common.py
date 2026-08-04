@@ -16,7 +16,6 @@ def _pseudo_product(item: PlacedItem) -> Product:
     return Product(
         id=item.product_id,
         name=spec.name,
-        brand="Your item",
         category="custom",
         price=0,
         width_cm=spec.width_cm,
@@ -24,10 +23,6 @@ def _pseudo_product(item: PlacedItem) -> Product:
         height_cm=spec.height_cm,
         style_tags=[],
         colors=[],
-        materials=[],
-        in_stock=True,
-        delivery_days=1,
-        rating=0,
         image_url="",
         is_walkable=False,
     )

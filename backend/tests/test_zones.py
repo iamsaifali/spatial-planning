@@ -99,9 +99,9 @@ from spatial_planning.services.spatial.geometry_utils import (  # noqa: E402
 )
 
 _CHAISE = Product(
-    id="chaise-z-1", name="Chaise", brand="B", category="chaise-lounge", price=700,
+    id="chaise-z-1", name="Chaise", category="chaise-lounge", price=700,
     width_cm=145.0, depth_cm=85.0, height_cm=82.0, style_tags=["modern"], colors=["Grey"],
-    materials=["Linen"], delivery_days=4, rating=4.2, is_walkable=False, seating_capacity=1,
+    is_walkable=False, seating_capacity=1,
 )
 
 # A room roomy enough on each sofa flank to place a chaise-lounge that only PARTIALLY clips the
@@ -225,9 +225,9 @@ def test_plant_secondary_zone_beside_the_console(catalog_repo):
 def _bedroom_product(pid, cat, w, d, seats=0, walkable=False):
     from spatial_planning.models.products import Product
     return Product(
-        id=pid, name=cat.title(), brand="B", category=cat, price=400,
+        id=pid, name=cat.title(), category=cat, price=400,
         width_cm=w, depth_cm=d, height_cm=75.0, style_tags=["modern"], colors=["Grey"],
-        materials=[], delivery_days=5, rating=4.2, is_walkable=walkable, seating_capacity=seats,
+        is_walkable=walkable, seating_capacity=seats,
     )
 
 

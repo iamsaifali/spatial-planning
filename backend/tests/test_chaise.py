@@ -58,12 +58,11 @@ TINY = {  # too cramped for a standalone chaise: no 150cm-clear corner survives
     "doors": [{"id": "d1", "wall_index": 0, "offset_cm": 20, "width_cm": 80}],
     "windows": [],
 }
-GOLDEN_DEFAULT_PID = "lay_357bd11cb8"  # essentials-only default (unchanged by the opt-in chaise)
+GOLDEN_DEFAULT_PID = "lay_ba2a72c11d"  # essentials-only default (unchanged by the opt-in chaise)
 
 _CHAISE_PRODUCT = {
     "id": "chaise-test-001",
     "name": "Test Chaise Lounge",
-    "brand": "Test Brand",
     "category": "chaise-lounge",
     "price": 720,
     "width_cm": 145,
@@ -71,15 +70,9 @@ _CHAISE_PRODUCT = {
     "height_cm": 82,
     "style_tags": ["modern"],
     "colors": ["Grey"],
-    "materials": ["Linen"],
-    "in_stock": True,
-    "delivery_days": 4,
-    "rating": 4.2,
-    "attrs": {"seat_height_cm": 42},
     "image_url": "",
     "is_walkable": False,
     "shape": "rect",
-    "description": "A standalone lounge chaise.",
     "room_types": ["living_room"],
     "seating_capacity": 1,
 }

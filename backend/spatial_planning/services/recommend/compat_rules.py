@@ -76,25 +76,10 @@ def compat_score(product: Product, placed: list[PlacedProduct]) -> tuple[float, 
             score = min(score, 1.0 if fits_rug else 0.4)
         return score, facts
 
-    if cat == "side_table" and sofa is not None:
-        arm = sofa.attrs.get("arm_height_cm")
-        if arm:
-            diff = abs(product.height_cm - arm)
-            facts["arm_height_delta_cm"] = round(diff, 1)
-            return (1.0 if diff <= 5 else 0.6 if diff <= 12 else 0.35), facts
-
     if cat == "tv_unit" and sofa is not None:
         ratio = product.width_cm / sofa.width_cm
         facts["tv_to_sofa_ratio"] = round(ratio, 2)
         return (1.0 if ratio >= 0.75 else 0.55 if ratio >= 0.55 else 0.35), facts
-
-    if cat == "accent_chair" and sofa is not None:
-        seat = product.attrs.get("seat_height_cm")
-        sofa_seat = sofa.attrs.get("seat_height_cm")
-        if seat and sofa_seat:
-            diff = abs(seat - sofa_seat)
-            facts["seat_height_delta_cm"] = round(diff, 1)
-            return (1.0 if diff <= 5 else 0.7), facts
 
     # style coherence with whatever is already in the room
     if placed:

@@ -3,26 +3,25 @@
 import { Info, Move3d } from "lucide-react";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/Button";
-import { savingsOf, useMoney } from "@/lib/format";
+import { useMoney } from "@/lib/format";
 import { usePlannerStore } from "@/stores/plannerStore";
 import { useProductStore } from "@/stores/productStore";
 import { useUiStore } from "@/stores/uiStore";
 import { PlacedItemsTray } from "./PlacedItemsTray";
 
-export function useRoomTotal(): { total: number; count: number; save: number; savePct: number } {
+export function useRoomTotal(): { total: number; count: number } {
   const items = usePlannerStore((s) => s.items);
   const byId = useProductStore((s) => s.byId);
   return useMemo(() => {
     const products = items.map((i) => byId[i.product_id]).filter(Boolean);
     const total = products.reduce((sum, p) => sum + p.price, 0);
-    const { save, pct } = savingsOf(products);
-    return { total, count: products.length, save, savePct: pct };
+    return { total, count: products.length };
   }, [items, byId]);
 }
 
 /** Desktop/tablet bottom bar: placed-items tray, estimated total and the 3D view. */
 export function BottomBar() {
-  const { total, count, save, savePct } = useRoomTotal();
+  const { total, count } = useRoomTotal();
   const money = useMoney();
   const setSheet = useUiStore((s) => s.setSheet);
 
@@ -42,11 +41,6 @@ export function BottomBar() {
           <span className="ml-1.5 text-[11px] font-medium text-ink-faint">
             {count} item{count !== 1 ? "s" : ""}
           </span>
-          {save > 0 && (
-            <span className="ml-1.5 hidden text-[11px] font-semibold text-success lg:inline">
-              You save {money(save)} ({savePct}%)
-            </span>
-          )}
         </p>
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-2">

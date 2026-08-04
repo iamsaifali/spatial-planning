@@ -13,7 +13,7 @@ ROOM = {
     "doors": [{"id": "d1", "wall_index": 0, "offset_cm": 180, "width_cm": 90, "swing": "inward", "hinge": "left"}],
     "windows": [{"id": "w1", "wall_index": 2, "offset_cm": 150, "width_cm": 160}],
 }
-PREFS = {"styles": ["modern"], "budget_tier": "mid", "total_budget": 8000, "room_purpose": "entertaining"}
+PREFS = {"styles": ["modern"]}
 
 
 def _payload(**over):

@@ -179,8 +179,8 @@ export function Furniture3D({ item, product }: { item: PlacedItem; product: Prod
   const d = product.depth_cm * CM;
   const h = product.height_cm * CM;
   const color = product.category === "custom" ? "#B8B2A9" : productFill(product.colors);
-  const seatH = (product.attrs?.seat_height_cm ?? 43) * CM;
-  const armH = (product.attrs?.arm_height_cm ?? 60) * CM;
+  const seatH = 43 * CM;
+  const armH = 60 * CM;
 
   let body: React.ReactNode;
   switch (product.category) {

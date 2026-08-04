@@ -13,8 +13,8 @@ from spatial_planning.models.preferences import Preferences
 from spatial_planning.services.recipe.equivalence import compare_layouts
 from spatial_planning.services.recommend.orchestrator import plan_layout, plan_layout_from_recipe
 
-GOLDEN_LIVING_PID = "lay_e70c868492"  # legacy
-GOLDEN_LIVING_RECIPE = "lay_60183a9a6d"  # recipe planner (current flow): chair placed BEFORE the console (steered to the door-free flank, flush to the sofa/rug); console on the wall away from the seating, or skipped with a notice if none; the door-side chair drops only when the group is jammed by the entry.
+GOLDEN_LIVING_PID = "lay_dc1d3a1f82"  # legacy
+GOLDEN_LIVING_RECIPE = "lay_6f5ce292a8"  # recipe planner (current flow): chair placed BEFORE the console (steered to the door-free flank, flush to the sofa/rug); console on the wall away from the seating, or skipped with a notice if none; the door-side chair drops only when the group is jammed by the entry.
 
 LIVING_ROOM = {
     "vertices": [[0, 0], [480, 0], [480, 360], [0, 360]],
@@ -32,7 +32,7 @@ SALON = {
 # recipe reproduces the pre-gating full-room layout byte-for-byte (golden hashes unchanged).
 _ALL_LIVING_PIECES = ["rug", "coffee_table", "tv_unit", "floor_lamp", "side_table", "console", "plant", "vases"]
 LIVING_PREFS = Preferences(
-    styles=["modern"], budget_tier="mid", total_budget=8000, room_purpose="entertaining",
+    styles=["modern"],
     included_pieces=_ALL_LIVING_PIECES,
 )
 
@@ -139,10 +139,7 @@ ROOMS = {
 LIVING_CASES = [
     Preferences(),
     Preferences(styles=["modern"]),
-    Preferences(budget_tier="budget"),
-    Preferences(budget_tier="premium", total_budget=15000),
-    Preferences(styles=["scandinavian", "minimal"], colors=["Ivory", "Oak"], room_purpose="family"),
-    Preferences(room_purpose="compact_living"),
+    Preferences(styles=["scandinavian", "minimal"], colors=["Ivory", "Oak"]),
 ]
 def _assert_equivalent(spec, room_type, prefs, placed=None):
     room = _room(spec)

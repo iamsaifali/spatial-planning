@@ -47,22 +47,20 @@ TINY = {  # too cramped for a separate dining pocket beside the seating
     "doors": [{"id": "d1", "wall_index": 0, "offset_cm": 20, "width_cm": 80}],
     "windows": [],
 }
-GOLDEN_DEFAULT_PID = "lay_357bd11cb8"  # essentials-only default (unchanged by the opt-in dining set)
+GOLDEN_DEFAULT_PID = "lay_ba2a72c11d"  # essentials-only default (unchanged by the opt-in dining set)
 
 _TABLE = {
-    "id": "dining-table-001", "name": "Test Dining Table", "brand": "Test Brand",
+    "id": "dining-table-001", "name": "Test Dining Table",
     "category": "dining-table", "price": 620, "width_cm": 150, "depth_cm": 90, "height_cm": 75,
-    "style_tags": ["modern"], "colors": ["Oak"], "materials": ["Wood"], "in_stock": True,
-    "delivery_days": 4, "rating": 4.5, "attrs": {}, "image_url": "", "is_walkable": False,
-    "shape": "rect", "description": "A dining table.", "room_types": ["living_room"],
+    "style_tags": ["modern"], "colors": ["Oak"], "image_url": "", "is_walkable": False,
+    "shape": "rect", "room_types": ["living_room"],
     "seating_capacity": 0,
 }
 _CHAIR = {
-    "id": "dining-chair-001", "name": "Test Dining Chair", "brand": "Test Brand",
+    "id": "dining-chair-001", "name": "Test Dining Chair",
     "category": "chair", "price": 90, "width_cm": 48, "depth_cm": 52, "height_cm": 92,
-    "style_tags": ["modern"], "colors": ["Oak"], "materials": ["Wood"], "in_stock": True,
-    "delivery_days": 4, "rating": 4.4, "attrs": {}, "image_url": "", "is_walkable": False,
-    "shape": "rect", "description": "A dining chair.", "room_types": ["living_room"],
+    "style_tags": ["modern"], "colors": ["Oak"], "image_url": "", "is_walkable": False,
+    "shape": "rect", "room_types": ["living_room"],
     "seating_capacity": 1,
 }
 

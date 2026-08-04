@@ -48,20 +48,6 @@ export function formatDimsLabelled(w: number, d: number, h: number): string {
   return `${Math.round(w)}W × ${Math.round(d)}D × ${Math.round(h)}H cm`;
 }
 
-export function savingsOf(items: { mrp?: number | null; price: number }[]): {
-  save: number;
-  pct: number;
-} {
-  let mrpTotal = 0;
-  let priceTotal = 0;
-  for (const item of items) {
-    priceTotal += item.price;
-    mrpTotal += item.mrp && item.mrp > item.price ? item.mrp : item.price;
-  }
-  const save = mrpTotal - priceTotal;
-  return { save, pct: mrpTotal > 0 ? Math.round((save / mrpTotal) * 100) : 0 };
-}
-
 export function clamp(value: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, value));
 }

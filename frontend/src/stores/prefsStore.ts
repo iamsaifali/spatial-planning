@@ -19,8 +19,10 @@ export const usePrefsStore = create<PrefsState>()(
       setPreferences: (preferences) => set({ preferences }),
       markQuizSeen: () => set({ quizSeen: true }),
     }),
-    // v2: preference fields are currency-neutral (total_budget in base currency)
-    // rehydrated after mount (PlannerShell) so SSR and first client paint match
-    { name: "zory-prefs-v2", skipHydration: true },
+    // v3: dropped the retired taxonomy/commerce preference fields (budget_tier, total_budget,
+    // room_purpose, region, formality, luxury_tier, materials). The bump discards any stale v2
+    // state so a returning client never posts a now-forbidden extra key to /assist/layout.
+    // Rehydrated after mount (PlannerShell) so SSR and first client paint match.
+    { name: "zory-prefs-v3", skipHydration: true },
   ),
 );
