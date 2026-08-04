@@ -2015,6 +2015,11 @@ def _lounge_light_zones(
     sd = min(s.get("max_d", 45.0), 50.0)
     blockers = _placed_blockers(placed, buffer_cm=5.0)
     inner = analysis.polygon.buffer(-6.0)
+    # Keep the lamp OUT of any door swing (+ a 30cm keep-out): tucked off the sofa's foot it can otherwise
+    # land right in the door's path when the lounge sofa sits by the door corner.
+    swing = unary_union(list(analysis.swing_arcs.values())).buffer(30.0) if analysis.swing_arcs else None
+    # And out of any WINDOW strip - a ~150cm floor lamp in front of the glass blocks the light (BLOCKS_WINDOW).
+    win = unary_union([strip for strip, _sill in analysis.window_strips.values()]) if analysis.window_strips else None
     bed = _find_placed(placed, "bed")
     bed_pt = (bed[0].x, bed[0].y) if bed is not None else (analysis.polygon.centroid.x, analysis.polygon.centroid.y)
 
@@ -2031,7 +2036,9 @@ def _lounge_light_zones(
             cx = item.x + w[0] * sign * off + f[0] * fwd
             cy = item.y + w[1] * sign * off + f[1] * fwd
             poly = item_polygon(cx, cy, sw, sd, item.rotation_deg)
-            if inner.contains(poly) and (blockers.is_empty or not poly.intersects(blockers)):
+            if (inner.contains(poly) and (blockers.is_empty or not poly.intersects(blockers))
+                    and (swing is None or not poly.intersects(swing))
+                    and (win is None or not poly.intersects(win))):
                 return [_frame_zone("lighting", 0, poly, 0.7, item.rotation_deg, (cx, cy), f, w, sd, sw, [R_FLEXIBLE_SPOT], "lounge_side", kind="free")]
     return []
 

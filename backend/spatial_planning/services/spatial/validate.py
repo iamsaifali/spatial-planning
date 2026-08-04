@@ -301,6 +301,9 @@ def _pair_findings(
 ) -> list[Finding]:
     findings: list[Finding] = []
     cat = placement_group(product.category)  # placement role (handles store categories)
+    # A BED in the scene means this is a bedroom: the TV faces the BED, not a (lounge) sofa, so a
+    # sofa<->TV viewing-distance complaint is spurious here (the lounge sofa is a separate sitting area).
+    has_bed = any(placement_group(op.category) == "bed" for _oi, op, _op in others)
 
     for other_item, other_product, other_poly in others:
         ocat = placement_group(other_product.category)
@@ -360,7 +363,7 @@ def _pair_findings(
             # d is the floor GAP between the footprints (eye-to-screen is ~45 cm more), so a
             # ~160 cm gap (~205 cm viewing) is the real "too close" point - a small room's
             # naturally-shorter distance isn't flagged as a defect.
-            if dot(f, to_tv) > 0.7 and d < 160.0:
+            if dot(f, to_tv) > 0.7 and d < 160.0 and not has_bed:
                 findings.append(
                     Finding(
                         code=TV_TOO_CLOSE,

@@ -1260,7 +1260,11 @@ def _template_issues(
 
     sofas = [p for p in resp.placements if p.category == "sofa"]
     tvs = [p for p in resp.placements if p.category == "tv_unit"]
-    if tv_requested and sofas and tvs:
+    beds = [p for p in resp.placements if p.category == "bed"]
+    # The sofa<->TV alignment gate is a LIVING-ROOM rule. In a BEDROOM the TV faces the BED (its own
+    # bed<->TV gate below), and any sofa is a SEPARATE lounge - so the TV need not align with it. Running
+    # this block in a bedroom wrongly drops every TV-placing template (the lounge sofa doesn't face the TV).
+    if tv_requested and sofas and tvs and not beds:
         sofa, tv = sofas[0], tvs[0]
         f = front_vector(sofa.pose.rotation_deg)
         fx = sofa.pose.x + f[0] * sofa.product.depth_cm / 2.0
