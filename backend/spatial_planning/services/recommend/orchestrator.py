@@ -36,6 +36,7 @@ from spatial_planning.models.products import (
     SOFA_LADDER,
     SOFA_RANK,
     SOFA_TYPE_CATEGORY,
+    Product,
     expected_max_width,
     placement_group,
     seat_target_for_area,
@@ -1421,6 +1422,88 @@ def _tv_is_clean(resp: AssistLayoutResponse, analysis: RoomAnalysis) -> bool:
     return True
 
 
+def _palette_swap(
+    placement: AssistPlacement,
+    style: str | None,
+    families: set[str],
+    repo: CatalogRepository,
+) -> Product | None:
+    """A palette-matching replacement for `placement`'s product, or None to keep it as-is.
+
+    The replacement is the SAME store category and its footprint is a SUBSET of the neutral pick's
+    (both dims <=, and >= ~55% of its area so it isn't a sliver). A subset centred on an already-valid
+    pose can never introduce an overlap / OOB / door / walkway violation, so no re-validation is needed.
+    Colour beats style, and a preference never forces a non-existent swap: if the neutral product is
+    already on-palette, or nothing in-palette fits within its footprint, we keep the neutral product
+    (colour is a preference, never a reason to move or drop a piece). Prefers the LARGEST match, i.e.
+    the closest to the neutral size, so the recolour barely changes the footprint."""
+    if placement.category == "custom":
+        return None
+    cur = placement.product
+    on_palette = ((not style) or style in (cur.styles or [])) and ((not families) or cur.main_family in families)
+    if on_palette:
+        return None
+    ow, od = cur.width_cm, cur.depth_cm
+    min_area = 0.55 * ow * od
+    pool = [
+        q for q in repo.in_category(placement_group(cur.category))
+        if q.category == cur.category
+        and q.id != placement.product_id
+        and q.width_cm <= ow
+        and q.depth_cm <= od
+        and q.width_cm * q.depth_cm >= min_area
+    ]
+    styled = [q for q in pool if style and style in (q.styles or [])]
+    colored = [q for q in pool if families and q.main_family in families]
+    both = [q for q in styled if q.main_family in families]
+    cand = both or colored or styled  # colour beats style; a preference never empties the pool
+    if not cand:
+        return None
+    return max(cand, key=lambda q: (q.width_cm * q.depth_cm, -q.price, q.id))
+
+
+def _recolor_to_palette(
+    neutral: AssistLayoutResponse,
+    prefs: Preferences,
+    analysis: RoomAnalysis,
+) -> AssistLayoutResponse:
+    """Re-apply the style/colour palette to a palette-INDEPENDENT layout WITHOUT re-planning it.
+
+    Each placed product is swapped for a palette-matching one of the same store category that fits
+    within the neutral pick's footprint, at the SAME pose (see `_palette_swap`). Every swap is a subset
+    of an already-validated pose, so the ARRANGEMENT is byte-identical - same walls, same poses, same
+    pieces placed - and the palette can never move or DROP furniture. (The old repaint re-ran the recipe
+    with palette-filtered products, which selected different-SIZED products that reshaped the seating
+    group and dropped opted-in pieces - e.g. the chaise - on some walls but not others: a colour must
+    never move the layout.) Only colours change, and only where an in-palette product exists at the
+    right size; otherwise the neutral product stays. skipped / findings / notices are unchanged by
+    construction (a subset footprint can't alter any fit outcome)."""
+    style = prefs.style
+    families = set(prefs.color_families or [])
+    if not style and not families:
+        return neutral
+    repo = get_repository()
+    new_placements: list[AssistPlacement] = []
+    changed = False
+    for p in neutral.placements:
+        swap = _palette_swap(p, style, families, repo)
+        if swap is None:
+            new_placements.append(p)
+        else:
+            new_placements.append(p.model_copy(update={"product_id": swap.id, "product": swap}))
+            changed = True
+    if not changed:
+        return neutral
+    total_price = sum(pp.product.price for pp in new_placements if pp.instance_id.startswith(AUTO_PREFIX))
+    return neutral.model_copy(
+        update={
+            "placements": new_placements,
+            "proposal_id": _proposal_id(analysis, new_placements),
+            "totals": neutral.totals.model_copy(update={"total_price": total_price}),
+        }
+    )
+
+
 def plan_layout_variants(
     room: Room,
     preferences: Preferences,
@@ -1499,7 +1582,10 @@ def plan_layout_variants(
         if any(_tv_is_clean(resp, analysis) and not _sofa_blocks_entry(resp, analysis) for _name, resp in panel):
             return panel
         reduced = sorted(pieces.resolve_active_pieces(preferences.included_pieces) - {"tv_unit"})
-        no_tv_prefs = preferences.model_copy(update={"included_pieces": reduced})
+        # Strip the palette: this re-plan is an ARRANGEMENT pass and must stay palette-independent (its own
+        # inner recolour would run on pre-decision sizes). The outer plan_layout_variants recolours the
+        # final result instead.
+        no_tv_prefs = preferences.model_copy(update={"included_pieces": reduced, "style": None, "color_families": []})
         pass2 = plan_layout_variants(room, no_tv_prefs, placed_items, room_type, max_variants)
         if not pass2:  # impossible-empty guard - keep the original panel rather than empty it
             return panel
@@ -1624,45 +1710,35 @@ def plan_layout_variants(
     if grouped_rows:
         rows = grouped_rows
     if not rows:  # every option is broken/misaligned - fall back to the single natural layout
-        return _conversation_focal_fallback(
-            [(f"{piece} layout", plan_layout_from_recipe(room, prefs, placed_items, room_type))]
+        # Plan it palette-INDEPENDENT (layout_prefs); the final recolour pass below repaints it.
+        out = _conversation_focal_fallback(
+            [(f"{piece} layout", plan_layout_from_recipe(room, layout_prefs, placed_items, room_type))]
         )
+    else:
+        # unique, readable labels (disambiguate collisions by side), built from the NEUTRAL rows
+        out: list[tuple[str, AssistLayoutResponse]] = []
+        used: set[str] = set()
+        for label, side, resp, _z in rows:
+            name = label if label not in used else f"{label} ({side})"
+            n = 2
+            while name in used:
+                name = f"{label} ({side}) {n}"
+                n += 1
+            used.add(name)
+            out.append((name, resp))
+        # Arrangement decision (TV-clean / conversation-focal) runs on the palette-INDEPENDENT layout, so
+        # a recoloured (narrower) sofa can never flip the "TV in front of the sofa" check and trigger a
+        # spurious TV skip.
+        out = _conversation_focal_fallback(out)
 
-    # Re-apply the palette: re-plan each surfaced template with the FULL preferences pinned to its
-    # already-chosen wall, so the products match the style/colour while the ARRANGEMENT stays exactly
-    # what the palette-independent ranking picked. Keep the palette layout only if it still places the
-    # primary on that wall with no error (else keep the neutral one - a rare palette never breaks it).
+    # FINAL, purely-cosmetic pass: recolour the finished arrangement IN PLACE (poses fixed). Kept dead
+    # last - after EVERY arrangement decision, including the conversation-focal fallback - so no ranking
+    # or geometry check ever sees palette-resized products. Each product is swapped for a palette-matching
+    # one of the same store category that fits WITHIN the neutral footprint at the same pose (a subset of
+    # an already-valid pose), so the palette can never move or drop a piece. See _recolor_to_palette.
     if has_palette:
-        repainted: list[tuple[str, str, AssistLayoutResponse, ZoneData]] = []
-        for label, side, resp, z in rows:
-            palette_resp = plan_layout_from_recipe(room, prefs, placed_items, room_type, zone_overrides={primary.role: z})
-            # Keep the palette layout ONLY if it still places the primary, has no error, AND introduces no
-            # OVERLAP. The palette swaps products (different SIZES), which can graze pieces the neutral
-            # ranking placed clean - that overlap must never surface (this is the palette-dependent overlap
-            # the safety net above can't see, since it ran on the neutral products). Else keep the neutral
-            # (clean) layout: colours may not match perfectly, but no pieces overlap (palette != arrangement).
-            if (
-                category in {p.category for p in palette_resp.placements}
-                and not any(fd.severity == "error" for fd in palette_resp.findings)
-                and not _template_has_overlap(palette_resp)
-            ):
-                resp = palette_resp
-            repainted.append((label, side, resp, z))
-        rows = repainted
-
-    # unique, readable labels (disambiguate collisions by side)
-    out: list[tuple[str, AssistLayoutResponse]] = []
-    used: set[str] = set()
-    for label, side, resp, _z in rows:
-        name = label if label not in used else f"{label} ({side})"
-        n = 2
-        while name in used:
-            name = f"{label} ({side}) {n}"
-            n += 1
-        used.add(name)
-        out.append((name, resp))
-
-    return _conversation_focal_fallback(out)
+        out = [(name, _recolor_to_palette(resp, preferences, analysis)) for name, resp in out]
+    return out
 
 
 def plan_assist_templates(
