@@ -1255,13 +1255,17 @@ def _template_issues(
     sofa facing down the long axis toward a far TV) apply ONLY when a TV was REQUESTED. A
     conversation-focal room is never dropped for a TV it doesn't have; the TV-independent drops
     (warnings, floating L-return, bed crammed on a door, oversized piece) still apply."""
-    if any(fd.severity == "warning" for fd in resp.findings):
+    beds = [p for p in resp.placements if p.category == "bed"]
+    # FRONT_BLOCKED is a SOFT advisory that fires routinely in a packed BEDROOM (bed + wardrobe +
+    # dressing table + reading chair in one room); the blanket warning-drop would discard EVERY bedroom
+    # template and force the fallback onto the worst bed wall. Ignore it for the drop decision when a bed
+    # is present; every other warning still drops the template.
+    if any(fd.severity == "warning" and not (beds and fd.code == "FRONT_BLOCKED") for fd in resp.findings):
         return True
     from spatial_planning.services.spatial.geometry_utils import front_vector, item_polygon
 
     sofas = [p for p in resp.placements if p.category == "sofa"]
     tvs = [p for p in resp.placements if p.category == "tv_unit"]
-    beds = [p for p in resp.placements if p.category == "bed"]
     # The sofa<->TV alignment gate is a LIVING-ROOM rule. In a BEDROOM the TV faces the BED (its own
     # bed<->TV gate below), and any sofa is a SEPARATE lounge - so the TV need not align with it. Running
     # this block in a bedroom wrongly drops every TV-placing template (the lounge sofa doesn't face the TV).
@@ -1376,8 +1380,19 @@ def _tv_in_front(
     if not tv_requested:
         return True
     from spatial_planning.services.spatial.geometry_utils import front_vector
-    sofas = [p for p in resp.placements if p.category == "sofa"]
     tvs = [p for p in resp.placements if p.category == "tv_unit"]
+    beds = [p for p in resp.placements if p.category == "bed"]
+    # BEDROOM: the TV faces the BED, not a sofa. A TV in front of & centred on the bed is a valid
+    # front-facing bedroom; a bedroom with no TV placed is acceptable on this axis (the ranking demotes
+    # it via _bedroom_tv_bad_wall). Only a TV rendered OFF the bed's centre-line is dropped.
+    if beds:
+        if not tvs:
+            return True
+        bed, tv = beds[0], tvs[0]
+        bf = front_vector(bed.pose.rotation_deg)
+        vx, vy = tv.pose.x - bed.pose.x, tv.pose.y - bed.pose.y
+        return (bf[0] * vx + bf[1] * vy) > 0.0 and abs(vy * bf[0] - vx * bf[1]) <= _TV_BED_CENTER_TOL_CM
+    sofas = [p for p in resp.placements if p.category == "sofa"]
     if not sofas or not tvs:
         return False  # no sofa+TV pair -> not a valid front-facing living room
     sofa = max(sofas, key=lambda p: p.product.width_cm)
